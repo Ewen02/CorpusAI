@@ -1,0 +1,300 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER & AUTHENTICATION
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  avatar        String?
+  emailVerified Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Subscription
+  subscriptionPlan   SubscriptionPlan   @default(FREE)
+  subscriptionStatus SubscriptionStatus @default(ACTIVE)
+  subscriptionStart  DateTime?
+  subscriptionEnd    DateTime?
+  stripeCustomerId   String?            @unique
+
+  // Relations
+  ais      AI[]
+  sessions Session[]
+  accounts Account[]
+
+  @@index([email])
+  @@index([stripeCustomerId])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Better Auth fields
+  ipAddress String?
+  userAgent String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+}
+
+model Account {
+  id                String   @id @default(cuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  accessToken       String?
+  refreshToken      String?
+  expiresAt         DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  token      String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@index([token])
+}
+
+// ============================================
+// AI ASSISTANTS
+// ============================================
+
+model AI {
+  id          String   @id @default(cuid())
+  userId      String
+  slug        String   @unique
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Configuration
+  systemPrompt String?
+  status       AIStatus @default(DRAFT)
+
+  // Settings (JSON for flexibility)
+  welcomeMessage String?
+  primaryColor   String  @default("#3b82f6")
+  logo           String?
+  maxTokens      Int     @default(1024)
+  temperature    Float   @default(0.7)
+
+  // Access & Monetization
+  accessType AccessType @default(FREE)
+  price      Float?
+
+  // Stats
+  documentCount    Int @default(0)
+  conversationCount Int @default(0)
+  questionCount    Int @default(0)
+
+  // Relations
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documents     Document[]
+  conversations Conversation[]
+
+  @@unique([userId, slug])
+  @@index([userId])
+  @@index([slug])
+  @@index([status])
+}
+
+// ============================================
+// DOCUMENTS & CHUNKS
+// ============================================
+
+model Document {
+  id        String   @id @default(cuid())
+  aiId      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // File info
+  filename String
+  mimeType String
+  size     Int
+  url      String?
+
+  // Processing
+  status     DocumentStatus @default(PENDING)
+  chunkCount Int            @default(0)
+  errorMessage String?
+
+  // Metadata (extracted from document)
+  pageCount Int?
+  wordCount Int?
+  language  String?
+  title     String?
+  author    String?
+
+  // Relations
+  ai     AI      @relation(fields: [aiId], references: [id], onDelete: Cascade)
+  chunks Chunk[]
+
+  @@index([aiId])
+  @@index([status])
+}
+
+model Chunk {
+  id         String   @id @default(cuid())
+  documentId String
+  createdAt  DateTime @default(now())
+
+  // Content
+  content  String
+  position Int
+
+  // Location in source
+  pageNumber Int?
+  startChar  Int?
+  endChar    Int?
+
+  // Vector embedding stored in Qdrant (reference only)
+  qdrantPointId String? @unique
+
+  // Relations
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([qdrantPointId])
+}
+
+// ============================================
+// CONVERSATIONS & MESSAGES
+// ============================================
+
+model EndUser {
+  id        String   @id @default(cuid())
+  email     String?
+  name      String?
+  createdAt DateTime @default(now())
+
+  // Session tracking
+  sessionId String?
+
+  // Relations
+  conversations Conversation[]
+
+  @@index([email])
+  @@index([sessionId])
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  aiId      String
+  endUserId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  title        String?
+  messageCount Int     @default(0)
+
+  // Relations
+  ai       AI        @relation(fields: [aiId], references: [id], onDelete: Cascade)
+  endUser  EndUser?  @relation(fields: [endUserId], references: [id], onDelete: SetNull)
+  messages Message[]
+
+  @@index([aiId])
+  @@index([endUserId])
+  @@index([createdAt])
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  createdAt      DateTime @default(now())
+
+  // Content
+  role    MessageRole
+  content String
+
+  // AI response metadata
+  sources    Json?
+  confidence ConfidenceLevel?
+  tokenUsage Int?
+  latencyMs  Int?
+
+  // Relations
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([createdAt])
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum SubscriptionPlan {
+  FREE
+  CREATOR
+  PRO
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  TRIALING
+}
+
+enum AIStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum AccessType {
+  FREE
+  PAID
+  INVITE_ONLY
+  TIME_LIMITED
+}
+
+enum DocumentStatus {
+  PENDING
+  PROCESSING
+  INDEXED
+  FAILED
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+}
+
+enum ConfidenceLevel {
+  HIGH
+  MEDIUM
+  LOW
+}
