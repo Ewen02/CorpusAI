@@ -80,4 +80,16 @@ export class UsersService {
       subscriptionPlan: user.subscriptionPlan,
     };
   }
+
+  async getAccounts(userId: string) {
+    const accounts = await prisma.account.findMany({
+      where: { userId },
+      select: {
+        providerId: true,
+        createdAt: true,
+      },
+    });
+
+    return accounts;
+  }
 }

@@ -31,4 +31,10 @@ export class UsersController {
   async getStats(@CurrentUser() user: CurrentUserData) {
     return this.usersService.getDashboardStats(user.id);
   }
+
+  @Get("me/accounts")
+  @ApiOperation({ summary: "Get user's connected accounts (OAuth providers)" })
+  async getAccounts(@CurrentUser() user: CurrentUserData) {
+    return this.usersService.getAccounts(user.id);
+  }
 }

@@ -2,8 +2,16 @@
 
 import * as React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { DashboardLayout, type NavItem, type AINavItem, type UserData } from '@corpusai/ui';
+import { DashboardLayout, DashboardLayoutSkeleton, type NavItem, type AINavItem, type UserData } from '@corpusai/ui';
 import { authClient } from '@/lib/auth-client';
+
+// Types for API responses
+interface AIResponse {
+  id: string;
+  name: string;
+  slug: string;
+  status: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED';
+}
 
 // Icons as components
 function HomeIcon() {
@@ -119,6 +127,40 @@ export default function DashboardLayoutWrapper({
   const router = useRouter();
   const pathname = usePathname();
   const { data: session, isPending } = authClient.useSession();
+  const [aiItems, setAiItems] = React.useState<AINavItem[]>([]);
+  const [isLoadingAIs, setIsLoadingAIs] = React.useState(true);
+
+  // Fetch user's AIs
+  React.useEffect(() => {
+    const fetchAIs = async () => {
+      try {
+        const response = await fetch('http://localhost:3001/ais', {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data: AIResponse[] = await response.json();
+          setAiItems(
+            data.map((ai) => ({
+              id: ai.id,
+              name: ai.name,
+              href: `/ais/${ai.id}`,
+              status: ai.status === 'ACTIVE' ? 'active' : ai.status === 'DRAFT' ? 'draft' : 'paused',
+            }))
+          );
+        }
+      } catch (error) {
+        console.error('Error fetching AIs:', error);
+      } finally {
+        setIsLoadingAIs(false);
+      }
+    };
+
+    if (session) {
+      fetchAIs();
+    } else {
+      setIsLoadingAIs(false);
+    }
+  }, [session]);
 
   // User data from session
   const user: UserData = {
@@ -126,12 +168,6 @@ export default function DashboardLayoutWrapper({
     email: session?.user?.email || '',
     plan: 'FREE',
   };
-
-  // TODO: Fetch real AI list from API
-  const aiItems: AINavItem[] = [
-    { id: 'ai-1', name: 'FAQ Support', href: '/ais/ai-1', status: 'active' },
-    { id: 'ai-2', name: 'Doc Technique', href: '/ais/ai-2', status: 'draft' },
-  ];
 
   const handleNavigate = (href: string) => {
     if (href.startsWith('http')) {
@@ -153,6 +189,11 @@ export default function DashboardLayoutWrapper({
     await authClient.signOut();
     router.push('/sign-in');
   };
+
+  // Show skeleton while loading session
+  if (isPending) {
+    return <DashboardLayoutSkeleton />;
+  }
 
   return (
     <DashboardLayout
