@@ -9,9 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@corpusai/types": "workspace:*",
     "@corpusai/subscription": "workspace:*",
+    "@corpusai/types": "workspace:*",
     "@corpusai/ui": "workspace:*",
+    "better-auth": "^1.4.9",
     "next": "^15.1.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

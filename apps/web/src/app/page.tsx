@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   Button,
   Card,
@@ -159,10 +160,12 @@ export default function Home() {
             </a>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm">
-              Sign In
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/sign-in">Sign In</Link>
             </Button>
-            <Button size="sm">Get Started</Button>
+            <Button size="sm" asChild>
+              <Link href="/sign-up">Get Started</Link>
+            </Button>
           </div>
         </div>
       </nav>
@@ -187,8 +190,8 @@ export default function Home() {
             the world. Build custom chatbots that truly understand your content.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Button size="lg" className="min-w-[180px]">
-              Start Building Free
+            <Button size="lg" className="min-w-[180px]" asChild>
+              <Link href="/sign-up">Start Building Free</Link>
             </Button>
             <Button variant="outline" size="lg" className="min-w-[180px]">
               Watch Demo
@@ -352,7 +355,9 @@ export default function Home() {
             Join thousands of teams already using CorpusAI to build smarter AI assistants.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Button size="lg">Get Started Free</Button>
+            <Button size="lg" asChild>
+              <Link href="/sign-up">Get Started Free</Link>
+            </Button>
             <Button variant="outline" size="lg">
               Schedule a Demo
             </Button>
@@ -387,7 +392,7 @@ export default function Home() {
               </a>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2024 CorpusAI. All rights reserved.
+              © {new Date().getFullYear()} CorpusAI. All rights reserved.
             </p>
           </div>
         </div>
