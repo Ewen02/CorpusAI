@@ -11,7 +11,7 @@ export class UsersService {
         id: true,
         email: true,
         name: true,
-        avatar: true,
+        image: true,
         subscriptionPlan: true,
         subscriptionStatus: true,
         subscriptionStart: true,
@@ -37,13 +37,13 @@ export class UsersService {
       where: { id: userId },
       data: {
         name: data.name,
-        avatar: data.avatar,
+        image: data.image,
       },
       select: {
         id: true,
         email: true,
         name: true,
-        avatar: true,
+        image: true,
         updatedAt: true,
       },
     });

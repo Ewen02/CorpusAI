@@ -28,7 +28,7 @@ export class AuthService {
         id: true,
         email: true,
         name: true,
-        avatar: true,
+        image: true,
         subscriptionPlan: true,
         subscriptionStatus: true,
         createdAt: true,

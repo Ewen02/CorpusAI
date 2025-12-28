@@ -8,8 +8,8 @@ export class UpdateProfileDto {
   @MaxLength(100)
   name?: string;
 
-  @ApiPropertyOptional({ description: "Avatar URL" })
+  @ApiPropertyOptional({ description: "Profile image URL" })
   @IsOptional()
   @IsUrl()
-  avatar?: string;
+  image?: string;
 }
