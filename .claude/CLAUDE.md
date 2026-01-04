@@ -174,3 +174,22 @@ src/
 - Cold blue accent for primary actions, never aggressive
 - Soft contrasts, clear hierarchy
 - Inter for text, generous sizes
+
+---
+
+## Agents de développement
+
+Selon le contexte de la tâche, utiliser automatiquement l'agent approprié :
+
+| Agent | Fichier | Contexte d'utilisation |
+|-------|---------|------------------------|
+| Frontend Engineer | `.claude/agents/frontend-engineer.md` | `apps/web/`, `packages/ui/`, composants React, pages Next.js |
+| Backend Engineer | `.claude/agents/backend-engineer.md` | `apps/api/`, `packages/database/`, endpoints, Prisma |
+| AI/RAG Engineer | `.claude/agents/ai-rag-engineer.md` | `apps/ai-worker/`, `packages/corpus/`, embeddings, Qdrant |
+| Fullstack Lead | `.claude/agents/fullstack-lead.md` | Architecture globale, refactoring cross-packages, code review |
+
+### Règles d'utilisation
+1. Identifier le domaine principal de la tâche
+2. Lire l'agent correspondant pour appliquer ses standards
+3. Si multi-domaines → utiliser Fullstack Lead
+4. Toujours respecter les checklists qualité de l'agent
