@@ -7,6 +7,7 @@ import { UsersModule } from "./modules/users";
 import { AIsModule } from "./modules/ais";
 import { DocumentsModule } from "./modules/documents";
 import { ConversationsModule } from "./modules/conversations";
+import { RagModule } from "./modules/rag";
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ConversationsModule } from "./modules/conversations";
     AIsModule,
     DocumentsModule,
     ConversationsModule,
+    RagModule,
   ],
   controllers: [AppController],
   providers: [AppService],

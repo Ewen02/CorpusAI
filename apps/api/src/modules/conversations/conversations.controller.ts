@@ -7,6 +7,7 @@ import {
   Param,
   UseGuards,
   Headers,
+  Res,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -15,6 +16,7 @@ import {
   ApiParam,
   ApiHeader,
 } from "@nestjs/swagger";
+import type { Response } from "express";
 import { ConversationsService } from "./conversations.service";
 import { AuthGuard, CurrentUser, type CurrentUserData } from "../auth";
 import { SendMessageDto } from "./dto/send-message.dto";
@@ -72,6 +74,43 @@ export class ConversationsController {
   @ApiParam({ name: "id", description: "Conversation ID" })
   async getConversation(@Param("id") id: string) {
     return this.conversationsService.findOne(id);
+  }
+
+  @Get("chat/conversations/:id/messages")
+  @ApiOperation({ summary: "Get messages for a conversation" })
+  @ApiParam({ name: "id", description: "Conversation ID" })
+  async getMessages(@Param("id") id: string) {
+    return this.conversationsService.getMessages(id);
+  }
+
+  // NOTE: Stream route must be declared BEFORE the non-stream route
+  // to prevent NestJS from matching /messages/stream as /messages with id="stream"
+  @Post("chat/conversations/:id/messages/stream")
+  @ApiOperation({ summary: "Send a message with streaming response (SSE)" })
+  @ApiParam({ name: "id", description: "Conversation ID" })
+  async sendMessageStream(
+    @Param("id") id: string,
+    @Body() dto: SendMessageDto,
+    @Res() res: Response
+  ) {
+    // Set SSE headers
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders();
+
+    try {
+      const generator = this.conversationsService.sendMessageStream(id, dto.content);
+
+      for await (const event of generator) {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+      }
+    } catch (error) {
+      res.write(`data: ${JSON.stringify({ type: "error", data: { message: "Internal server error" } })}\n\n`);
+    }
+
+    res.end();
   }
 
   @Post("chat/conversations/:id/messages")

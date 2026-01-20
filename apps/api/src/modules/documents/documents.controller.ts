@@ -16,6 +16,7 @@ import {
 import { DocumentsService } from "./documents.service";
 import { AuthGuard, CurrentUser, type CurrentUserData } from "../auth";
 import { CreateDocumentDto } from "./dto/create-document.dto";
+import { CreateTextDocumentDto } from "./dto/create-text-document.dto";
 
 @ApiTags("documents")
 @ApiBearerAuth()
@@ -54,6 +55,17 @@ export class DocumentsController {
     @Body() dto: CreateDocumentDto
   ) {
     return this.documentsService.create(user.id, aiId, dto);
+  }
+
+  @Post("text")
+  @ApiOperation({ summary: "Create a document from text content" })
+  @ApiParam({ name: "aiId", description: "AI ID" })
+  async createFromText(
+    @CurrentUser() user: CurrentUserData,
+    @Param("aiId") aiId: string,
+    @Body() dto: CreateTextDocumentDto
+  ) {
+    return this.documentsService.createFromText(user.id, aiId, dto);
   }
 
   @Delete(":id")
