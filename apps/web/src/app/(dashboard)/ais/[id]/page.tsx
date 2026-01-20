@@ -26,13 +26,35 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
+  DocumentIcon,
+  ChatIcon,
+  QuestionIcon,
+  SettingsIcon,
+  ShareIcon,
+  TrashIcon,
+  RefreshIcon,
   type ChatMessage,
   type ChatSource,
   type UploadedFile,
   type Conversation,
 } from "@corpusai/ui";
+import {
+  useAI,
+  useConversations,
+  useStartConversation,
+  useSendMessageStream,
+  useMessages,
+  useDocuments,
+  useDeleteDocument,
+  useRetryDocument,
+  documentKeys,
+  type MessageSource,
+  type Document,
+} from "@/lib/queries";
+import { useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api-client";
 
-// Types for AI data
+// Types for AI data (extended from API)
 interface AIData {
   id: string;
   name: string;
@@ -52,109 +74,196 @@ export default function AIDetailPage() {
   const router = useRouter();
   const aiId = params.id as string;
 
-  // AI Data
-  const [ai, setAI] = React.useState<AIData | null>(null);
-  const [isLoadingAI, setIsLoadingAI] = React.useState(true);
+  // React Query hooks
+  const queryClient = useQueryClient();
+  const { data: ai, isLoading: isLoadingAI } = useAI(aiId);
+  const { data: conversationsData, isLoading: isLoadingConversations } = useConversations(aiId);
+  const { data: documents, isLoading: isLoadingDocuments } = useDocuments(aiId);
+  const startConversation = useStartConversation();
+  const deleteDocument = useDeleteDocument();
+  const retryDocument = useRetryDocument();
+  const { sendStream, isStreaming, streamingContent } = useSendMessageStream();
 
-  // Chat state
+  // Local state for chat
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
-  const [isChatLoading, setIsChatLoading] = React.useState(false);
   const [currentConversationId, setCurrentConversationId] = React.useState<string | null>(null);
-
-  // Conversations state
-  const [conversations, setConversations] = React.useState<Conversation[]>([]);
-  const [isLoadingConversations, setIsLoadingConversations] = React.useState(true);
+  const [streamingMessageId, setStreamingMessageId] = React.useState<string | null>(null);
 
   // Documents state
   const [uploadedFiles, setUploadedFiles] = React.useState<UploadedFile[]>([]);
 
-  // Fetch AI data
+  // Transform conversations data
+  const conversations: Conversation[] = React.useMemo(() => {
+    if (!conversationsData) return [];
+    return conversationsData.map((conv) => ({
+      id: conv.id,
+      title: conv.title || "Nouvelle conversation",
+      lastMessage: conv.lastMessage || "",
+      messageCount: conv.messageCount,
+      createdAt: new Date(conv.createdAt),
+      updatedAt: new Date(conv.updatedAt),
+    }));
+  }, [conversationsData]);
+
+  // Load messages when conversation changes
+  const { data: messagesData } = useMessages(currentConversationId);
+
   React.useEffect(() => {
-    const fetchAI = async () => {
-      try {
-        const response = await fetch(`http://localhost:3001/ais/${aiId}`, {
-          credentials: "include",
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setAI(data);
-        }
-      } catch (error) {
-        console.error("Error fetching AI:", error);
-      } finally {
-        setIsLoadingAI(false);
-      }
-    };
+    if (messagesData) {
+      const formattedMessages: ChatMessage[] = messagesData.map((msg) => ({
+        id: msg.id,
+        role: msg.role.toLowerCase() as "user" | "assistant",
+        content: msg.content,
+        createdAt: new Date(msg.createdAt),
+        sources: msg.sources?.map((s: MessageSource) => ({
+          documentId: s.chunkId,
+          documentName: s.documentSource,
+          excerpt: s.excerpt,
+          relevanceScore: s.score,
+        })),
+      }));
+      setMessages(formattedMessages);
+    }
+  }, [messagesData]);
 
-    fetchAI();
-  }, [aiId]);
-
-  // Fetch conversations
+  // Update streaming message content in real-time
   React.useEffect(() => {
-    const fetchConversations = async () => {
-      try {
-        const response = await fetch(`http://localhost:3001/ais/${aiId}/conversations`, {
-          credentials: "include",
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setConversations(
-            data.map((conv: { id: string; title?: string; lastMessage?: string; messageCount: number; createdAt: string; updatedAt: string }) => ({
-              id: conv.id,
-              title: conv.title || "Nouvelle conversation",
-              lastMessage: conv.lastMessage || "",
-              messageCount: conv.messageCount,
-              createdAt: new Date(conv.createdAt),
-              updatedAt: new Date(conv.updatedAt),
-            }))
-          );
-        }
-      } catch (error) {
-        console.error("Error fetching conversations:", error);
-      } finally {
-        setIsLoadingConversations(false);
-      }
-    };
+    if (isStreaming && streamingMessageId && streamingContent) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === streamingMessageId ? { ...m, content: streamingContent } : m
+        )
+      );
+    }
+  }, [isStreaming, streamingMessageId, streamingContent]);
 
-    fetchConversations();
-  }, [aiId]);
-
-  // Handle sending a message
+  // Handle sending a message with streaming
   const handleSendMessage = async (content: string) => {
+    if (!ai || isStreaming) return;
+
     // Add user message optimistically
     const userMessage: ChatMessage = {
-      id: `temp-${Date.now()}`,
+      id: `temp-user-${Date.now()}`,
       role: "user",
       content,
       createdAt: new Date(),
     };
-    setMessages((prev) => [...prev, userMessage]);
-    setIsChatLoading(true);
+
+    // Add streaming assistant message placeholder
+    const assistantMessageId = `temp-assistant-${Date.now()}`;
+    const streamingAssistantMessage: ChatMessage = {
+      id: assistantMessageId,
+      role: "assistant",
+      content: "",
+      createdAt: new Date(),
+      isStreaming: true,
+    };
+
+    setMessages((prev) => [...prev, userMessage, streamingAssistantMessage]);
+    setStreamingMessageId(assistantMessageId);
 
     try {
-      // TODO: Implement actual API call to chat endpoint
-      // For now, simulate a response
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Create conversation if needed
+      let convId = currentConversationId;
+      if (!convId) {
+        const convData = await startConversation.mutateAsync(ai.slug);
+        convId = convData.id;
+        setCurrentConversationId(convId);
+      }
 
-      const assistantMessage: ChatMessage = {
-        id: `temp-${Date.now() + 1}`,
-        role: "assistant",
-        content: "Je suis desole, le systeme de chat n'est pas encore connecte au backend RAG. Cette fonctionnalite sera disponible prochainement.",
-        createdAt: new Date(),
-        sources: [],
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
+      // Send message with streaming
+      sendStream(convId, content, {
+        onToken: (_token, fullContent) => {
+          // Update streaming message content
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMessageId ? { ...m, content: fullContent } : m
+            )
+          );
+        },
+        onSources: (sources) => {
+          // Update with sources
+          const formattedSources: ChatSource[] = sources.map((s) => ({
+            documentId: s.chunkId,
+            documentName: s.documentSource,
+            excerpt: s.excerpt,
+            relevanceScore: s.score,
+          }));
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMessageId ? { ...m, sources: formattedSources } : m
+            )
+          );
+        },
+        onDone: (data) => {
+          // Finalize messages with real IDs
+          setMessages((prev) =>
+            prev.map((m) => {
+              if (m.id === userMessage.id) {
+                return {
+                  ...m,
+                  id: data.userMessage.id,
+                  createdAt: new Date(data.userMessage.createdAt),
+                };
+              }
+              if (m.id === assistantMessageId) {
+                const formattedSources: ChatSource[] = data.assistantMessage.sources.map((s) => ({
+                  documentId: s.chunkId,
+                  documentName: s.documentSource,
+                  excerpt: s.excerpt,
+                  relevanceScore: s.score,
+                }));
+                return {
+                  ...m,
+                  id: data.assistantMessage.id,
+                  content: data.assistantMessage.content,
+                  sources: formattedSources,
+                  createdAt: new Date(data.assistantMessage.createdAt),
+                  isStreaming: false,
+                };
+              }
+              return m;
+            })
+          );
+          setStreamingMessageId(null);
+        },
+        onError: (error) => {
+          console.error("Streaming error:", error);
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMessageId
+                ? {
+                    ...m,
+                    content: "Une erreur s'est produite. Veuillez reessayer.",
+                    isStreaming: false,
+                  }
+                : m
+            )
+          );
+          setStreamingMessageId(null);
+        },
+      });
     } catch (error) {
-      console.error("Error sending message:", error);
-    } finally {
-      setIsChatLoading(false);
+      console.error("Error starting stream:", error);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMessageId
+            ? {
+                ...m,
+                content: "Une erreur s'est produite. Veuillez reessayer.",
+                isStreaming: false,
+              }
+            : m
+        )
+      );
+      setStreamingMessageId(null);
     }
   };
 
   // Handle file upload
   const handleFilesSelected = async (files: File[]) => {
     const newFiles: UploadedFile[] = files.map((file) => ({
-      id: `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `file-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
       file,
       status: "pending" as const,
       progress: 0,
@@ -172,34 +281,40 @@ export default function AIDetailPage() {
           )
         );
 
-        const formData = new FormData();
-        formData.append("file", uploadedFile.file);
-
-        const response = await fetch(`http://localhost:3001/ais/${aiId}/documents`, {
-          method: "POST",
-          credentials: "include",
-          body: formData,
+        // Send as JSON with file content
+        const reader = new FileReader();
+        const content = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsText(uploadedFile.file);
         });
 
-        if (response.ok) {
-          // Update status to processing then success
-          setUploadedFiles((prev) =>
-            prev.map((f) =>
-              f.id === uploadedFile.id ? { ...f, status: "processing" as const, progress: 70 } : f
-            )
-          );
+        await apiClient.post(`/ais/${aiId}/documents/text`, {
+          filename: uploadedFile.file.name,
+          content,
+        });
 
-          await new Promise((resolve) => setTimeout(resolve, 500));
+        // Update status to processing then success
+        setUploadedFiles((prev) =>
+          prev.map((f) =>
+            f.id === uploadedFile.id ? { ...f, status: "processing" as const, progress: 70 } : f
+          )
+        );
 
-          setUploadedFiles((prev) =>
-            prev.map((f) =>
-              f.id === uploadedFile.id ? { ...f, status: "success" as const, progress: 100 } : f
-            )
-          );
-        } else {
-          throw new Error("Upload failed");
-        }
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        setUploadedFiles((prev) =>
+          prev.map((f) =>
+            f.id === uploadedFile.id ? { ...f, status: "success" as const, progress: 100 } : f
+          )
+        );
+
+        // Invalidate documents list to refresh the right panel
+        queryClient.invalidateQueries({
+          queryKey: documentKeys.listByAI(aiId),
+        });
       } catch (error) {
+        console.error("Upload error:", error);
         setUploadedFiles((prev) =>
           prev.map((f) =>
             f.id === uploadedFile.id
@@ -219,8 +334,7 @@ export default function AIDetailPage() {
   // Handle conversation selection
   const handleConversationSelect = async (conversation: Conversation) => {
     setCurrentConversationId(conversation.id);
-    // TODO: Load messages for selected conversation
-    setMessages([]);
+    // Messages will be loaded automatically via useMessages hook
   };
 
   // Handle new conversation
@@ -231,9 +345,27 @@ export default function AIDetailPage() {
 
   // Handle source click
   const handleSourceClick = (source: ChatSource) => {
-    // TODO: Open document viewer at specific location
     console.log("Source clicked:", source);
   };
+
+  // Handle document actions
+  const handleDeleteDocument = (documentId: string) => {
+    deleteDocument.mutate({ aiId, id: documentId });
+  };
+
+  const handleRetryDocument = (documentId: string) => {
+    retryDocument.mutate({ aiId, id: documentId });
+  };
+
+  // Format file size
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  // Cast AI data with additional fields
+  const aiData = ai as AIData | undefined;
 
   if (isLoadingAI) {
     return (
@@ -247,7 +379,7 @@ export default function AIDetailPage() {
     );
   }
 
-  if (!ai) {
+  if (!aiData) {
     return (
       <div className="container py-8">
         <Card>
@@ -283,20 +415,20 @@ export default function AIDetailPage() {
         <div className="flex items-start justify-between mb-8">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold tracking-tight">{ai.name}</h1>
-              <Badge className={statusColors[ai.status]}>
-                {statusLabels[ai.status]}
+              <h1 className="text-3xl font-bold tracking-tight">{aiData.name}</h1>
+              <Badge className={statusColors[aiData.status]}>
+                {statusLabels[aiData.status]}
               </Badge>
             </div>
-            {ai.description && (
-              <p className="text-muted-foreground mt-2">{ai.description}</p>
+            {aiData.description && (
+              <p className="text-muted-foreground mt-2">{aiData.description}</p>
             )}
             <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="flex items-center gap-1">
                     <DocumentIcon className="h-4 w-4" />
-                    {ai.documentCount} documents
+                    {aiData.documentCount} documents
                   </span>
                 </TooltipTrigger>
                 <TooltipContent>Documents indexes</TooltipContent>
@@ -306,7 +438,7 @@ export default function AIDetailPage() {
                 <TooltipTrigger asChild>
                   <span className="flex items-center gap-1">
                     <ChatIcon className="h-4 w-4" />
-                    {ai.conversationCount} conversations
+                    {aiData.conversationCount} conversations
                   </span>
                 </TooltipTrigger>
                 <TooltipContent>Conversations totales</TooltipContent>
@@ -316,7 +448,7 @@ export default function AIDetailPage() {
                 <TooltipTrigger asChild>
                   <span className="flex items-center gap-1">
                     <QuestionIcon className="h-4 w-4" />
-                    {ai.questionCount} questions
+                    {aiData.questionCount} questions
                   </span>
                 </TooltipTrigger>
                 <TooltipContent>Questions posees</TooltipContent>
@@ -367,10 +499,10 @@ export default function AIDetailPage() {
                 <ChatInterface
                   messages={messages}
                   onSendMessage={handleSendMessage}
-                  isLoading={isChatLoading}
-                  welcomeMessage={ai.welcomeMessage}
-                  aiName={ai.name}
-                  primaryColor={ai.primaryColor}
+                  isLoading={isStreaming}
+                  welcomeMessage={aiData.welcomeMessage}
+                  aiName={aiData.name}
+                  primaryColor={aiData.primaryColor}
                   onSourceClick={handleSourceClick}
                   className="flex-1"
                 />
@@ -391,11 +523,17 @@ export default function AIDetailPage() {
                 <CardHeader>
                   <CardTitle>Documents indexes</CardTitle>
                   <CardDescription>
-                    {ai.documentCount} document(s) dans la base de connaissances
+                    {aiData.documentCount} document(s) dans la base de connaissances
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {ai.documentCount === 0 ? (
+                  {isLoadingDocuments ? (
+                    <div className="space-y-3">
+                      {[1, 2, 3].map((i) => (
+                        <Skeleton key={i} className="h-16 w-full" />
+                      ))}
+                    </div>
+                  ) : !documents || documents.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <DocumentIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
                       <p>Aucun document indexe</p>
@@ -404,9 +542,79 @@ export default function AIDetailPage() {
                       </p>
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">
-                      Liste des documents a implementer...
-                    </p>
+                    <div className="space-y-3">
+                      {documents.map((doc) => (
+                        <div
+                          key={doc.id}
+                          className="flex items-center justify-between p-3 rounded-lg border bg-card"
+                        >
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <DocumentIcon className="h-8 w-8 text-muted-foreground shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium truncate">{doc.filename}</p>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span>{formatFileSize(doc.size)}</span>
+                                {doc.chunkCount !== undefined && (
+                                  <>
+                                    <span>•</span>
+                                    <span>{doc.chunkCount} chunks</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Badge
+                              className={
+                                doc.status === "INDEXED"
+                                  ? "bg-green-500/20 text-green-400"
+                                  : doc.status === "PROCESSING"
+                                    ? "bg-blue-500/20 text-blue-400"
+                                    : doc.status === "PENDING"
+                                      ? "bg-yellow-500/20 text-yellow-400"
+                                      : "bg-red-500/20 text-red-400"
+                              }
+                            >
+                              {doc.status === "INDEXED"
+                                ? "Indexe"
+                                : doc.status === "PROCESSING"
+                                  ? "En cours"
+                                  : doc.status === "PENDING"
+                                    ? "En attente"
+                                    : "Erreur"}
+                            </Badge>
+                            {doc.status === "FAILED" && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => handleRetryDocument(doc.id)}
+                                  >
+                                    <RefreshIcon className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Reessayer l&apos;indexation</TooltipContent>
+                              </Tooltip>
+                            )}
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                  onClick={() => handleDeleteDocument(doc.id)}
+                                >
+                                  <TrashIcon className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Supprimer le document</TooltipContent>
+                            </Tooltip>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -460,19 +668,19 @@ export default function AIDetailPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Card>
                     <CardContent className="pt-6">
-                      <div className="text-2xl font-bold">{ai.conversationCount}</div>
+                      <div className="text-2xl font-bold">{aiData.conversationCount}</div>
                       <p className="text-sm text-muted-foreground">Conversations</p>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="pt-6">
-                      <div className="text-2xl font-bold">{ai.questionCount}</div>
+                      <div className="text-2xl font-bold">{aiData.questionCount}</div>
                       <p className="text-sm text-muted-foreground">Questions</p>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="pt-6">
-                      <div className="text-2xl font-bold">{ai.documentCount}</div>
+                      <div className="text-2xl font-bold">{aiData.documentCount}</div>
                       <p className="text-sm text-muted-foreground">Documents</p>
                     </CardContent>
                   </Card>
@@ -483,99 +691,5 @@ export default function AIDetailPage() {
         </Tabs>
       </div>
     </TooltipProvider>
-  );
-}
-
-// Icons
-function DocumentIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
-      <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-    </svg>
-  );
-}
-
-function ChatIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-    </svg>
-  );
-}
-
-function QuestionIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <circle cx="12" cy="12" r="10" />
-      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-      <path d="M12 17h.01" />
-    </svg>
-  );
-}
-
-function SettingsIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-
-function ShareIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <circle cx="18" cy="5" r="3" />
-      <circle cx="6" cy="12" r="3" />
-      <circle cx="18" cy="19" r="3" />
-      <line x1="8.59" x2="15.42" y1="13.51" y2="17.49" />
-      <line x1="15.41" x2="8.59" y1="6.51" y2="10.49" />
-    </svg>
   );
 }
