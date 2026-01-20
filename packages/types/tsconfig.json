@@ -1,8 +1,9 @@
 {
-  "extends": "@corpusai/typescript-config/library.json",
+  "extends": "@corpusai/typescript-config/base.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "incremental": false
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

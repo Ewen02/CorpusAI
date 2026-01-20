@@ -15,7 +15,8 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "clean": "rm -rf dist"
+    "lint": "eslint src/",
+    "clean": "rm -rf dist node_modules"
   },
   "devDependencies": {
     "@corpusai/typescript-config": "workspace:*",
