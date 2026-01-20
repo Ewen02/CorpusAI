@@ -77,12 +77,14 @@ function MessageBubble({
         <AvatarImage src={isUser ? userAvatar : aiAvatar} />
         <AvatarFallback
           className={cn(
-            'text-xs',
-            isUser ? 'bg-muted' : 'bg-primary text-primary-foreground'
+            'text-xs font-medium',
+            isUser
+              ? 'bg-slate-600 text-slate-200'
+              : 'bg-primary text-primary-foreground'
           )}
           style={!isUser && primaryColor ? { backgroundColor: primaryColor } : undefined}
         >
-          {isUser ? 'U' : aiName.charAt(0).toUpperCase()}
+          {isUser ? 'Moi' : aiName.charAt(0).toUpperCase()}
         </AvatarFallback>
       </Avatar>
 
@@ -97,7 +99,7 @@ function MessageBubble({
             'rounded-2xl px-4 py-2 text-sm',
             isUser
               ? 'bg-primary text-primary-foreground rounded-br-md'
-              : 'bg-muted text-foreground rounded-bl-md'
+              : 'bg-slate-700/80 text-slate-100 rounded-bl-md'
           )}
           style={isUser && primaryColor ? { backgroundColor: primaryColor } : undefined}
         >
