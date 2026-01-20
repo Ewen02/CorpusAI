@@ -37,6 +37,22 @@ export { Switch } from "./atoms/switch";
 export { Textarea } from "./atoms/textarea";
 export type { TextareaProps } from "./atoms/textarea";
 
+export {
+  DocumentIcon,
+  ChatIcon,
+  QuestionIcon,
+  SettingsIcon,
+  ShareIcon,
+  TrashIcon,
+  RefreshIcon,
+  PlusIcon,
+  SearchIcon,
+  ChevronRightIcon,
+  CheckIcon,
+  XIcon,
+  LoaderIcon,
+} from "./atoms/icons";
+
 // Molecules
 export {
   Card,
