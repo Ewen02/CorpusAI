@@ -1,116 +1,51 @@
-# CorpusAI - Todo List
+# CorpusAI — Taches restantes
 
-## Légende
+## P0 — Requis pour lancement
 
-- ✅ Fait
-- 🔄 En cours
-- ⏳ À faire
-- ❌ Bloqué
+- [ ] **Background workers**
+  - Setup BullMQ + Redis dans apps/ai-worker
+  - Job queue pour document processing (actuellement synchrone dans l'API)
+  - Worker: parse > chunk > embed > store
+  - Retry/dead-letter pour les jobs echoues
 
----
+- [ ] **Rate limiting**
+  - Guard NestJS par endpoint et par plan
+  - Compteur questions/jour par AI (utiliser @corpusai/subscription)
+  - Reponse 429 avec headers Retry-After
+  - Indicateur cote frontend
 
-## Infrastructure & Setup
+## P1 — Important
 
-- [x] Initialiser monorepo (pnpm + turbo)
-- [x] Configurer TypeScript (base, library, nestjs, nextjs)
-- [x] Créer .claude/CLAUDE.md (règles dev)
-- [ ] Configurer ESLint partagé
+- [ ] **Tests API**
+  - Tests d'integration NestJS (supertest)
+  - Couverture : auth guards, ownership checks, CRUD, RAG query
+  - Mock Prisma + Qdrant pour isolation
 
----
+- [ ] **Structured logging**
+  - Remplacer console.log residuels par Pino ou Winston
+  - Integrer Sentry pour error tracking
+  - Correlation IDs pour tracer les requetes
 
-## Packages
+## P2 — Qualite
 
-### @corpusai/types
-- [x] Enums (AIStatus, DocumentStatus, SubscriptionPlan)
-- [x] Interfaces (AIData, DocumentData, MessageData)
-- [x] API responses (ApiResponse, PaginatedResponse)
-- [x] Build fonctionnel
+- [ ] **Tests E2E** — Playwright pour flows critiques
+- [ ] **Tests frontend** — Vitest + Testing Library
+- [ ] **ESLint config partagee** — tooling/eslint-config
+- [ ] **CI/CD** — GitHub Actions (lint, typecheck, test, build, deploy preview)
 
-### @corpusai/subscription
-- [x] Feature limits par plan
-- [x] Helpers (canCreateAI, canUploadDocument)
-- [x] Pricing
-- [x] Build fonctionnel
+## P3 — Nice to have
 
-### @corpusai/ai-rules
-- [x] Behavior rules config
-- [x] System prompt builder
-- [x] Response validation
-- [x] Confidence helpers
-- [x] Build fonctionnel
-
-### @corpusai/database
-- [x] Setup Prisma
-- [x] Schéma Creator, AI, Document
-- [x] Schéma Conversation, Message
-- [x] Schéma Subscription, Access
-- [x] Schéma Better Auth (User, Session, Account, Verification)
-- [x] Database synced (prisma db push)
-
-### @corpusai/ui
-- [x] Setup package avec shadcn
-- [x] Atoms (Button, Input, Badge)
-- [x] Molecules (Card, FormField)
-- [x] Organisms (ChatInterface, DocumentUploader, ConversationList, SourceCitation)
-- [ ] Intégration dans apps/web
-
-### @corpusai/corpus
-- [ ] Chunking strategies
-- [ ] Document processing
-- [ ] Qdrant integration
+- [ ] Admin panel (routes, gestion users, monitoring)
+- [ ] Onboarding ameliore (wizard guide, templates AI)
+- [ ] API publique documentee
+- [ ] Multi-langue prompts dans ai-rules (EN)
 
 ---
 
-## Apps
+## Fait recemment (reference)
 
-### apps/web (Next.js)
-- [x] Setup Next.js 15
-- [x] Tailwind + Design System
-- [x] Landing page basique
-- [x] Pages auth (sign-in, sign-up)
-- [x] OAuth Google & GitHub
-- [x] Page onboarding
-- [x] Dashboard layout avec session
-- [x] Logout fonctionnel
-- [ ] Dashboard créateur (contenu)
-- [ ] Page création IA
-- [ ] Interface chat
-- [ ] Widget embeddable
-
-### apps/api (NestJS)
-- [x] Setup NestJS 11
-- [x] Swagger docs
-- [x] Health check
-- [x] Module Auth (Better Auth + OAuth)
-- [x] Module AIs
-- [x] Module Documents
-- [x] Module Conversations
-- [ ] Module Subscriptions
-
-### apps/ai-worker
-- [x] Setup basique
-- [x] Script experiment:embeddings
-- [ ] Script experiment:qdrant
-- [ ] Script experiment:chunking
-- [ ] Script experiment:rag
-- [ ] Services production
-
----
-
-## Apprentissage IA/RAG
-
-- [ ] Comprendre les embeddings (OpenAI)
-- [ ] Manipuler Qdrant (collections, points, search)
-- [ ] Implémenter chunking
-- [ ] Construire pipeline RAG minimal
-- [ ] Prompt engineering pour citations
-
----
-
-## Prochaines Actions Immédiates
-
-1. ✅ **Auth fonctionnelle** - Email/password + OAuth Google/GitHub
-2. ⏳ Dashboard créateur (contenu réel)
-3. ⏳ Page création IA
-4. ⏳ Module Subscriptions API
-5. ⏳ Scripts ai-worker (qdrant, chunking, rag)
+- Refactoring ai-rules comme source unique de verite (prompts, confidence)
+- Securite : SSRF protection, AuthGuard RAG, ownership SSE, abort streaming
+- Debug logging conditionnel, maxContextChars, scoreThreshold unifie
+- Conversation history multi-turn, DRY getConversationHistory()
+- Tests pipeline alignes avec implementation (127 tests passing)

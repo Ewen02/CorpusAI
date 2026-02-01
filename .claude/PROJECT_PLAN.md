@@ -1,110 +1,102 @@
-# CorpusAI - Plan du Projet
+# CorpusAI — Plan Produit
 
-## Vision Produit
+## Vision
 
-CorpusAI est une plateforme qui permet à des créateurs, formateurs, coachs ou experts de **transformer leur savoir en une IA experte vendable**, fidèle à leur pensée et strictement limitée à leur corpus de connaissances.
+CorpusAI permet à des experts (formateurs, coachs, créateurs de contenu) de **transformer leur savoir documentaire en une IA conversationnelle** qu'ils peuvent intégrer sur leur site ou partager via un lien.
 
-### Principes Fondamentaux
-
-- **1 IA = 1 corpus** = 1 entité indépendante
-- L'IA ne répond QUE sur la base des documents fournis
-- Si l'information n'existe pas, l'IA le dit clairement
-- Traçabilité : chaque réponse cite ses sources
+L'IA est **généraliste avec accès documentaire** : elle répond en priorité à partir du corpus indexé (avec citations de sources), mais utilise ses connaissances générales quand la question sort du périmètre des documents.
 
 ---
 
-## Architecture
-
-### Structure Monorepo
+## Modèle de domaine
 
 ```
-corpusai/
-├── apps/
-│   ├── web/          # Next.js 15 - Interface créateurs & utilisateurs
-│   ├── api/          # NestJS 11 - Backend principal
-│   └── ai-worker/    # Service IA (embeddings, RAG)
-├── packages/
-│   ├── types/        # Types TypeScript partagés
-│   ├── subscription/ # Logique abonnements & limites
-│   ├── ai-rules/     # Règles comportementales IA
-│   ├── database/     # Prisma schema & client
-│   ├── corpus/       # Gestion documentaire & chunking
-│   └── ui/           # Composants React (Atomic Design)
-└── tooling/
-    └── typescript-config/
+User (1) ──── (N) AI (1) ──── (N) Document (1) ──── (N) Chunk
+                    │
+                    ├── (N) Conversation (1) ──── (N) Message
+                    │
+                    └── (N) DailyStats
+
+EndUser (1) ──── (N) Conversation
 ```
 
-### Stack Technique
+| Entite | Description |
+|--------|-------------|
+| User | Createur qui possede des AIs (auth email + OAuth) |
+| AI | Assistant IA avec son corpus, sa config et ses stats |
+| Document | Fichier source (PDF, DOCX, TXT, MD, CSV, HTML) indexe en chunks |
+| Chunk | Fragment de document avec reference vers le vecteur Qdrant |
+| Conversation | Session de chat entre un EndUser et une AI |
+| Message | Message avec role, sources JSON, confidence, metriques |
+| EndUser | Utilisateur final du widget (identifie par sessionId) |
+| DailyStats | Metriques agregees par jour (documents, conversations, questions) |
+
+---
+
+## Stack technique
 
 | Composant | Technologie |
 |-----------|-------------|
 | Frontend | Next.js 15, React 19, Tailwind, shadcn/ui |
-| Backend | NestJS 11, Prisma, PostgreSQL |
-| Vector DB | Qdrant (cloud) |
-| Embeddings | OpenAI text-embedding-3-small |
-| LLM | Claude / GPT-4 |
-| Auth | Better Auth |
-| Paiements | Stripe |
+| Backend | NestJS 11, Prisma 6, PostgreSQL (Neon) |
+| Vector DB | Qdrant Cloud |
+| Cache | Redis (cache embeddings) |
+| Embeddings | OpenAI text-embedding-3-small (1536 dims) |
+| LLM | OpenAI GPT-4o-mini / GPT-4o |
+| Auth | Better Auth (email + OAuth Google/GitHub) |
+| Paiements | Stripe (hors scope actuel) |
 
 ---
 
-## Modèle de Domaine
+## Etat actuel
 
-```
-Creator (1) ──── (N) AI (1) ──── (N) Document
-                      │
-                      └── (N) Conversation (1) ──── (N) Message
-                      │
-                      └── (N) Access ──── (N) EndUser
-```
-
-### Entités Principales
-
-| Entité | Description |
-|--------|-------------|
-| **Creator** | Expert qui crée et possède des IA |
-| **AI** | Instance IA avec son corpus |
-| **Document** | Fichier source indexé |
-| **Conversation** | Historique d'échanges |
-| **Message** | Message avec sources citées |
-| **EndUser** | Utilisateur final (compte cross-IA) |
+| Composant | Statut | Details |
+|-----------|--------|---------|
+| Auth (email + OAuth) | 100% | Sign-in, sign-up, sessions, Google/GitHub |
+| Dashboard createur | 100% | Stats reelles, graphiques, tendances |
+| CRUD AIs | 100% | Creation, edition, suppression, settings |
+| Upload documents | 100% | PDF, DOCX, TXT, MD, CSV, HTML + progress SSE |
+| Pipeline RAG | 100% | Parse > Chunk > Embed > Store > Query > Stream |
+| Chat streaming | 100% | SSE, historique conversation, citations sources |
+| Widget embeddable | 100% | /embed/[slug] avec params (theme, color, height) |
+| Analytics | 90% | Dashboard global + par AI, graphiques Recharts |
+| Securite | 90% | SSRF, AuthGuard, ownership checks, abort streaming |
+| Background workers | 0% | Document processing synchrone dans l'API |
+| Rate limiting | 50% | Logique dans @corpusai/subscription, pas enforced |
+| Tests | 20% | Seulement @corpusai/corpus (127 tests) |
 
 ---
 
-## Plans d'Abonnement
+## Roadmap
 
-| Plan | Prix | Max IA | Max Docs | Questions/jour |
-|------|------|--------|----------|----------------|
-| FREE | 0€ | 1 | 5 | 20 |
-| CREATOR | 19€ | 3 | 50 | 500 |
-| PRO | 49€ | 10 | 200 | Illimité |
-| ENTERPRISE | 199€ | Illimité | Illimité | Illimité |
+### P0 — Requis pour lancement
 
----
+| Tache | Description |
+|-------|-------------|
+| **Background workers** | BullMQ + Redis pour processing documents async (actuellement synchrone dans l'API) |
+| **Rate limiting** | Enforcement dans l'API (par endpoint, par plan, compteur questions/jour) |
 
-## Design System
+### P1 — Important
 
-### Palette (Dark Theme)
+| Tache | Description |
+|-------|-------------|
+| **Tests API** | Tests d'integration NestJS (endpoints, guards, services) |
+| **Structured logging** | Remplacer console.log residuel par Pino/Winston, integrer Sentry |
 
-```css
---background: #0a0a0f     /* Base très sombre */
---primary: hsl(221 83% 53%)  /* Bleu froid */
---muted: hsl(240 5% 15%)     /* Éléments secondaires */
-```
+### P2 — Qualite
 
-### Principes
+| Tache | Description |
+|-------|-------------|
+| **Tests E2E** | Playwright pour les flows critiques (sign-up > create AI > upload > chat) |
+| **Tests frontend** | Vitest + Testing Library pour composants et hooks |
+| **ESLint partage** | Config commune dans tooling/eslint-config |
+| **CI/CD** | GitHub Actions : lint, typecheck, test, build, deploy preview |
 
-- Base sombre pour réduire la fatigue oculaire
-- Accent bleu froid, jamais agressif
-- Typographie : Inter (texte), JetBrains Mono (code)
+### P3 — Nice to have
 
----
-
-## Décisions Techniques
-
-| Décision | Choix | Raison |
-|----------|-------|--------|
-| Vector DB | Qdrant Cloud | Performance, filtering natif |
-| Comptes users | Cross-IA | Un compte accède à plusieurs IA |
-| Widget | Embeddable | Intégration sur sites externes |
-| Monétisation | Créateurs d'abord | Pas de paiement user pour l'instant |
+| Tache | Description |
+|-------|-------------|
+| **Admin panel** | Routes admin, gestion users, monitoring usage |
+| **Onboarding ameliore** | Wizard guide, templates AI pre-configures |
+| **API publique** | Endpoints documentes pour integration tierce |
+| **Multi-langue prompts** | Support EN dans ai-rules (actuellement FR uniquement) |

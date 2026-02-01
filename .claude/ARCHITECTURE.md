@@ -1,530 +1,260 @@
-# CorpusAI - Architecture Complète
+# CorpusAI — Architecture Technique
 
-## Document d'Architecture Frontend & Backend
+## 1. Vue d'ensemble
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      apps/web (Next.js 15)                  │
+│  Dashboard, Chat, Analytics, Widget embed, API routes       │
+└────────────────────┬────────────────────────────────────────┘
+                     │ REST + SSE
+┌────────────────────▼────────────────────────────────────────┐
+│                    apps/api (NestJS 11)                      │
+│  auth, users, ais, documents, conversations, rag            │
+└────┬─────────────┬─────────────┬─────────────┬──────────────┘
+     │             │             │             │
+     ▼             ▼             ▼             ▼
+┌─────────┐  ┌─────────┐  ┌─────────┐  ┌──────────┐
+│PostgreSQL│  │ Qdrant  │  │  Redis  │  │  OpenAI  │
+│ (Neon)   │  │(vectors)│  │ (cache) │  │   API    │
+└─────────┘  └─────────┘  └─────────┘  └──────────┘
+```
+
+> `apps/ai-worker/` contient uniquement des scripts d'experimentation (embeddings, chunking, qdrant, rag). Le processing de documents se fait dans l'API de maniere synchrone.
 
 ---
 
-# 1. VUE D'ENSEMBLE
-
-## 1.1 Stack Technique
-
-| Couche | Technologie | Version |
-|--------|-------------|---------|
-| **Frontend** | Next.js + React | 15.x + 19.x |
-| **Backend** | NestJS | 11.x |
-| **Database** | PostgreSQL + Prisma | 17.x + 6.x |
-| **Vector DB** | Qdrant | 1.12.x |
-| **Auth** | Better Auth | - |
-| **AI/LLM** | OpenAI API | - |
-| **Storage** | S3-compatible | - |
-
-## 1.2 Architecture Globale
+## 2. Structure monorepo
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                              CLIENTS                                     │
-├─────────────────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐    │
-│  │ Dashboard   │  │ Chat Public │  │ Widget      │  │ API Direct  │    │
-│  │ (Creator)   │  │ Standalone  │  │ Embed       │  │ (Future)    │    │
-│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘    │
-└─────────┼────────────────┼────────────────┼────────────────┼────────────┘
-          │                │                │                │
-          ▼                ▼                ▼                ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         APPS/WEB (Next.js 15)                           │
-│  ┌──────────────────────────────────────────────────────────────────┐   │
-│  │ App Router: (public) | (auth) | (dashboard) | /chat | /embed     │   │
-│  └──────────────────────────────────────────────────────────────────┘   │
-│  ┌──────────────────────────────────────────────────────────────────┐   │
-│  │ Server Components | Client Components | API Routes               │   │
-│  └──────────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────────┘
-          │
-          ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         APPS/API (NestJS 11)                            │
-│  ┌────────────────────────────────────────────────────────────────────┐ │
-│  │ Modules: Auth | Users | AIs | Documents | Conversations           │ │
-│  └────────────────────────────────────────────────────────────────────┘ │
-│  ┌────────────────────────────────────────────────────────────────────┐ │
-│  │ Guards | Pipes | Interceptors | DTOs                              │ │
-│  └────────────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────────┘
-          │
-          ├──────────────────────┬──────────────────────┐
-          ▼                      ▼                      ▼
-┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
-│   PostgreSQL     │  │   Qdrant         │  │   S3 Storage     │
-│   (Prisma ORM)   │  │   (Vectors)      │  │   (Documents)    │
-└──────────────────┘  └──────────────────┘  └──────────────────┘
-          │
-          ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                       APPS/AI-WORKER (Node.js)                          │
-│  ┌────────────────────────────────────────────────────────────────────┐ │
-│  │ Jobs: Document Processing | Chunking | Embedding | RAG Pipeline   │ │
-│  └────────────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────────┘
+corpusai/
+├── apps/
+│   ├── web/              # Next.js 15 — interface createurs + widget
+│   ├── api/              # NestJS 11 — backend principal
+│   └── ai-worker/        # Scripts d'experimentation
+├── packages/
+│   ├── types/            # Types TypeScript partages (entites, API, enums)
+│   ├── subscription/     # Logique abonnements & limites par plan
+│   ├── ai-rules/         # Source unique de verite : prompts systeme, confidence
+│   ├── database/         # Prisma schema & client PostgreSQL
+│   ├── corpus/           # Pipeline RAG complet (parsers → vectors → LLM)
+│   └── ui/               # Composants React (Atomic Design)
+└── tooling/
+    └── typescript-config/ # Configs TS partagees
 ```
 
 ---
 
-# 2. ARCHITECTURE BACKEND (API)
+## 3. Backend (API)
 
-## 2.1 Structure des Modules
+### 3.1 Modules
 
 ```
-apps/api/src/
-├── main.ts                    # Bootstrap NestJS
-├── app.module.ts              # Module racine
-├── common/
-│   ├── guards/                # Auth guards
-│   ├── decorators/            # @CurrentUser, etc.
-│   ├── pipes/                 # Validation pipes
-│   └── interceptors/          # Transform, logging
-│
-└── modules/
-    ├── auth/                  # Better Auth integration
-    │   ├── auth.module.ts
-    │   ├── auth.controller.ts
-    │   └── auth.service.ts
-    │
-    ├── users/                 # Gestion profils
-    │   ├── users.module.ts
-    │   ├── users.controller.ts
-    │   ├── users.service.ts
-    │   └── dto/
-    │
-    ├── ais/                   # CRUD Assistants IA
-    │   ├── ais.module.ts
-    │   ├── ais.controller.ts
-    │   ├── ais.service.ts
-    │   └── dto/
-    │
-    ├── documents/             # Upload & indexation
-    │   ├── documents.module.ts
-    │   ├── documents.controller.ts
-    │   ├── documents.service.ts
-    │   └── dto/
-    │
-    └── conversations/         # Chat & messages
-        ├── conversations.module.ts
-        ├── conversations.controller.ts
-        ├── conversations.service.ts
-        └── dto/
+apps/api/src/modules/
+├── auth/            # Better Auth (email, OAuth Google/GitHub, sessions)
+├── users/           # Profil, stats dashboard, analytics, comptes OAuth
+├── ais/             # CRUD AIs, stats par AI
+├── documents/       # Upload, retry, delete, progress SSE
+├── conversations/   # Chat public + creator, streaming SSE
+└── rag/             # Indexation, query, debug, metriques cache
 ```
 
-## 2.2 Endpoints API
+### 3.2 Endpoints
 
-### Auth (Better Auth)
+**Auth** (Better Auth)
 ```
-POST   /auth/sign-up/email         # Inscription
-POST   /auth/sign-in/email         # Connexion
-POST   /auth/sign-out              # Déconnexion
-GET    /auth/session               # Session courante
-POST   /auth/forgot-password       # Reset password
-```
-
-### Users (Authentifié)
-```
-GET    /users/me                   # Profil utilisateur
-PATCH  /users/me                   # Mise à jour profil
-GET    /users/me/stats             # Statistiques dashboard
+POST   /auth/sign-up/email
+POST   /auth/sign-in/email
+POST   /auth/sign-out
+GET    /auth/session
 ```
 
-### AIs (Authentifié)
+**Users** (authentifie)
 ```
-GET    /ais                        # Liste AIs
-POST   /ais                        # Créer AI
-GET    /ais/:id                    # Détail AI
-PATCH  /ais/:id                    # Modifier AI
-DELETE /ais/:id                    # Supprimer AI
-GET    /ais/:id/stats              # Stats AI
-```
-
-### Documents (Authentifié)
-```
-GET    /ais/:aiId/documents        # Liste documents
-POST   /ais/:aiId/documents        # Ajouter document
-GET    /ais/:aiId/documents/:id    # Détail document
-DELETE /ais/:aiId/documents/:id    # Supprimer document
-POST   /ais/:aiId/documents/:id/retry  # Réessayer indexation
+GET    /users/me
+PATCH  /users/me
+GET    /users/me/stats
+GET    /users/me/accounts
+GET    /users/me/analytics?period=7d|30d|90d
 ```
 
-### Conversations (Mixte)
+**AIs** (authentifie)
 ```
-# Créateur (authentifié)
-GET    /ais/:aiId/conversations    # Liste conversations
-DELETE /conversations/:id          # Supprimer conversation
-
-# Public (non authentifié)
-POST   /chat/:aiSlug/start         # Démarrer conversation
-GET    /chat/conversations/:id     # Récupérer conversation
-POST   /chat/conversations/:id/messages  # Envoyer message
+GET    /ais
+POST   /ais
+GET    /ais/:id
+PATCH  /ais/:id
+DELETE /ais/:id
+GET    /ais/:id/stats
 ```
 
-## 2.3 Modèle de Données (Prisma)
-
-```prisma
-// Utilisateurs & Auth
-model User {
-  id                 String             @id @default(cuid())
-  email              String             @unique
-  name               String?
-  avatar             String?
-  subscriptionPlan   SubscriptionPlan   @default(FREE)
-  subscriptionStatus SubscriptionStatus @default(ACTIVE)
-  ais                AI[]
-  sessions           Session[]
-}
-
-// Assistants IA
-model AI {
-  id            String     @id @default(cuid())
-  userId        String
-  slug          String     @unique
-  name          String
-  description   String?
-  status        AIStatus   @default(DRAFT)
-  systemPrompt  String?
-  primaryColor  String     @default("#3b82f6")
-  temperature   Float      @default(0.7)
-  maxTokens     Int        @default(1024)
-  accessType    AccessType @default(FREE)
-
-  user          User           @relation(...)
-  documents     Document[]
-  conversations Conversation[]
-}
-
-// Documents & Chunks
-model Document {
-  id         String         @id @default(cuid())
-  aiId       String
-  filename   String
-  mimeType   String
-  size       Int
-  status     DocumentStatus @default(PENDING)
-  chunkCount Int            @default(0)
-
-  ai         AI      @relation(...)
-  chunks     Chunk[]
-}
-
-model Chunk {
-  id            String @id @default(cuid())
-  documentId    String
-  content       String
-  position      Int
-  qdrantPointId String? @unique
-}
-
-// Conversations & Messages
-model Conversation {
-  id           String    @id @default(cuid())
-  aiId         String
-  endUserId    String?
-  title        String?
-  messageCount Int       @default(0)
-
-  ai           AI        @relation(...)
-  messages     Message[]
-}
-
-model Message {
-  id             String          @id @default(cuid())
-  conversationId String
-  role           MessageRole
-  content        String
-  sources        Json?
-  confidence     ConfidenceLevel?
-}
+**Documents** (authentifie, scope ais/:aiId)
+```
+GET    /ais/:aiId/documents
+POST   /ais/:aiId/documents
+POST   /ais/:aiId/documents/text
+POST   /ais/:aiId/documents/upload
+GET    /ais/:aiId/documents/:id
+DELETE /ais/:aiId/documents/:id
+POST   /ais/:aiId/documents/:id/retry
+GET    /ais/:aiId/documents/:id/progress
+SSE    /ais/:aiId/documents/:id/progress/stream    # ownership check + timeout 60s
 ```
 
-## 2.4 Enums
-
-```typescript
-enum SubscriptionPlan { FREE, CREATOR, PRO, ENTERPRISE }
-enum SubscriptionStatus { ACTIVE, CANCELED, PAST_DUE, TRIALING }
-enum AIStatus { DRAFT, ACTIVE, PAUSED, ARCHIVED }
-enum AccessType { FREE, PAID, INVITE_ONLY, TIME_LIMITED }
-enum DocumentStatus { PENDING, PROCESSING, INDEXED, FAILED }
-enum MessageRole { USER, ASSISTANT }
-enum ConfidenceLevel { HIGH, MEDIUM, LOW }
+**Conversations** — createur (authentifie)
 ```
+GET    /ais/:aiId/conversations
+DELETE /conversations/:id
+```
+
+**Conversations** — public (widget / end users)
+```
+GET    /chat/:aiSlug/info
+POST   /chat/:aiSlug/start
+GET    /chat/conversations/:id
+GET    /chat/conversations/:id/messages
+POST   /chat/conversations/:id/messages
+POST   /chat/conversations/:id/messages/stream     # SSE + abort on disconnect
+```
+
+**RAG** (authentifie)
+```
+GET    /rag/metrics
+GET    /rag/:aiId/debug-query?q=...&threshold=0.6
+```
+
+### 3.3 Securite
+
+- **AuthGuard** sur tous les endpoints createur + RAG debug
+- **Ownership checks** sur documents, AIs, SSE progress
+- **SSRF protection** sur fetch URLs dans les parsers (blocage IP privees, localhost, metadata cloud)
+- **Abort streaming** quand le client SSE se deconnecte (economie tokens OpenAI)
+- **DTOs + class-validator** pour validation des inputs
+- **CORS** configure
 
 ---
 
-# 3. ARCHITECTURE FRONTEND (WEB)
+## 4. Frontend (Web)
 
-## 3.1 Structure des Routes
+### 4.1 Routes
 
 ```
 apps/web/src/app/
-│
-├── (public)/                      # Routes publiques
-│   ├── layout.tsx                 # Navbar marketing
-│   ├── page.tsx                   # Landing page
-│   └── pricing/page.tsx           # Pricing détaillé
-│
-├── (auth)/                        # Routes auth
-│   ├── layout.tsx                 # Layout centré
-│   ├── sign-in/page.tsx
-│   ├── sign-up/page.tsx
-│   └── forgot-password/page.tsx
-│
-├── (dashboard)/                   # Routes protégées
-│   ├── layout.tsx                 # DashboardLayout + Sidebar
-│   ├── dashboard/page.tsx         # Overview
-│   ├── ais/
-│   │   ├── page.tsx               # Liste AIs
-│   │   ├── new/page.tsx           # Wizard création
-│   │   └── [id]/
-│   │       ├── page.tsx           # Overview AI
-│   │       ├── documents/page.tsx
-│   │       ├── conversations/page.tsx
-│   │       ├── settings/page.tsx
-│   │       └── embed/page.tsx
-│   ├── settings/
-│   │   ├── page.tsx               # Profil
-│   │   └── billing/page.tsx
-│   └── onboarding/page.tsx
-│
-├── chat/[slug]/page.tsx           # Widget standalone
-├── embed/[slug]/page.tsx          # Widget iframe
-│
-├── layout.tsx                     # Root layout
-├── globals.css                    # Styles Tailwind
-└── middleware.ts                  # Auth guard
+├── page.tsx                              # Landing page
+├── (auth)/sign-in, sign-up              # Auth pages
+├── onboarding/                          # Post-inscription
+├── (dashboard)/
+│   ├── dashboard/                       # Overview + stats
+│   ├── ais/                             # Liste AIs
+│   ├── ais/new/                         # Creation AI
+│   ├── ais/[id]/                        # Detail AI (tabs: chat, docs, conversations, analytics, debug)
+│   ├── ais/[id]/settings/               # Config AI
+│   ├── analytics/                       # Dashboard analytics global
+│   ├── settings/                        # Profil
+│   ├── settings/billing/                # Abonnement (UI only, Stripe TODO)
+│   ├── settings/security/               # Securite
+│   └── settings/notifications/          # Notifications (placeholder)
+├── api/                                 # API routes Next.js
+└── embed/[slug]/                        # Widget embeddable (iframe)
 ```
 
-## 3.2 Design System
+### 4.2 State management
 
-### Palette (Dark Theme)
-```css
---background: 240 10% 3.9%;     /* #0a0a0f */
---foreground: 0 0% 98%;
---card: 240 10% 5.9%;
---primary: 221 83% 53%;         /* Bleu-violet */
---muted: 240 5% 15%;
---destructive: 0 62% 50%;
---border: 240 5% 17%;
-```
+- **React Query** pour toute la data fetching (cache, invalidation, optimistic updates)
+- Hooks custom dans `src/lib/queries/` : use-ai, use-dashboard, use-analytics, use-conversations, use-documents, use-messages
+- **API client** : fetch wrapper avec auth automatique (`src/lib/api-client.ts`)
 
-### Typographie
-- Sans: Inter, system-ui
-- Mono: JetBrains Mono
+### 4.3 Composants UI (Atomic Design)
 
-### Composants UI (Atomic Design)
+**Atoms** : button, input, textarea, label, badge, avatar, skeleton, switch, select, tabs, separator, icons
 
-**Atoms existants:** Button, Input, Label, Badge, Avatar, Skeleton, Separator
+**Molecules** : card, tooltip, stat-card, trend-badge, chart-tooltip, markdown-renderer
 
-**Atoms à créer:**
-- Tabs, Select, Switch, Textarea, Slider, Progress
-
-**Molecules existantes:** Card, Tooltip
-
-**Molecules à créer:**
-- FormField, StatCard, SearchBar, EmptyState
-- Breadcrumb, DropdownMenu, CodeBlock, SlugInput
-
-**Organisms existants:** ChatInterface, DocumentUploader, ConversationList, SourceCitation
-
-**Organisms à créer:**
-- Sidebar, DashboardHeader, AICard, DocumentList
-- ConversationDetail, ActivityFeed, WizardStepper
-- SettingsForm, EmbedPreview, GlobalSearch
-
-**Templates à créer:**
-- DashboardLayout, AuthLayout, ChatLayout, EmbedLayout
-
-## 3.3 Dashboard Design
-
-### Sidebar (280px / 64px)
-```
-┌─────────────────────────────┐
-│ [C] CorpusAI    [Upgrade]   │
-├─────────────────────────────┤
-│ 🏠 Dashboard                │
-│ 🤖 Mes AIs         (3)      │
-│ 📊 Analytics                │
-├─────────────────────────────┤
-│ MES AIS                     │
-│   📁 FAQ Support            │
-│   📁 Doc Technique          │
-│   + Créer un AI             │
-├─────────────────────────────┤
-│ ⚙️ Settings                 │
-│ 📖 Documentation            │
-├─────────────────────────────┤
-│ 👤 User                     │
-│    email@example.com        │
-└─────────────────────────────┘
-```
-
-### Header
-```
-┌──────────────────────────────────────────────┐
-│ ☰  Breadcrumb          [🔍 Cmd+K] [🔔] [👤] │
-└──────────────────────────────────────────────┘
-```
-
-## 3.4 Pages Principales
-
-### Dashboard (`/dashboard`)
-- 4 StatCards (AIs, Documents, Questions, Conversations)
-- Activité récente
-- Aperçu AIs
-
-### Liste AIs (`/ais`)
-- Search + filtres
-- AICards en liste
-- Empty state
-
-### Détail AI (`/ais/[id]`)
-Tabs: Overview | Documents | Conversations | Settings | Embed
-
-### Wizard Création (`/ais/new`)
-4 étapes: Infos → Documents → Prompt → Récap
+**Organisms** : chat-interface, conversation-list, document-uploader, source-citation
 
 ---
 
-# 4. ARCHITECTURE AI-WORKER
+## 5. Package @corpusai/corpus
 
-## 4.1 Pipeline RAG
+Pipeline RAG complet, production-ready, 127 tests.
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                      DOCUMENT PROCESSING                         │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  Upload → Parse → Chunk → Embed → Store Vectors                 │
-│     │        │       │       │           │                      │
-│     ▼        ▼       ▼       ▼           ▼                      │
-│    S3    Parsers  Strategy  OpenAI    Qdrant                    │
-│          (PDF,    (fixed,   Embeddings Collection               │
-│          DOCX,    semantic,                                     │
-│          TXT...)  sliding)                                      │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────┐
-│                        RAG PIPELINE                              │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  Query → Embed → Search → Rerank → Context → LLM → Response     │
-│     │       │        │        │        │       │        │       │
-│     ▼       ▼        ▼        ▼        ▼       ▼        ▼       │
-│  User   OpenAI   Qdrant   Score    Build   OpenAI  Stream      │
-│  Input  Embed    Vectors  Filter   Prompt  Chat    to Client   │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+packages/corpus/src/
+├── parsers/         # PDF (pdf-parse), DOCX (mammoth), TXT/MD/CSV/HTML (chardet)
+├── chunking/        # RecursiveChunker, MarkdownChunker, TokenChunker (tiktoken)
+├── embeddings/      # OpenAI text-embedding-3-small (1536 dims, batch 100)
+├── vector-store/    # Qdrant (HNSW, filtering, collection management)
+├── cache/           # Redis embedding cache (hits/misses/hitRate)
+├── reranking/       # BM25 + HybridReranker (vector + lexical)
+└── rag/             # RAGPipelineImpl (index, query, queryStream, delete)
 ```
 
-## 4.2 Jobs
+### Pipeline RAG
 
-```typescript
-// Document Processing Job
-async processDocument(documentId: string) {
-  1. Fetch document from S3
-  2. Parse content (PDF → text, etc.)
-  3. Chunk content (500-1000 tokens)
-  4. Generate embeddings (batch)
-  5. Store in Qdrant
-  6. Update document status → INDEXED
-}
-
-// RAG Query Job
-async generateResponse(conversationId: string, query: string) {
-  1. Get AI config (system prompt, temperature)
-  2. Embed query
-  3. Search similar chunks in Qdrant
-  4. Build context with sources
-  5. Call LLM with streaming
-  6. Save message with sources
-  7. Return streamed response
-}
 ```
+Document Processing:
+  Upload → Parse (PDF/DOCX/TXT) → Chunk (500-1000 tokens) → Embed (OpenAI) → Store (Qdrant)
+
+Query:
+  Question → Embed → Vector Search (Qdrant) → Rerank (BM25 hybrid) → Build Context → LLM (OpenAI) → Stream Response
+```
+
+Options cles :
+- `debug: boolean` — logging conditionnel (pas de PII en prod)
+- `maxContextChars: number` — garde-fou tokens (default 16000)
+- `scoreThreshold: number` — seuil de pertinence (default 0.6, overridable a 0.4)
+- `conversationHistory` — historique multi-turn passe au LLM (6 derniers messages)
 
 ---
 
-# 5. FLUX UTILISATEURS
+## 6. Package @corpusai/ai-rules
 
-## 5.1 Onboarding
-```
-Sign Up → Email Verify → /onboarding → Template → Nom/Slug → Upload Doc → Dashboard
-```
+Source unique de verite pour le comportement IA.
 
-## 5.2 Création AI
-```
-Dashboard → + Créer → Wizard (4 steps) → AI DRAFT → Activer → ACTIVE
-```
+- `buildSystemPrompt(options?)` — genere le system prompt (FORMAT_RULES + INTERDITS)
+- `buildContextSection(chunks, maxChars?)` — formate le contexte RAG avec citations
+- `determineConfidence(sources, rules?)` — HIGH/MEDIUM/LOW selon les scores
+- `FORMAT_RULES` — regles de comportement (generaliste, citations, ton direct, interdits)
+- `DEFAULT_BEHAVIOR_RULES` — thresholds de confiance (0.7 HIGH, 0.5 MEDIUM)
 
-## 5.3 Upload Documents
-```
-Page Docs → Drag & Drop → Validation → Upload S3 → PROCESSING → Worker → INDEXED/FAILED
-```
-
-## 5.4 Chat Public
-```
-/chat/slug → Load AI config → Start conversation → Send message → RAG → Stream response
-```
+Importe par `@corpusai/corpus` (pipeline) et `apps/api` (conversations.service).
 
 ---
 
-# 6. SÉCURITÉ
+## 7. Data model (Prisma)
 
-## 6.1 Authentication
-- Better Auth (sessions, OAuth)
-- Middleware Next.js pour routes protégées
-- Guards NestJS pour API
+### Enums
 
-## 6.2 Authorization
-- Ownership checks sur AIs/Documents
-- Rate limiting par plan
-- CORS configuré
+```
+SubscriptionPlan    : FREE, CREATOR, PRO, ENTERPRISE
+SubscriptionStatus  : ACTIVE, CANCELED, PAST_DUE, TRIALING
+AIStatus            : DRAFT, ACTIVE, PAUSED, ARCHIVED
+AccessType          : FREE, PAID, INVITE_ONLY, TIME_LIMITED
+DocumentStatus      : PENDING, PROCESSING, INDEXED, FAILED
+ProcessingStep      : PARSING, CHUNKING, EMBEDDING, STORING
+MessageRole         : USER, ASSISTANT
+ConfidenceLevel     : HIGH, MEDIUM, LOW
+```
 
-## 6.3 Validation
-- DTOs avec class-validator
-- Sanitization des inputs
-- File type/size validation
+### Models principaux
+
+- **User** : email, name, image, subscriptionPlan/Status, stripeCustomerId
+- **AI** : slug (unique), name, systemPrompt, welcomeMessage, primaryColor, temperature, maxTokens, scoreThreshold, accessType, price, isPublic, compteurs (documentCount, conversationCount, questionCount)
+- **Document** : filename, mimeType, size, status, processingStep, processingProgress (0-100), metadata (pageCount, wordCount, language, title, author)
+- **Chunk** : content, position, pageNumber, startChar/endChar, qdrantPointId
+- **Conversation** : aiId, endUserId, title, messageCount
+- **Message** : role, content, sources (JSON), confidence, tokenUsage, latencyMs
+- **EndUser** : email, name, sessionId
+- **DailyStats** : userId, aiId, date, documentCount, conversationCount, questionCount
 
 ---
 
-# 7. PHASES D'IMPLÉMENTATION
+## 8. Infra et services externes
 
-## Phase 1: Foundation
-- [ ] Templates: DashboardLayout, AuthLayout
-- [ ] Atoms: Tabs, Select, Switch, Textarea
-- [ ] Pages Auth: sign-in, sign-up
-- [ ] Middleware auth
-
-## Phase 2: Dashboard Core
-- [ ] Organisms: Sidebar, DashboardHeader
-- [ ] Molecules: StatCard, EmptyState, AICard
-- [ ] Pages: Dashboard, Liste AIs
-
-## Phase 3: AI Management
-- [ ] Page Détail AI avec tabs
-- [ ] Wizard création
-- [ ] DocumentList, SettingsForm
-- [ ] Upload S3
-
-## Phase 4: RAG Pipeline
-- [ ] Document processing worker
-- [ ] Chunking strategies
-- [ ] Qdrant integration
-- [ ] RAG query pipeline
-
-## Phase 5: Chat & Widget
-- [ ] Page Conversations
-- [ ] Chat public /chat/[slug]
-- [ ] Embed /embed/[slug]
-- [ ] Streaming responses
-
-## Phase 6: Polish
-- [ ] Settings utilisateur
-- [ ] Onboarding flow
-- [ ] Analytics
-- [ ] Global search (Cmd+K)
+| Service | Usage | Config |
+|---------|-------|--------|
+| PostgreSQL (Neon) | Base de donnees principale | DATABASE_URL |
+| Qdrant Cloud | Stockage vecteurs embeddings | QDRANT_URL, QDRANT_API_KEY |
+| Redis | Cache embeddings | REDIS_URL |
+| OpenAI | Embeddings + LLM (chat) | OPENAI_API_KEY |
+| Better Auth | Auth sessions + OAuth | BETTER_AUTH_SECRET |
