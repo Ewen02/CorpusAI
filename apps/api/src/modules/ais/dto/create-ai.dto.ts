@@ -6,6 +6,7 @@ import {
   Matches,
   IsEnum,
   IsNumber,
+  IsBoolean,
   Min,
   Max,
 } from "class-validator";
@@ -82,4 +83,16 @@ export class CreateAIDto {
   @Min(0)
   @Max(1)
   temperature?: number;
+
+  @ApiPropertyOptional({ description: "Whether the AI is publicly accessible", default: false })
+  @IsOptional()
+  @IsBoolean()
+  isPublic?: boolean;
+
+  @ApiPropertyOptional({ description: "Minimum score threshold for RAG results (0-1)", default: 0.6 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  scoreThreshold?: number;
 }

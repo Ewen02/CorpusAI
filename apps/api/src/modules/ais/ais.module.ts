@@ -1,8 +1,10 @@
 import { Module } from "@nestjs/common";
 import { AIsController } from "./ais.controller";
 import { AIsService } from "./ais.service";
+import { RagModule } from "../rag/rag.module";
 
 @Module({
+  imports: [RagModule],
   controllers: [AIsController],
   providers: [AIsService],
   exports: [AIsService],

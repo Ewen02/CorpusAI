@@ -1,5 +1,5 @@
-import { Controller, Get, Patch, Body, UseGuards } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
+import { Controller, Get, Patch, Body, Query, UseGuards } from "@nestjs/common";
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from "@nestjs/swagger";
 import { UsersService } from "./users.service";
 import { AuthGuard, CurrentUser, type CurrentUserData } from "../auth";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
@@ -36,5 +36,15 @@ export class UsersController {
   @ApiOperation({ summary: "Get user's connected accounts (OAuth providers)" })
   async getAccounts(@CurrentUser() user: CurrentUserData) {
     return this.usersService.getAccounts(user.id);
+  }
+
+  @Get("me/analytics")
+  @ApiOperation({ summary: "Get analytics data with trends" })
+  @ApiQuery({ name: "period", required: false, enum: ["7d", "30d", "90d"] })
+  async getAnalytics(
+    @CurrentUser() user: CurrentUserData,
+    @Query("period") period?: "7d" | "30d" | "90d"
+  ) {
+    return this.usersService.getAnalytics(user.id, period || "30d");
   }
 }

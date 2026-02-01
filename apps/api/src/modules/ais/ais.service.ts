@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   ConflictException,
   ForbiddenException,
@@ -8,13 +9,27 @@ import { prisma, AIStatus } from "@corpusai/database";
 import { getFeatureLimits, canCreateAI } from "@corpusai/subscription";
 import { CreateAIDto } from "./dto/create-ai.dto";
 import { UpdateAIDto } from "./dto/update-ai.dto";
+import { RagService } from "../rag/rag.service";
+
+export interface PaginationOptions {
+  skip?: number;
+  take?: number;
+}
 
 @Injectable()
 export class AIsService {
-  async findAll(userId: string) {
+  private readonly logger = new Logger(AIsService.name);
+
+  constructor(private readonly ragService: RagService) {}
+
+  async findAll(userId: string, options?: PaginationOptions) {
+    const { skip = 0, take = 50 } = options ?? {};
+
     return prisma.aI.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
+      skip,
+      take,
       select: {
         id: true,
         slug: true,
@@ -131,6 +146,8 @@ export class AIsService {
         price: dto.price,
         maxTokens: dto.maxTokens || 1024,
         temperature: dto.temperature || 0.7,
+        isPublic: dto.isPublic ?? false,
+        scoreThreshold: dto.scoreThreshold ?? 0.6,
       },
     });
   }
@@ -157,6 +174,8 @@ export class AIsService {
         maxTokens: dto.maxTokens,
         temperature: dto.temperature,
         status: dto.status,
+        isPublic: dto.isPublic,
+        scoreThreshold: dto.scoreThreshold,
       },
     });
   }
@@ -168,6 +187,13 @@ export class AIsService {
 
     if (!ai) {
       throw new NotFoundException("AI not found");
+    }
+
+    // Clean up Qdrant collection before deleting DB records
+    try {
+      await this.ragService.deleteAICollection(aiId);
+    } catch (error) {
+      this.logger.warn(`Failed to delete Qdrant collection for AI ${aiId}: ${error}`);
     }
 
     await prisma.aI.delete({
