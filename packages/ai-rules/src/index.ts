@@ -1,37 +1,26 @@
-import type { AIData, SourceReference } from '@corpusai/types';
+import type { SourceReference } from '@corpusai/types';
 
 // ============================================
 // BEHAVIOR RULES CONFIGURATION
 // ============================================
 
-export interface CorpusOnlyRule {
-  enabled: boolean;
-  fallbackMessage: string;
-}
-
 export interface SourceCitationRule {
   enabled: boolean;
-  minConfidenceScore: number;
+  /** Score minimum pour considérer une source fiable */
+  highConfidenceThreshold: number;
+  /** Score minimum pour considérer une source partielle */
+  lowConfidenceThreshold: number;
   maxSourcesPerResponse: number;
 }
 
-export interface UncertaintyDisclosureRule {
-  enabled: boolean;
-  lowConfidenceThreshold: number;
-  uncertaintyPrefix: string;
-}
-
 export interface ScopeBoundariesRule {
-  rejectOffTopic: boolean;
   rejectHarmful: boolean;
   rejectLegalAdvice: boolean;
   rejectMedicalAdvice: boolean;
 }
 
 export interface AIBehaviorRules {
-  corpusOnly: CorpusOnlyRule;
   sourceCitation: SourceCitationRule;
-  uncertaintyDisclosure: UncertaintyDisclosureRule;
   scopeBoundaries: ScopeBoundariesRule;
 }
 
@@ -40,23 +29,13 @@ export interface AIBehaviorRules {
 // ============================================
 
 export const DEFAULT_BEHAVIOR_RULES: AIBehaviorRules = {
-  corpusOnly: {
-    enabled: true,
-    fallbackMessage:
-      "I don't have this information in my knowledge base. Could you rephrase your question or contact the creator directly?",
-  },
   sourceCitation: {
     enabled: true,
-    minConfidenceScore: 0.7,
-    maxSourcesPerResponse: 3,
-  },
-  uncertaintyDisclosure: {
-    enabled: true,
+    highConfidenceThreshold: 0.7,
     lowConfidenceThreshold: 0.5,
-    uncertaintyPrefix: 'Based on the available documents, ',
+    maxSourcesPerResponse: 5,
   },
   scopeBoundaries: {
-    rejectOffTopic: true,
     rejectHarmful: true,
     rejectLegalAdvice: true,
     rejectMedicalAdvice: true,
@@ -64,62 +43,53 @@ export const DEFAULT_BEHAVIOR_RULES: AIBehaviorRules = {
 };
 
 // ============================================
+// FORMAT RULES (source unique de vérité)
+// ============================================
+
+const FORMAT_RULES = `RÔLE :
+Tu es un assistant généraliste avec accès à une base documentaire spécifique.
+
+COMPORTEMENT :
+- Si la question correspond à tes documents → base-toi dessus, cite tes sources [Source: fichier.md]
+- Si la question est hors de tes documents → réponds avec tes connaissances générales en le précisant
+- Si un de tes documents pourrait approfondir le sujet → mentionne-le naturellement
+- Pour les conversations normales (salutations, etc.) → réponds naturellement
+
+FORMAT :
+- Adapte la longueur à la question : court pour les questions simples, détaillé pour l'architecture
+- Style conversationnel, comme un collègue dev
+- Tu peux utiliser des listes, du code ou des tableaux quand c'est le meilleur format
+- Si le contexte contient des modèles de données ou des structures, reproduis-les fidèlement
+- INTERDIT d'inventer du code : cite uniquement ce qui est dans le contexte
+- Évite les formules scolaires : "Points clés à retenir", "Voici comment faire"
+- Ton : direct, pragmatique, utile
+
+INTERDITS :
+- Ne demande JAMAIS de précision si tu as du contexte disponible. Utilise ce que tu as.
+- Ne génère JAMAIS de structure générique (Objectif/Architecture/Composants) sans contenu réel du contexte
+- Ne dis JAMAIS "Peux-tu préciser", "Plus de détails m'aideront", "Quel type d'exemples cherches-tu"
+- Ne fais JAMAIS de réponse template vide. Si tu as du contexte, exploite-le directement.`;
+
+export { FORMAT_RULES };
+
+// ============================================
 // SYSTEM PROMPT BUILDER
 // ============================================
 
-interface SystemPromptContext {
-  ai: Pick<AIData, 'name' | 'systemPrompt'>;
-  creatorName: string;
-  rules?: Partial<AIBehaviorRules>;
+const DEFAULT_BASE_PROMPT = `Tu es un assistant technique pragmatique. Réponds comme un collègue dev qui explique naturellement.`;
+
+interface SystemPromptOptions {
+  /** Prompt système personnalisé (remplace le prompt de base, mais FORMAT_RULES est toujours ajouté) */
+  customPrompt?: string;
 }
 
 /**
- * Builds the system prompt for the AI based on configuration and rules
+ * Construit le system prompt complet.
+ * FORMAT_RULES est TOUJOURS inclus, même avec un prompt custom.
  */
-export function buildSystemPrompt(context: SystemPromptContext): string {
-  const { ai, creatorName, rules = {} } = context;
-  const mergedRules = { ...DEFAULT_BEHAVIOR_RULES, ...rules };
-
-  const coreRules = `
-ABSOLUTE RULES - YOU MUST FOLLOW THESE:
-1. You can ONLY answer based on the documents in your corpus
-2. If you cannot find the information, say so honestly
-3. Always cite your sources with the document name
-4. NEVER make assumptions beyond what's in the corpus
-5. NEVER provide advice that could be harmful
-`.trim();
-
-  const scopeRules = buildScopeRules(mergedRules.scopeBoundaries);
-
-  const customPrompt = ai.systemPrompt ? `\n\nADDITIONAL INSTRUCTIONS FROM CREATOR:\n${ai.systemPrompt}` : '';
-
-  return `You are the AI assistant for "${ai.name}", created by ${creatorName}.
-
-${coreRules}
-
-${scopeRules}
-${customPrompt}
-
-Remember: Your purpose is to faithfully transmit the knowledge from your corpus, not to generate new information. When in doubt, acknowledge uncertainty.`;
-}
-
-function buildScopeRules(boundaries: ScopeBoundariesRule): string {
-  const rules: string[] = [];
-
-  if (boundaries.rejectOffTopic) {
-    rules.push('- Stay focused on topics covered in your corpus');
-  }
-  if (boundaries.rejectHarmful) {
-    rules.push('- Refuse to provide harmful, dangerous, or unethical content');
-  }
-  if (boundaries.rejectLegalAdvice) {
-    rules.push('- Do not provide specific legal advice - suggest consulting a professional');
-  }
-  if (boundaries.rejectMedicalAdvice) {
-    rules.push('- Do not provide specific medical advice - suggest consulting a healthcare professional');
-  }
-
-  return rules.length > 0 ? `SCOPE BOUNDARIES:\n${rules.join('\n')}` : '';
+export function buildSystemPrompt(options: SystemPromptOptions = {}): string {
+  const base = options.customPrompt ?? DEFAULT_BASE_PROMPT;
+  return `${base}\n\n${FORMAT_RULES}`;
 }
 
 // ============================================
@@ -127,150 +97,59 @@ function buildScopeRules(boundaries: ScopeBoundariesRule): string {
 // ============================================
 
 export interface ChunkContext {
-  content: string;
-  documentName: string;
-  relevanceScore: number;
-  chunkIndex?: number;
-  pageNumber?: number;
+  documentSource: string;
+  text: string;
+  score: number;
 }
 
 /**
- * Builds the context section of the prompt from retrieved chunks
+ * Construit la section contexte à partir des chunks récupérés.
  */
-export function buildContextSection(chunks: ChunkContext[]): string {
+export function buildContextSection(chunks: ChunkContext[], maxChars = 16_000): string {
   if (chunks.length === 0) {
-    return 'CONTEXT:\nNo relevant documents found for this query.';
+    return '';
   }
 
-  const contextParts = chunks.map((chunk, index) => {
-    const source = chunk.pageNumber
-      ? `[${chunk.documentName}, page ${chunk.pageNumber}]`
-      : `[${chunk.documentName}]`;
+  const parts: string[] = [];
+  let totalLength = 0;
 
-    return `--- Source ${index + 1} ${source} (relevance: ${(chunk.relevanceScore * 100).toFixed(0)}%) ---
-${chunk.content}`;
-  });
-
-  return `CONTEXT FROM CORPUS:
-${contextParts.join('\n\n')}
-
----
-Use the above context to answer the user's question. Cite sources using [Document Name] format.`;
-}
-
-// ============================================
-// RESPONSE VALIDATION
-// ============================================
-
-export interface ValidationResult {
-  isValid: boolean;
-  warnings: string[];
-  errors: string[];
-}
-
-/**
- * Validates an AI response against the behavior rules
- */
-export function validateResponse(
-  response: string,
-  sources: SourceReference[],
-  rules: AIBehaviorRules = DEFAULT_BEHAVIOR_RULES
-): ValidationResult {
-  const warnings: string[] = [];
-  const errors: string[] = [];
-
-  // Check source citation rule
-  if (rules.sourceCitation.enabled) {
-    if (sources.length === 0 && response.length > 100) {
-      warnings.push('Response has no cited sources');
-    }
-
-    if (sources.length > rules.sourceCitation.maxSourcesPerResponse) {
-      warnings.push(
-        `Response cites ${sources.length} sources, max is ${rules.sourceCitation.maxSourcesPerResponse}`
-      );
-    }
-
-    const lowConfidenceSources = sources.filter(
-      (s) => s.relevanceScore < rules.sourceCitation.minConfidenceScore
-    );
-    if (lowConfidenceSources.length > 0) {
-      warnings.push(
-        `${lowConfidenceSources.length} source(s) have low confidence scores`
-      );
-    }
+  for (const chunk of chunks) {
+    const part = `[Source: ${chunk.documentSource}]\n${chunk.text}`;
+    if (totalLength + part.length > maxChars && parts.length > 0) break;
+    parts.push(part);
+    totalLength += part.length;
   }
 
-  // Check for potential issues in response
-  const problematicPatterns = [
-    { pattern: /as an ai/i, message: 'Response mentions being an AI' },
-    { pattern: /i don't have access/i, message: 'Response mentions access limitations' },
-    { pattern: /my training/i, message: 'Response mentions training data' },
-  ];
-
-  for (const { pattern, message } of problematicPatterns) {
-    if (pattern.test(response)) {
-      warnings.push(message);
-    }
-  }
-
-  return {
-    isValid: errors.length === 0,
-    warnings,
-    errors,
-  };
+  return parts.join('\n\n---\n\n');
 }
 
 // ============================================
 // CONFIDENCE LEVEL HELPERS
 // ============================================
 
-export type ConfidenceLevel = 'high' | 'medium' | 'low';
+export type ConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW';
 
 /**
- * Determines the confidence level based on source scores
+ * Détermine le niveau de confiance basé sur les scores des sources.
  */
 export function determineConfidence(
   sources: SourceReference[],
   rules: AIBehaviorRules = DEFAULT_BEHAVIOR_RULES
 ): ConfidenceLevel {
   if (sources.length === 0) {
-    return 'low';
+    return 'LOW';
   }
 
   const avgScore =
     sources.reduce((sum, s) => sum + s.relevanceScore, 0) / sources.length;
 
-  if (avgScore >= rules.sourceCitation.minConfidenceScore) {
-    return 'high';
+  if (avgScore > rules.sourceCitation.highConfidenceThreshold) {
+    return 'HIGH';
   }
 
-  if (avgScore >= rules.uncertaintyDisclosure.lowConfidenceThreshold) {
-    return 'medium';
+  if (avgScore > rules.sourceCitation.lowConfidenceThreshold) {
+    return 'MEDIUM';
   }
 
-  return 'low';
-}
-
-/**
- * Adds uncertainty prefix if confidence is low
- */
-export function addUncertaintyPrefixIfNeeded(
-  response: string,
-  confidence: ConfidenceLevel,
-  rules: AIBehaviorRules = DEFAULT_BEHAVIOR_RULES
-): string {
-  if (!rules.uncertaintyDisclosure.enabled) {
-    return response;
-  }
-
-  if (confidence === 'low' || confidence === 'medium') {
-    const prefix = rules.uncertaintyDisclosure.uncertaintyPrefix;
-    // Only add if not already present
-    if (!response.toLowerCase().startsWith(prefix.toLowerCase())) {
-      return `${prefix}${response}`;
-    }
-  }
-
-  return response;
+  return 'LOW';
 }
