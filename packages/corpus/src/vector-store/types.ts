@@ -3,12 +3,29 @@
  */
 
 /**
+ * Typed payload for chunk vectors stored in the vector store.
+ * This is the standard payload structure used by the RAG pipeline.
+ */
+export interface ChunkPayload {
+  /** The chunk text content */
+  text: string;
+  /** Source document name/path */
+  source: string;
+  /** Parent document ID */
+  documentId: string;
+  /** Position of this chunk within the document */
+  chunkIndex: number;
+  /** Additional metadata */
+  [key: string]: unknown;
+}
+
+/**
  * Un point vectoriel à stocker
  */
-export interface VectorPoint {
+export interface VectorPoint<TPayload = Record<string, unknown>> {
   id: string;
   vector: number[];
-  payload: Record<string, unknown>;
+  payload: TPayload;
 }
 
 /**

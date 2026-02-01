@@ -1,4 +1,5 @@
 import type { FilterCondition } from '../vector-store/types';
+import type { RerankerConfig } from '../reranking/types';
 
 /**
  * Types pour le pipeline RAG.
@@ -31,6 +32,32 @@ export interface IndexResult {
 }
 
 /**
+ * Étape de traitement pour le progress callback
+ */
+export type ProcessingStage = 'chunking' | 'embedding' | 'storing';
+
+/**
+ * Callback de progression pour l'indexation
+ */
+export interface ProgressCallback {
+  /**
+   * Appelé à chaque mise à jour de progression.
+   * @param stage - Étape en cours (chunking, embedding, storing)
+   * @param progress - Progression de 0 à 100
+   * @param details - Détails optionnels (ex: "Batch 3/10")
+   */
+  (stage: ProcessingStage, progress: number, details?: string): void;
+}
+
+/**
+ * Options d'indexation
+ */
+export interface IndexOptions {
+  /** Callback de progression */
+  onProgress?: ProgressCallback;
+}
+
+/**
  * Options de requête RAG
  */
 export interface QueryOptions {
@@ -42,6 +69,12 @@ export interface QueryOptions {
   filter?: FilterCondition;
   /** Inclure les sources dans la réponse */
   includeSources?: boolean;
+  /** Configuration du reranking hybride (BM25 + sémantique) */
+  rerankerConfig?: RerankerConfig;
+  /** Historique de conversation pour le contexte multi-tour */
+  conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>;
+  /** Limite de caractères pour le contexte (approximation tokens × 4). Default: 16000 (~4000 tokens) */
+  maxContextChars?: number;
 }
 
 /**
@@ -59,6 +92,22 @@ export interface Source {
 }
 
 /**
+ * Métriques de latence d'une query RAG.
+ */
+export interface QueryMetrics {
+  /** Temps d'embedding de la question (ms) */
+  embeddingMs: number;
+  /** Temps de recherche vectorielle (ms) */
+  searchMs: number;
+  /** Temps de reranking (ms) - 0 si pas de reranker */
+  rerankMs: number;
+  /** Temps de génération LLM (ms) */
+  llmMs: number;
+  /** Temps total de la query (ms) */
+  totalMs: number;
+}
+
+/**
  * Réponse du pipeline RAG
  */
 export interface RAGResponse {
@@ -68,6 +117,8 @@ export interface RAGResponse {
   sources: Source[];
   /** Contexte envoyé au LLM */
   context: string;
+  /** Métriques de latence (optionnel) */
+  metrics?: QueryMetrics;
 }
 
 /**
@@ -84,6 +135,8 @@ export interface LLMConfig {
   maxTokens?: number;
   /** Prompt système personnalisé */
   systemPrompt?: string;
+  /** Active les logs de debug (désactivé par défaut) */
+  debug?: boolean;
 }
 
 /**
@@ -92,8 +145,10 @@ export interface LLMConfig {
 export interface RAGPipeline {
   /**
    * Indexe des documents dans le vector store.
+   * @param documents - Documents à indexer
+   * @param options - Options d'indexation (callback de progression, etc.)
    */
-  index(documents: Document[]): Promise<IndexResult>;
+  index(documents: Document[], options?: IndexOptions): Promise<IndexResult>;
 
   /**
    * Pose une question et obtient une réponse basée sur les documents.

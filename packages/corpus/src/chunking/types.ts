@@ -68,3 +68,15 @@ export interface MarkdownChunkerOptions {
   /** Inclure les headers dans chaque chunk */
   includeHeaders?: boolean;
 }
+
+/**
+ * Options pour le chunking basé sur les tokens
+ */
+export interface TokenChunkerOptions {
+  /** Taille cible d'un chunk en tokens (défaut: 400) */
+  chunkSizeTokens?: number;
+  /** Chevauchement entre chunks en tokens (défaut: 50) */
+  overlapTokens?: number;
+  /** Séparateurs utilisés pour le splitting (du plus prioritaire au moins) */
+  separators?: string[];
+}

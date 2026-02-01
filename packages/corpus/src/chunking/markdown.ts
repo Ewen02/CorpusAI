@@ -1,5 +1,8 @@
 import type { ChunkingService, Chunk, ChunkMetadata, MarkdownChunkerOptions } from './types';
 
+/** Regex for matching Markdown headers (# to ######). Pre-compiled for performance. */
+const HEADER_REGEX = /^(#{1,6})\s+(.+)$/gm;
+
 /**
  * Service de chunking optimisé pour le Markdown.
  * Respecte la structure du document (headers, paragraphes).
@@ -65,15 +68,16 @@ export class MarkdownChunker implements ChunkingService {
    */
   private splitBySections(text: string): MarkdownSection[] {
     const sections: MarkdownSection[] = [];
-    // Regex pour matcher les headers Markdown (# à ######)
-    const headerRegex = /^(#{1,6})\s+(.+)$/gm;
+
+    // Reset regex lastIndex for reuse (global regex retains state)
+    HEADER_REGEX.lastIndex = 0;
 
     let lastIndex = 0;
     let currentHeader = '';
     let currentLevel = 0;
     let match;
 
-    while ((match = headerRegex.exec(text)) !== null) {
+    while ((match = HEADER_REGEX.exec(text)) !== null) {
       // Sauvegarder la section précédente
       if (lastIndex < match.index) {
         const content = text.slice(lastIndex, match.index).trim();
