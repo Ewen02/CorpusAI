@@ -8,6 +8,7 @@ import {
   CardContent,
   Badge,
 } from "@corpusai/ui";
+import { AnimatedSection } from "@/components/animated-section";
 
 const features = [
   {
@@ -174,7 +175,7 @@ export default function Home() {
       <section className="relative overflow-hidden pt-32 pb-20 md:pt-40 md:pb-32">
         {/* Background gradient */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -top-1/2 left-1/2 h-[800px] w-[800px] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
+          <div className="absolute -top-1/2 left-1/2 h-[800px] w-[800px] -translate-x-1/2 rounded-full bg-gradient-to-br from-primary/10 via-blue-500/5 to-cyan-500/10 blur-3xl animate-pulse-slow" />
         </div>
 
         <div className="relative mx-auto max-w-7xl px-6 text-center">
@@ -183,14 +184,16 @@ export default function Home() {
           </Badge>
           <h1 className="mx-auto max-w-4xl text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
             Transform Your Knowledge Into{" "}
-            <span className="text-primary">Expert AI</span>
+            <span className="bg-gradient-to-r from-primary via-blue-400 to-cyan-400 bg-clip-text text-transparent animate-gradient">
+              Expert AI
+            </span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground md:text-xl">
             Upload your documents, create intelligent AI assistants, and share your expertise with
             the world. Build custom chatbots that truly understand your content.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Button size="lg" className="min-w-[180px]" asChild>
+            <Button size="lg" className="min-w-[180px] shadow-[0_0_15px_rgba(91,126,255,0.5)] hover:shadow-[0_0_25px_rgba(91,126,255,0.7)] transition-all duration-300" asChild>
               <Link href="/sign-up">Start Building Free</Link>
             </Button>
             <Button variant="outline" size="lg" className="min-w-[180px]">
@@ -211,12 +214,12 @@ export default function Home() {
               <div className="h-3 w-3 rounded-full bg-success/60" />
               <span className="ml-2 text-sm text-muted-foreground">CorpusAI Chat</span>
             </div>
-            <div className="space-y-4 p-6">
+            <div className="space-y-4 p-6 bg-black">
               <div className="flex gap-3">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
                   <span className="text-xs">U</span>
                 </div>
-                <div className="rounded-lg bg-muted px-4 py-2">
+                <div className="rounded-2xl bg-muted/80 px-4 py-2">
                   <p className="text-sm">How do I configure SSO for my organization?</p>
                 </div>
               </div>
@@ -224,7 +227,7 @@ export default function Home() {
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary">
                   <span className="text-xs text-primary-foreground">AI</span>
                 </div>
-                <div className="max-w-xl rounded-lg border border-border bg-card px-4 py-2">
+                <div className="max-w-xl rounded-2xl bg-card/80 px-4 py-2">
                   <p className="text-sm">
                     To configure SSO for your organization, follow these steps:
                   </p>
@@ -233,9 +236,12 @@ export default function Home() {
                     <li>Select your identity provider (Okta, Azure AD, etc.)</li>
                     <li>Enter your SAML metadata URL or upload the XML file</li>
                   </ol>
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    Source: <span className="text-primary">admin-guide.pdf, page 42</span>
-                  </p>
+                  <div className="mt-3 flex flex-col gap-1">
+                    <span className="text-xs text-muted-foreground">Source:</span>
+                    <a href="#" className="text-sm text-primary hover:text-primary/80 underline underline-offset-2 w-fit transition-colors">
+                      admin-guide.pdf, page 42
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>
@@ -260,16 +266,18 @@ export default function Home() {
           </div>
 
           <div className="mt-16 grid gap-6 md:grid-cols-2">
-            {features.map((feature) => (
-              <Card key={feature.title} className="bg-card/50">
-                <CardHeader>
-                  <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    {feature.icon}
-                  </div>
-                  <CardTitle>{feature.title}</CardTitle>
-                  <CardDescription>{feature.description}</CardDescription>
-                </CardHeader>
-              </Card>
+            {features.map((feature, index) => (
+              <AnimatedSection key={feature.title} delay={index * 100}>
+                <Card className="bg-card/30 backdrop-blur-xl border-border/50 shadow-lg hover:bg-card/40 transition-all duration-300 h-full">
+                  <CardHeader>
+                    <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary transition-transform duration-300 hover:scale-110 hover:rotate-6">
+                      {feature.icon}
+                    </div>
+                    <CardTitle>{feature.title}</CardTitle>
+                    <CardDescription>{feature.description}</CardDescription>
+                  </CardHeader>
+                </Card>
+              </AnimatedSection>
             ))}
           </div>
         </div>
@@ -291,10 +299,14 @@ export default function Home() {
           </div>
 
           <div className="mt-16 grid gap-6 md:grid-cols-3">
-            {plans.map((plan) => (
+            {plans.map((plan, index) => (
+              <AnimatedSection key={plan.name} delay={index * 100}>
               <Card
-                key={plan.name}
-                className={`relative ${plan.popular ? "border-primary shadow-lg shadow-primary/10" : "bg-card/50"}`}
+                className={`relative backdrop-blur-xl transition-all duration-300 hover:scale-105 h-full ${
+                  plan.popular
+                    ? "border-primary shadow-lg shadow-primary/20 bg-card/40"
+                    : "bg-card/30 border-border/50"
+                }`}
               >
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -340,6 +352,7 @@ export default function Home() {
                   </Button>
                 </CardContent>
               </Card>
+              </AnimatedSection>
             ))}
           </div>
         </div>
@@ -347,22 +360,24 @@ export default function Home() {
 
       {/* CTA Section */}
       <section className="border-t border-border py-20 md:py-32">
-        <div className="mx-auto max-w-3xl px-6 text-center">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Ready to transform your knowledge?
-          </h2>
-          <p className="mt-4 text-lg text-muted-foreground">
-            Join thousands of teams already using CorpusAI to build smarter AI assistants.
-          </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Button size="lg" asChild>
-              <Link href="/sign-up">Get Started Free</Link>
-            </Button>
-            <Button variant="outline" size="lg">
-              Schedule a Demo
-            </Button>
+        <AnimatedSection>
+          <div className="mx-auto max-w-3xl px-6 text-center">
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+              Ready to transform your knowledge?
+            </h2>
+            <p className="mt-4 text-lg text-muted-foreground">
+              Join thousands of teams already using CorpusAI to build smarter AI assistants.
+            </p>
+            <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+              <Button size="lg" className="shadow-[0_0_15px_rgba(91,126,255,0.5)] hover:shadow-[0_0_25px_rgba(91,126,255,0.7)] transition-all duration-300" asChild>
+                <Link href="/sign-up">Get Started Free</Link>
+              </Button>
+              <Button variant="outline" size="lg">
+                Schedule a Demo
+              </Button>
+            </div>
           </div>
-        </div>
+        </AnimatedSection>
       </section>
 
       {/* Footer */}
