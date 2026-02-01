@@ -43,6 +43,7 @@ interface CreateAIInput {
   primaryColor?: string;
   temperature?: number;
   maxTokens?: number;
+  scoreThreshold?: number;
   isPublic?: boolean;
 }
 

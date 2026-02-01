@@ -39,3 +39,20 @@ export {
   useDeleteDocument,
   useRetryDocument,
 } from "./use-documents";
+
+// Dashboard hooks
+export {
+  dashboardKeys,
+  useDashboardStats,
+  type DashboardStats,
+} from "./use-dashboard";
+
+// Analytics hooks
+export {
+  analyticsKeys,
+  useAnalytics,
+  type AnalyticsData,
+  type AnalyticsPeriod,
+  type DailyDataPoint,
+  type Trend,
+} from "./use-analytics";

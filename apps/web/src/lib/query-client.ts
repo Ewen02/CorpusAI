@@ -5,7 +5,7 @@ export function makeQueryClient() {
     defaultOptions: {
       queries: {
         staleTime: 60 * 1000, // 1 minute
-        refetchOnWindowFocus: true,
+        refetchOnWindowFocus: false, // Disable globally to reduce API calls, enable per-query if needed
         retry: 1,
       },
     },
