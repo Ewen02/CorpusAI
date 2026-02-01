@@ -1,24 +1,27 @@
-/**
- * ============================================
- * AI WORKER - Service RAG pour CorpusAI
- * ============================================
- *
- * Ce service gère toute la logique IA :
- * - Génération d'embeddings
- * - Stockage/recherche dans Qdrant
- * - Pipeline RAG complet
- *
- * Pour apprendre, utilise les scripts d'expérimentation :
- *   pnpm experiment:embeddings  - Comprendre les embeddings
- *   pnpm experiment:qdrant      - Manipuler la base vectorielle
- *   pnpm experiment:chunking    - Découper des documents
- *   pnpm experiment:rag         - Pipeline RAG complet
- */
+import "dotenv/config";
+import { createWorker } from "./worker";
 
-console.log('🤖 CorpusAI AI Worker');
-console.log('='.repeat(40));
-console.log('\nPour expérimenter, utilise les commandes:');
-console.log('  pnpm experiment:embeddings');
-console.log('  pnpm experiment:qdrant');
-console.log('  pnpm experiment:chunking');
-console.log('  pnpm experiment:rag');
+const requiredEnvVars = ["REDIS_URL", "DATABASE_URL", "OPENAI_API_KEY"];
+for (const envVar of requiredEnvVars) {
+  if (!process.env[envVar]) {
+    console.error(`Missing required environment variable: ${envVar}`);
+    process.exit(1);
+  }
+}
+
+const redisUrl = process.env.REDIS_URL!;
+
+console.log("Starting CorpusAI Document Worker...");
+
+const worker = createWorker(redisUrl);
+
+const shutdown = async () => {
+  console.log("Shutting down worker...");
+  await worker.close();
+  process.exit(0);
+};
+
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
+
+console.log("Worker ready, waiting for jobs");

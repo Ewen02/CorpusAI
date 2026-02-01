@@ -17,6 +17,7 @@
  * 3. Visualiser comment le modèle comprend le sens
  */
 
+import 'dotenv/config';
 import OpenAI from 'openai';
 
 // ============================================
