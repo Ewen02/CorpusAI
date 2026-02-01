@@ -85,35 +85,44 @@ function ConversationItem({
   return (
     <div
       className={cn(
-        'group relative flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors',
-        isSelected ? 'bg-accent' : 'hover:bg-muted/50'
+        'group relative flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200',
+        isSelected
+          ? 'bg-primary/10 border border-primary/20 shadow-sm'
+          : 'border border-transparent hover:bg-white/[0.04] hover:border-white/[0.06]'
       )}
       onClick={onClick}
       onMouseEnter={() => setShowDelete(true)}
       onMouseLeave={() => setShowDelete(false)}
     >
-      <Avatar className="h-10 w-10 shrink-0">
+      <Avatar className={cn(
+        'h-9 w-9 shrink-0 ring-2',
+        isSelected ? 'ring-primary/30' : 'ring-white/[0.06]'
+      )}>
         <AvatarImage src={aiAvatar} />
-        <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+        <AvatarFallback className="bg-primary text-primary-foreground text-xs">
           {aiName.charAt(0).toUpperCase()}
         </AvatarFallback>
       </Avatar>
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="text-sm font-medium truncate">{title}</h3>
-          <span className="text-xs text-muted-foreground shrink-0">
+          <h3 className={cn(
+            'text-sm font-medium truncate',
+            isSelected && 'text-primary'
+          )}>{title}</h3>
+          <span className="text-[11px] text-muted-foreground/60 shrink-0">
             {formatRelativeTime(conversation.updatedAt)}
           </span>
         </div>
 
-        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+        <p className="text-xs text-muted-foreground/70 mt-0.5 line-clamp-2">
           {preview}
         </p>
 
-        <div className="flex items-center gap-2 mt-1">
-          <span className="text-xs text-muted-foreground/70">
-            {conversation.messageCount} message{conversation.messageCount !== 1 ? 's' : ''}
+        <div className="flex items-center gap-2 mt-1.5">
+          <span className="text-[11px] text-muted-foreground/50 flex items-center gap-1">
+            <MessageIcon className="h-3 w-3" />
+            {conversation.messageCount}
           </span>
         </div>
       </div>
@@ -122,7 +131,7 @@ function ConversationItem({
         <Button
           variant="ghost"
           size="icon"
-          className="absolute right-2 top-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute right-2 top-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive"
           onClick={(e) => {
             e.stopPropagation();
             onDelete();
@@ -158,12 +167,12 @@ export function ConversationList({
   return (
     <div className={cn('flex flex-col h-full', className)}>
       {/* Header */}
-      <div className="p-4 border-b border-border">
+      <div className="p-4 border-b border-white/[0.06]">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold">Conversations</h2>
           {onNewConversation && (
-            <Button variant="ghost" size="sm" onClick={onNewConversation}>
-              <PlusIcon className="h-4 w-4 mr-1" />
+            <Button variant="ghost" size="sm" onClick={onNewConversation} className="h-8 gap-1.5 text-xs hover:bg-primary/10 hover:text-primary">
+              <PlusIcon className="h-3.5 w-3.5" />
               Nouvelle
             </Button>
           )}
@@ -174,18 +183,23 @@ export function ConversationList({
       <div className="flex-1 overflow-y-auto p-2">
         {conversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-4">
-            <MessageIcon className="h-10 w-10 text-muted-foreground/50 mb-3" />
-            <p className="text-sm text-muted-foreground">
+            <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3 ring-1 ring-primary/20">
+              <MessageIcon className="h-5 w-5 text-primary/60" />
+            </div>
+            <p className="text-sm text-muted-foreground mb-1">
               Aucune conversation
+            </p>
+            <p className="text-xs text-muted-foreground/50 mb-4">
+              Posez votre première question
             </p>
             {onNewConversation && (
               <Button
                 variant="outline"
                 size="sm"
-                className="mt-3"
+                className="border-primary/20 hover:bg-primary/10 hover:text-primary"
                 onClick={onNewConversation}
               >
-                Démarrer une conversation
+                Démarrer
               </Button>
             )}
           </div>
@@ -274,16 +288,16 @@ function MessageIcon({ className }: { className?: string }) {
 export function ConversationListSkeleton() {
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 border-b border-border">
+      <div className="p-4 border-b border-white/[0.06]">
         <div className="flex items-center justify-between">
           <Skeleton className="h-5 w-24" />
-          <Skeleton className="h-8 w-20" />
+          <Skeleton className="h-8 w-20 rounded-lg" />
         </div>
       </div>
       <div className="flex-1 p-2 space-y-1">
         {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="flex items-start gap-3 p-3">
-            <Skeleton className="h-10 w-10 rounded-full shrink-0" />
+          <div key={i} className="flex items-start gap-3 p-3 rounded-lg">
+            <Skeleton className="h-9 w-9 rounded-full shrink-0" />
             <div className="flex-1 space-y-2">
               <Skeleton className="h-4 w-3/4" />
               <Skeleton className="h-3 w-full" />

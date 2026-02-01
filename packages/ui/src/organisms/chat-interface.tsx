@@ -3,20 +3,22 @@
 import * as React from 'react';
 import { cn } from '../lib/utils';
 import { Button } from '../atoms/button';
-import { Input } from '../atoms/input';
 import { Avatar, AvatarFallback, AvatarImage } from '../atoms/avatar';
 import { Skeleton } from '../atoms/skeleton';
-import { Card, CardContent } from '../molecules/card';
+import { MarkdownRenderer } from '../molecules/markdown-renderer';
 
 // ============================================
 // Types
 // ============================================
+
+export type ConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW';
 
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   sources?: ChatSource[];
+  confidence?: ConfidenceLevel;
   createdAt: Date;
   isStreaming?: boolean;
 }
@@ -73,13 +75,16 @@ function MessageBubble({
         isUser ? 'flex-row-reverse' : 'flex-row'
       )}
     >
-      <Avatar className="h-8 w-8 shrink-0">
+      <Avatar className={cn(
+        'h-8 w-8 shrink-0 ring-2',
+        isUser ? 'ring-white/[0.06]' : 'ring-primary/20'
+      )}>
         <AvatarImage src={isUser ? userAvatar : aiAvatar} />
         <AvatarFallback
           className={cn(
             'text-xs font-medium',
             isUser
-              ? 'bg-slate-600 text-slate-200'
+              ? 'bg-white/[0.08] text-foreground'
               : 'bg-primary text-primary-foreground'
           )}
           style={!isUser && primaryColor ? { backgroundColor: primaryColor } : undefined}
@@ -96,39 +101,59 @@ function MessageBubble({
       >
         <div
           className={cn(
-            'rounded-2xl px-4 py-2 text-sm',
+            'rounded-2xl px-4 py-3 text-sm',
             isUser
-              ? 'bg-primary text-primary-foreground rounded-br-md'
-              : 'bg-slate-700/80 text-slate-100 rounded-bl-md'
+              ? 'bg-primary/90 text-primary-foreground rounded-br-md shadow-md shadow-primary/20'
+              : 'bg-card/60 backdrop-blur-sm border border-white/[0.06] text-foreground rounded-bl-md shadow-lg'
           )}
           style={isUser && primaryColor ? { backgroundColor: primaryColor } : undefined}
         >
           {message.isStreaming ? (
-            <span className="inline-flex items-center gap-1">
-              {message.content}
-              <span className="animate-pulse">▊</span>
-            </span>
-          ) : (
+            <div className="inline-flex items-start gap-1">
+              <MarkdownRenderer content={message.content} />
+              <span className="animate-pulse text-primary">▊</span>
+            </div>
+          ) : isUser ? (
             <span className="whitespace-pre-wrap">{message.content}</span>
+          ) : (
+            <MarkdownRenderer content={message.content} />
           )}
         </div>
 
+        {/* Confidence badge for assistant messages */}
+        {!isUser && message.confidence && !message.isStreaming && message.sources && message.sources.length > 0 && (
+          <div className="flex items-center gap-1.5 mt-1">
+            <span
+              className={cn(
+                'text-xs px-2.5 py-0.5 rounded-full border backdrop-blur-sm',
+                message.confidence === 'HIGH' && 'bg-green-500/10 text-green-400 border-green-500/20',
+                message.confidence === 'MEDIUM' && 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+                message.confidence === 'LOW' && 'bg-red-500/10 text-red-400 border-red-500/20'
+              )}
+            >
+              {message.confidence === 'HIGH' && 'Confiance elevee'}
+              {message.confidence === 'MEDIUM' && 'Confiance moyenne'}
+              {message.confidence === 'LOW' && 'Confiance faible'}
+            </span>
+          </div>
+        )}
+
         {message.sources && message.sources.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1">
+          <div className="flex flex-wrap gap-1.5 mt-1">
             {message.sources.map((source, index) => (
               <button
                 key={`${source.documentId}-${index}`}
                 onClick={() => onSourceClick?.(source)}
-                className="text-xs px-2 py-0.5 rounded-full bg-accent text-accent-foreground hover:bg-accent/80 transition-colors"
+                className="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 hover:border-primary/30 transition-all duration-200"
               >
-                📄 {source.documentName}
+                {source.documentName}
                 {source.pageNumber && ` p.${source.pageNumber}`}
               </button>
             ))}
           </div>
         )}
 
-        <span className="text-xs text-muted-foreground">
+        <span className="text-[11px] text-muted-foreground/60">
           {message.createdAt.toLocaleTimeString([], {
             hour: '2-digit',
             minute: '2-digit',
@@ -139,18 +164,21 @@ function MessageBubble({
   );
 }
 
-function TypingIndicator() {
+function TypingIndicator({ aiName = 'Assistant', primaryColor }: { aiName?: string; primaryColor?: string }) {
   return (
     <div className="flex gap-3 w-full">
-      <Avatar className="h-8 w-8 shrink-0">
-        <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-          A
+      <Avatar className="h-8 w-8 shrink-0 ring-2 ring-primary/20">
+        <AvatarFallback
+          className="bg-primary text-primary-foreground text-xs"
+          style={primaryColor ? { backgroundColor: primaryColor } : undefined}
+        >
+          {aiName.charAt(0).toUpperCase()}
         </AvatarFallback>
       </Avatar>
-      <div className="flex items-center gap-1 bg-muted rounded-2xl rounded-bl-md px-4 py-3">
-        <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:-0.3s]" />
-        <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:-0.15s]" />
-        <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" />
+      <div className="flex items-center gap-1.5 bg-card/60 backdrop-blur-sm border border-white/[0.06] rounded-2xl rounded-bl-md px-4 py-3 shadow-lg">
+        <span className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce [animation-delay:-0.3s]" />
+        <span className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce [animation-delay:-0.15s]" />
+        <span className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce" />
       </div>
     </div>
   );
@@ -159,19 +187,35 @@ function TypingIndicator() {
 function WelcomeMessage({
   message,
   aiName,
+  primaryColor,
 }: {
   message: string;
   aiName?: string;
+  primaryColor?: string;
 }) {
   return (
-    <Card className="bg-muted/50 border-dashed">
-      <CardContent className="pt-6 text-center">
-        <p className="text-sm text-muted-foreground">{message}</p>
-        {aiName && (
-          <p className="text-xs text-muted-foreground/70 mt-2">— {aiName}</p>
-        )}
-      </CardContent>
-    </Card>
+    <div className="flex flex-col items-center justify-center h-full py-12">
+      <div
+        className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 ring-1 ring-primary/20"
+        style={primaryColor ? { backgroundColor: `${primaryColor}15` } : undefined}
+      >
+        <span
+          className="text-2xl font-bold text-primary"
+          style={primaryColor ? { color: primaryColor } : undefined}
+        >
+          {aiName?.charAt(0)?.toUpperCase() || 'A'}
+        </span>
+      </div>
+      <h3 className="text-lg font-semibold mb-2">{aiName || 'Assistant'}</h3>
+      <p className="text-sm text-muted-foreground text-center max-w-sm">
+        {message}
+      </p>
+      <div className="mt-6 flex items-center gap-2 text-xs text-muted-foreground/50">
+        <span className="h-1 w-1 rounded-full bg-primary/30" />
+        <span>Propulsé par CorpusAI</span>
+        <span className="h-1 w-1 rounded-full bg-primary/30" />
+      </div>
+    </div>
   );
 }
 
@@ -194,7 +238,7 @@ export function ChatInterface({
 }: ChatInterfaceProps) {
   const [input, setInput] = React.useState('');
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
-  const inputRef = React.useRef<HTMLInputElement>(null);
+  const inputRef = React.useRef<HTMLTextAreaElement>(null);
 
   const scrollToBottom = React.useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -204,12 +248,23 @@ export function ChatInterface({
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
+  // Auto-resize textarea
+  React.useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto';
+      inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 120)}px`;
+    }
+  }, [input]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = input.trim();
     if (trimmed && !isLoading) {
       onSendMessage(trimmed);
       setInput('');
+      if (inputRef.current) {
+        inputRef.current.style.height = 'auto';
+      }
       inputRef.current?.focus();
     }
   };
@@ -224,9 +279,9 @@ export function ChatInterface({
   return (
     <div className={cn('flex flex-col h-full', className)}>
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {messages.length === 0 && welcomeMessage && (
-          <WelcomeMessage message={welcomeMessage} aiName={aiName} />
+          <WelcomeMessage message={welcomeMessage} aiName={aiName} primaryColor={primaryColor} />
         )}
 
         {messages.map((message) => (
@@ -241,33 +296,43 @@ export function ChatInterface({
           />
         ))}
 
-        {isLoading && !messages.some((m) => m.isStreaming) && <TypingIndicator />}
+        {isLoading && !messages.some((m) => m.isStreaming) && (
+          <TypingIndicator aiName={aiName} primaryColor={primaryColor} />
+        )}
 
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-border p-4">
-        <form onSubmit={handleSubmit} className="flex gap-2">
-          <Input
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={placeholder}
-            disabled={isLoading}
-            className="flex-1"
-            autoComplete="off"
-          />
+      <div className="border-t border-white/[0.06] p-4 bg-card/30 backdrop-blur-sm">
+        <form onSubmit={handleSubmit} className="flex gap-2 items-end">
+          <div className="flex-1 relative">
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={placeholder}
+              disabled={isLoading}
+              rows={1}
+              className="w-full resize-none rounded-xl border border-white/[0.06] bg-card/50 backdrop-blur-sm px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all duration-200 disabled:opacity-50"
+              autoComplete="off"
+            />
+          </div>
           <Button
             type="submit"
+            size="icon"
             disabled={!input.trim() || isLoading}
+            className="h-[46px] w-[46px] rounded-xl shrink-0"
             style={primaryColor ? { backgroundColor: primaryColor } : undefined}
           >
             <SendIcon className="h-4 w-4" />
             <span className="sr-only">Envoyer</span>
           </Button>
         </form>
+        <p className="text-[11px] text-muted-foreground/40 text-center mt-2">
+          Shift + Entrée pour un saut de ligne
+        </p>
       </div>
     </div>
   );
@@ -302,7 +367,7 @@ function SendIcon({ className }: { className?: string }) {
 export function ChatInterfaceSkeleton() {
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 p-4 space-y-4">
+      <div className="flex-1 p-4 space-y-6">
         {[1, 2, 3].map((i) => (
           <div key={i} className={cn('flex gap-3', i % 2 === 0 && 'flex-row-reverse')}>
             <Skeleton className="h-8 w-8 rounded-full shrink-0" />
@@ -310,10 +375,10 @@ export function ChatInterfaceSkeleton() {
           </div>
         ))}
       </div>
-      <div className="border-t border-border p-4">
+      <div className="border-t border-white/[0.06] p-4 bg-card/30">
         <div className="flex gap-2">
-          <Skeleton className="flex-1 h-10" />
-          <Skeleton className="h-10 w-10" />
+          <Skeleton className="flex-1 h-[46px] rounded-xl" />
+          <Skeleton className="h-[46px] w-[46px] rounded-xl" />
         </div>
       </div>
     </div>
