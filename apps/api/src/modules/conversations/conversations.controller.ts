@@ -5,6 +5,7 @@ import {
   Delete,
   Body,
   Param,
+  Req,
   UseGuards,
   Headers,
   Res,
@@ -16,7 +17,7 @@ import {
   ApiParam,
   ApiHeader,
 } from "@nestjs/swagger";
-import type { Response } from "express";
+import type { Request, Response } from "express";
 import { ConversationsService } from "./conversations.service";
 import { AuthGuard, CurrentUser, type CurrentUserData } from "../auth";
 import { SendMessageDto } from "./dto/send-message.dto";
@@ -58,6 +59,13 @@ export class ConversationsController {
   // Public endpoints (for widget/end users)
   // ============================================
 
+  @Get("chat/:aiSlug/info")
+  @ApiOperation({ summary: "Get public AI info for widget" })
+  @ApiParam({ name: "aiSlug", description: "AI slug" })
+  async getAIPublicInfo(@Param("aiSlug") aiSlug: string) {
+    return this.conversationsService.getAIPublicInfo(aiSlug);
+  }
+
   @Post("chat/:aiSlug/start")
   @ApiOperation({ summary: "Start a new conversation with an AI" })
   @ApiParam({ name: "aiSlug", description: "AI slug" })
@@ -91,6 +99,7 @@ export class ConversationsController {
   async sendMessageStream(
     @Param("id") id: string,
     @Body() dto: SendMessageDto,
+    @Req() req: Request,
     @Res() res: Response
   ) {
     // Set SSE headers
@@ -100,14 +109,23 @@ export class ConversationsController {
     res.setHeader("X-Accel-Buffering", "no");
     res.flushHeaders();
 
+    // Abort streaming if client disconnects
+    let clientDisconnected = false;
+    req.on("close", () => {
+      clientDisconnected = true;
+    });
+
     try {
       const generator = this.conversationsService.sendMessageStream(id, dto.content);
 
       for await (const event of generator) {
+        if (clientDisconnected) break;
         res.write(`data: ${JSON.stringify(event)}\n\n`);
       }
     } catch (error) {
-      res.write(`data: ${JSON.stringify({ type: "error", data: { message: "Internal server error" } })}\n\n`);
+      if (!clientDisconnected) {
+        res.write(`data: ${JSON.stringify({ type: "error", data: { message: "Internal server error" } })}\n\n`);
+      }
     }
 
     res.end();

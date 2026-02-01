@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { prisma, MessageRole, AIStatus, ConfidenceLevel } from "@corpusai/database";
 import { canAskQuestion } from "@corpusai/subscription";
+import { determineConfidence } from "@corpusai/ai-rules";
 import type { Source } from "@corpusai/corpus";
 import { RagService } from "../rag";
 
@@ -14,6 +15,60 @@ export class ConversationsService {
   private readonly logger = new Logger(ConversationsService.name);
 
   constructor(private ragService: RagService) {}
+
+  /**
+   * Fetches the last N messages from a conversation for multi-turn context.
+   */
+  private async getConversationHistory(
+    conversationId: string,
+    limit = 6
+  ): Promise<Array<{ role: 'user' | 'assistant'; content: string }>> {
+    const messages = await prisma.message.findMany({
+      where: { conversationId },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      select: { role: true, content: true },
+    });
+    return messages
+      .reverse()
+      .filter((m) => m.role === MessageRole.USER || m.role === MessageRole.ASSISTANT)
+      .map((m) => ({
+        role: m.role === MessageRole.USER ? 'user' as const : 'assistant' as const,
+        content: m.content,
+      }));
+  }
+
+  /**
+   * Get public AI info for widget embed.
+   */
+  async getAIPublicInfo(slug: string) {
+    const ai = await prisma.aI.findUnique({
+      where: { slug },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        description: true,
+        welcomeMessage: true,
+        primaryColor: true,
+        logo: true,
+        status: true,
+        accessType: true,
+      },
+    });
+
+    if (!ai) {
+      throw new NotFoundException("AI not found");
+    }
+
+    // Transform for widget compatibility
+    return {
+      ...ai,
+      avatar: ai.logo, // Alias for frontend
+      isPublic: ai.accessType === "FREE", // Free access = public
+    };
+  }
+
   async findAllByAI(userId: string, aiId: string) {
     // Verify ownership
     const ai = await prisma.aI.findFirst({
@@ -128,27 +183,32 @@ export class ConversationsService {
       endUserId = endUser.id;
     }
 
-    const conversation = await prisma.conversation.create({
-      data: {
-        aiId: ai.id,
-        endUserId,
-      },
-      include: {
-        ai: {
-          select: {
-            id: true,
-            name: true,
-            welcomeMessage: true,
-            primaryColor: true,
+    // Use transaction to ensure conversation creation and counter update are atomic
+    const conversation = await prisma.$transaction(async (tx) => {
+      const newConversation = await tx.conversation.create({
+        data: {
+          aiId: ai.id,
+          endUserId,
+        },
+        include: {
+          ai: {
+            select: {
+              id: true,
+              name: true,
+              welcomeMessage: true,
+              primaryColor: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    // Update AI conversation count
-    await prisma.aI.update({
-      where: { id: ai.id },
-      data: { conversationCount: { increment: 1 } },
+      // Update AI conversation count atomically
+      await tx.aI.update({
+        where: { id: ai.id },
+        data: { conversationCount: { increment: 1 } },
+      });
+
+      return newConversation;
     });
 
     return conversation;
@@ -164,6 +224,7 @@ export class ConversationsService {
             systemPrompt: true,
             temperature: true,
             maxTokens: true,
+            scoreThreshold: true,
             user: {
               select: { subscriptionPlan: true },
             },
@@ -205,9 +266,12 @@ export class ConversationsService {
       },
     });
 
+    const conversationHistory = await this.getConversationHistory(conversationId);
+
     // Query RAG pipeline
     const startTime = Date.now();
     let assistantMessage;
+    let isError = false;
 
     try {
       const ragResponse = await this.ragService.query(
@@ -217,13 +281,19 @@ export class ConversationsService {
           systemPrompt: conversation.ai.systemPrompt ?? undefined,
           temperature: conversation.ai.temperature,
           maxTokens: conversation.ai.maxTokens,
+        },
+        {
+          scoreThreshold: conversation.ai.scoreThreshold ?? 0.4,
+          conversationHistory,
         }
       );
 
       const latencyMs = Date.now() - startTime;
 
       // Calculate confidence based on source scores
-      const confidence = this.calculateConfidence(ragResponse.sources);
+      const confidence = determineConfidence(
+        ragResponse.sources.map((s) => ({ relevanceScore: s.score }))
+      ) as ConfidenceLevel;
 
       // Format sources for storage
       const sources = ragResponse.sources.map((s) => ({
@@ -249,6 +319,7 @@ export class ConversationsService {
       );
     } catch (error) {
       this.logger.error(`RAG query failed: ${error}`);
+      isError = true;
 
       // Fallback response on error
       assistantMessage = await prisma.message.create({
@@ -262,24 +333,26 @@ export class ConversationsService {
       });
     }
 
-    // Update conversation
-    await prisma.conversation.update({
-      where: { id: conversationId },
-      data: {
-        messageCount: { increment: 2 },
-        title: conversation.title || content.slice(0, 50),
-      },
-    });
-
-    // Update AI question count
-    await prisma.aI.update({
-      where: { id: conversation.aiId },
-      data: { questionCount: { increment: 1 } },
-    });
+    // Update conversation and AI question count atomically
+    await prisma.$transaction([
+      prisma.conversation.update({
+        where: { id: conversationId },
+        data: {
+          messageCount: { increment: 2 },
+          title: conversation.title || content.slice(0, 50),
+        },
+      }),
+      prisma.aI.update({
+        where: { id: conversation.aiId },
+        data: { questionCount: { increment: 1 } },
+      }),
+    ]);
 
     return {
       userMessage,
       assistantMessage,
+      isError,
+      errorType: isError ? 'rag_failure' as const : undefined,
     };
   }
 
@@ -309,6 +382,7 @@ export class ConversationsService {
             systemPrompt: true,
             temperature: true,
             maxTokens: true,
+            scoreThreshold: true,
             user: {
               select: { subscriptionPlan: true },
             },
@@ -348,6 +422,8 @@ export class ConversationsService {
       },
     });
 
+    const conversationHistory = await this.getConversationHistory(conversationId);
+
     const startTime = Date.now();
 
     try {
@@ -359,6 +435,10 @@ export class ConversationsService {
           systemPrompt: conversation.ai.systemPrompt ?? undefined,
           temperature: conversation.ai.temperature,
           maxTokens: conversation.ai.maxTokens,
+        },
+        {
+          scoreThreshold: conversation.ai.scoreThreshold ?? 0.4,
+          conversationHistory,
         }
       );
 
@@ -377,7 +457,9 @@ export class ConversationsService {
       const latencyMs = Date.now() - startTime;
 
       // Calculate confidence and format sources
-      const confidence = this.calculateConfidence(ragResponse.sources);
+      const confidence = determineConfidence(
+        ragResponse.sources.map((s) => ({ relevanceScore: s.score }))
+      ) as ConfidenceLevel;
       const sources = ragResponse.sources.map((s) => ({
         chunkId: s.chunkId,
         documentSource: s.documentSource,
@@ -400,20 +482,20 @@ export class ConversationsService {
         },
       });
 
-      // Update conversation
-      await prisma.conversation.update({
-        where: { id: conversationId },
-        data: {
-          messageCount: { increment: 2 },
-          title: conversation.title || content.slice(0, 50),
-        },
-      });
-
-      // Update AI question count
-      await prisma.aI.update({
-        where: { id: conversation.aiId },
-        data: { questionCount: { increment: 1 } },
-      });
+      // Update conversation and AI question count atomically
+      await prisma.$transaction([
+        prisma.conversation.update({
+          where: { id: conversationId },
+          data: {
+            messageCount: { increment: 2 },
+            title: conversation.title || content.slice(0, 50),
+          },
+        }),
+        prisma.aI.update({
+          where: { id: conversation.aiId },
+          data: { questionCount: { increment: 1 } },
+        }),
+      ]);
 
       this.logger.log(
         `RAG stream for conversation ${conversationId}: ${ragResponse.sources.length} sources, ${latencyMs}ms`
@@ -484,35 +566,18 @@ export class ConversationsService {
       throw new NotFoundException("Conversation not found");
     }
 
-    await prisma.conversation.delete({
-      where: { id: conversationId },
-    });
-
-    // Update AI conversation count
-    await prisma.aI.update({
-      where: { id: conversation.ai.id },
-      data: { conversationCount: { decrement: 1 } },
-    });
+    // Delete conversation and update counter atomically
+    await prisma.$transaction([
+      prisma.conversation.delete({
+        where: { id: conversationId },
+      }),
+      prisma.aI.update({
+        where: { id: conversation.ai.id },
+        data: { conversationCount: { decrement: 1 } },
+      }),
+    ]);
 
     return { success: true };
   }
 
-  /**
-   * Calculate confidence level based on source scores.
-   */
-  private calculateConfidence(sources: Source[]): ConfidenceLevel {
-    if (sources.length === 0) {
-      return ConfidenceLevel.LOW;
-    }
-
-    const avgScore = sources.reduce((sum, s) => sum + s.score, 0) / sources.length;
-
-    if (avgScore > 0.7) {
-      return ConfidenceLevel.HIGH;
-    }
-    if (avgScore > 0.5) {
-      return ConfidenceLevel.MEDIUM;
-    }
-    return ConfidenceLevel.LOW;
-  }
 }
