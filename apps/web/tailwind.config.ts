@@ -37,6 +37,16 @@ const config: Config = {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
       },
+      animation: {
+        'pulse-slow': 'pulse 8s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'gradient': 'gradient 3s ease infinite',
+        'fade-in-up': 'fade-in-up 0.4s ease-out both',
+        'scale-in': 'scale-in 0.3s ease-out both',
+      },
+      boxShadow: {
+        'glow-sm': '0 0 10px rgba(91,126,255,0.3)',
+        'glow-md': '0 0 20px rgba(91,126,255,0.4)',
+      },
     },
   },
   plugins: [],
