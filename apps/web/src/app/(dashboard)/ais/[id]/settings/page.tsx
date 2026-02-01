@@ -22,6 +22,7 @@ import {
   Badge,
 } from "@corpusai/ui";
 import { useAI, useUpdateAI, useDeleteAI } from "@/lib/queries";
+import { PageWrapper } from "@/components/page-wrapper";
 
 type AIStatus = "DRAFT" | "ACTIVE" | "PAUSED" | "ARCHIVED";
 
@@ -43,6 +44,7 @@ export default function AISettingsPage() {
   const [isPublic, setIsPublic] = React.useState(true);
   const [maxTokens, setMaxTokens] = React.useState(1024);
   const [temperature, setTemperature] = React.useState(0.7);
+  const [scoreThreshold, setScoreThreshold] = React.useState(0.6);
   const [status, setStatus] = React.useState<AIStatus>("DRAFT");
 
   const [error, setError] = React.useState<string | null>(null);
@@ -61,6 +63,7 @@ export default function AISettingsPage() {
       setIsPublic(ai.isPublic ?? true);
       setMaxTokens(ai.maxTokens || 1024);
       setTemperature(ai.temperature || 0.7);
+      setScoreThreshold(ai.scoreThreshold || 0.6);
       setStatus((ai.status as AIStatus) || "DRAFT");
     }
   }, [ai]);
@@ -81,6 +84,7 @@ export default function AISettingsPage() {
           isPublic,
           maxTokens,
           temperature,
+          scoreThreshold,
           status,
         },
       });
@@ -137,7 +141,7 @@ export default function AISettingsPage() {
   }
 
   return (
-    <div className="container max-w-4xl py-8">
+    <PageWrapper className="container max-w-4xl py-8">
       <div className="mb-8">
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
           <button onClick={() => router.push(`/ais/${aiId}`)} className="hover:text-foreground">
@@ -221,10 +225,10 @@ export default function AISettingsPage() {
                     key={option.value}
                     type="button"
                     onClick={() => setStatus(option.value)}
-                    className={`p-4 rounded-lg border text-left transition-colors ${
+                    className={`p-4 rounded-lg border text-left transition-all duration-200 ${
                       status === option.value
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-muted-foreground/50"
+                        ? "border-primary bg-primary/5 shadow-glow-sm"
+                        : "border-border hover:border-primary/20 hover:bg-white/[0.02]"
                     }`}
                   >
                     <div className="flex items-center gap-2 mb-1">
@@ -350,6 +354,29 @@ export default function AISettingsPage() {
                   0 = precis et deterministe, 1 = creatif et varie.
                 </p>
               </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="scoreThreshold">Seuil de pertinence RAG</Label>
+                  <span className="text-sm text-muted-foreground">
+                    {scoreThreshold.toFixed(1)}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  id="scoreThreshold"
+                  min={0.3}
+                  max={0.9}
+                  step={0.1}
+                  value={scoreThreshold}
+                  onChange={(e) => setScoreThreshold(Number(e.target.value))}
+                  className="w-full accent-primary"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Score minimum pour inclure un document dans le contexte.
+                  0.3 = permissif, 0.9 = tres strict.
+                </p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -384,7 +411,7 @@ export default function AISettingsPage() {
               </div>
 
               {/* Preview */}
-              <div className="mt-6 p-4 rounded-lg border border-border bg-muted/30">
+              <div className="mt-6 p-4 rounded-lg border border-white/[0.06] bg-card/30 backdrop-blur-xl">
                 <p className="text-sm font-medium mb-3">Apercu</p>
                 <div className="flex items-start gap-3">
                   <div
@@ -406,7 +433,7 @@ export default function AISettingsPage() {
 
         {/* Danger Zone Tab */}
         <TabsContent value="danger" className="space-y-6">
-          <Card className="border-destructive/50">
+          <Card className="border-destructive/20 bg-destructive/5 backdrop-blur">
             <CardHeader>
               <CardTitle className="text-destructive">Zone de danger</CardTitle>
               <CardDescription>
@@ -482,10 +509,10 @@ export default function AISettingsPage() {
         <Button variant="outline" onClick={() => router.push(`/ais/${aiId}`)}>
           Retour
         </Button>
-        <Button onClick={handleSave} disabled={updateAI.isPending}>
+        <Button variant="glow" onClick={handleSave} disabled={updateAI.isPending}>
           {updateAI.isPending ? "Sauvegarde..." : "Sauvegarder les modifications"}
         </Button>
       </div>
-    </div>
+    </PageWrapper>
   );
 }
