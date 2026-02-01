@@ -12,111 +12,24 @@ import {
   Skeleton,
   Separator,
 } from "@corpusai/ui";
-import { authClient } from "@/lib/auth-client";
-
-interface PlanFeature {
-  name: string;
-  included: boolean;
-  limit?: string;
-}
-
-interface Plan {
-  id: string;
-  name: string;
-  price: number;
-  period: string;
-  description: string;
-  features: PlanFeature[];
-  popular?: boolean;
-}
-
-const plans: Plan[] = [
-  {
-    id: "FREE",
-    name: "Gratuit",
-    price: 0,
-    period: "mois",
-    description: "Pour découvrir CorpusAI",
-    features: [
-      { name: "1 assistant IA", included: true },
-      { name: "10 documents", included: true, limit: "max" },
-      { name: "100 questions/mois", included: true },
-      { name: "Support communautaire", included: true },
-      { name: "API access", included: false },
-      { name: "Widget personnalisé", included: false },
-    ],
-  },
-  {
-    id: "PRO",
-    name: "Pro",
-    price: 29,
-    period: "mois",
-    description: "Pour les créateurs de contenu",
-    popular: true,
-    features: [
-      { name: "5 assistants IA", included: true },
-      { name: "100 documents", included: true, limit: "max" },
-      { name: "Questions illimitées", included: true },
-      { name: "Support prioritaire", included: true },
-      { name: "API access", included: true },
-      { name: "Widget personnalisé", included: true },
-    ],
-  },
-  {
-    id: "BUSINESS",
-    name: "Business",
-    price: 99,
-    period: "mois",
-    description: "Pour les équipes",
-    features: [
-      { name: "Assistants illimités", included: true },
-      { name: "Documents illimités", included: true },
-      { name: "Questions illimitées", included: true },
-      { name: "Support dédié", included: true },
-      { name: "API access avancé", included: true },
-      { name: "SSO & Analytics", included: true },
-    ],
-  },
-];
+import { useDashboardStats } from "@/lib/queries";
+import { CheckIcon, XIcon, ReceiptIcon } from "@/lib/icons";
+import { PLANS, PLAN_DISPLAY_NAMES } from "@/lib/constants";
+import {
+  getFeatureLimits,
+  getRemainingUsage,
+  type SubscriptionPlanType,
+} from "@corpusai/subscription";
+import { PageWrapper } from "@/components/page-wrapper";
 
 export default function SettingsBillingPage() {
-  const { data: session } = authClient.useSession();
-  const [currentPlan, setCurrentPlan] = React.useState<string>("FREE");
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [stats, setStats] = React.useState<{
-    aiCount: number;
-    documentCount: number;
-    questionCount: number;
-  } | null>(null);
+  const { data: stats, isLoading } = useDashboardStats();
 
-  // Fetch user stats
-  React.useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await fetch("http://localhost:3001/users/me/stats", {
-          credentials: "include",
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setStats(data);
-          setCurrentPlan(data.subscriptionPlan || "FREE");
-        }
-      } catch (err) {
-        console.error("Error fetching stats:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const currentPlan = (stats?.subscriptionPlan || "FREE") as SubscriptionPlanType;
 
-    if (session) {
-      fetchStats();
-    }
-  }, [session]);
-
-  const handleUpgrade = (planId: string) => {
-    // TODO: Implement Stripe checkout
-    console.log("Upgrade to:", planId);
-    alert(`L'intégration Stripe sera ajoutée prochainement pour passer au plan ${planId}`);
+  const handleUpgrade = (planId: SubscriptionPlanType) => {
+    // TODO: Integrate Stripe checkout
+    alert(`L'integration Stripe sera ajoutee prochainement pour passer au plan ${PLAN_DISPLAY_NAMES[planId]}`);
   };
 
   if (isLoading) {
@@ -135,16 +48,23 @@ export default function SettingsBillingPage() {
     );
   }
 
-  const currentPlanData = plans.find((p) => p.id === currentPlan) ?? plans[0]!;
+  const currentPlanData = PLANS.find((p) => p.id === currentPlan) ?? PLANS[0]!;
+  const currentLimits = getFeatureLimits(currentPlan);
+
+  const aiRemaining = getRemainingUsage(currentPlan, "ais", stats?.aiCount || 0);
+  const questionsRemaining = getRemainingUsage(currentPlan, "questions", stats?.questionCount || 0);
+
+  const formatRemaining = (value: number | "unlimited") =>
+    value === "unlimited" ? "∞" : value.toString();
 
   return (
-    <div className="space-y-6">
+    <PageWrapper className="space-y-6">
       {/* Current Plan */}
-      <Card>
+      <Card variant="glass">
         <CardHeader>
           <CardTitle>Votre abonnement</CardTitle>
           <CardDescription>
-            Gérez votre plan et votre facturation.
+            Gerez votre plan et votre facturation.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -179,15 +99,24 @@ export default function SettingsBillingPage() {
                 <p className="text-xs text-muted-foreground">
                   Assistant(s) IA
                 </p>
+                <p className="text-xs text-muted-foreground/70 mt-1">
+                  Restant: {formatRemaining(aiRemaining)}/{currentLimits.maxAIs === -1 ? "∞" : currentLimits.maxAIs}
+                </p>
               </div>
               <div className="p-4 rounded-lg bg-muted/30">
                 <p className="text-2xl font-bold">{stats?.documentCount || 0}</p>
                 <p className="text-xs text-muted-foreground">Documents</p>
+                <p className="text-xs text-muted-foreground/70 mt-1">
+                  Max/AI: {currentLimits.maxDocumentsPerAI === -1 ? "∞" : currentLimits.maxDocumentsPerAI}
+                </p>
               </div>
               <div className="p-4 rounded-lg bg-muted/30">
                 <p className="text-2xl font-bold">{stats?.questionCount || 0}</p>
                 <p className="text-xs text-muted-foreground">
-                  Questions ce mois
+                  Questions aujourd'hui
+                </p>
+                <p className="text-xs text-muted-foreground/70 mt-1">
+                  Restant: {formatRemaining(questionsRemaining)}/{currentLimits.maxQuestionsPerDay === -1 ? "∞" : currentLimits.maxQuestionsPerDay}
                 </p>
               </div>
             </div>
@@ -196,25 +125,25 @@ export default function SettingsBillingPage() {
       </Card>
 
       {/* Plans */}
-      <Card>
+      <Card variant="glass">
         <CardHeader>
           <CardTitle>Changer de plan</CardTitle>
           <CardDescription>
-            Choisissez le plan adapté à vos besoins.
+            Choisissez le plan adapte a vos besoins.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-6 md:grid-cols-3">
-            {plans.map((plan) => {
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {PLANS.map((plan) => {
               const isCurrent = plan.id === currentPlan;
               return (
                 <div
                   key={plan.id}
-                  className={`relative p-6 rounded-lg border ${
+                  className={`relative p-6 rounded-lg border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/5 ${
                     plan.popular
                       ? "border-primary bg-primary/5"
-                      : "border-border"
-                  } ${isCurrent ? "ring-2 ring-primary" : ""}`}
+                      : "border-white/[0.06] bg-card/30 backdrop-blur-xl"
+                  } ${isCurrent ? "ring-2 ring-primary shadow-glow-sm" : ""}`}
                 >
                   {plan.popular && (
                     <Badge className="absolute -top-2 left-1/2 -translate-x-1/2">
@@ -249,9 +178,9 @@ export default function SettingsBillingPage() {
                     {plan.features.map((feature, idx) => (
                       <li key={idx} className="flex items-center gap-2 text-sm">
                         {feature.included ? (
-                          <CheckIcon className="h-4 w-4 text-green-500" />
+                          <CheckIcon className="h-4 w-4 text-green-500 shrink-0" />
                         ) : (
-                          <XIcon className="h-4 w-4 text-muted-foreground" />
+                          <XIcon className="h-4 w-4 text-muted-foreground shrink-0" />
                         )}
                         <span
                           className={
@@ -266,7 +195,7 @@ export default function SettingsBillingPage() {
 
                   <Button
                     className="w-full"
-                    variant={isCurrent ? "outline" : plan.popular ? "default" : "secondary"}
+                    variant={isCurrent ? "outline" : plan.popular ? "glow" : "secondary"}
                     disabled={isCurrent}
                     onClick={() => handleUpgrade(plan.id)}
                   >
@@ -280,11 +209,11 @@ export default function SettingsBillingPage() {
       </Card>
 
       {/* Payment History */}
-      <Card>
+      <Card variant="glass">
         <CardHeader>
           <CardTitle>Historique de facturation</CardTitle>
           <CardDescription>
-            Vos factures et paiements précédents.
+            Vos factures et paiements precedents.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -292,66 +221,11 @@ export default function SettingsBillingPage() {
             <ReceiptIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <p>Aucune facture disponible</p>
             <p className="text-sm">
-              Vos factures apparaîtront ici après votre premier paiement.
+              Vos factures apparaitront ici apres votre premier paiement.
             </p>
           </div>
         </CardContent>
       </Card>
-    </div>
-  );
-}
-
-// Icons
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
-  );
-}
-
-function XIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M18 6 6 18" />
-      <path d="m6 6 12 12" />
-    </svg>
-  );
-}
-
-function ReceiptIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" />
-      <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" />
-      <path d="M12 17.5v-11" />
-    </svg>
+    </PageWrapper>
   );
 }

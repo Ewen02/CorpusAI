@@ -17,20 +17,13 @@ import {
   Separator,
 } from "@corpusai/ui";
 import { authClient } from "@/lib/auth-client";
-
-interface UserProfile {
-  id: string;
-  email: string;
-  name: string | null;
-  image: string | null;
-  subscriptionPlan: string;
-  subscriptionStatus: string;
-  createdAt: string;
-}
+import { apiClient } from "@/lib/api-client";
+import type { User } from "@corpusai/types";
+import { PageWrapper } from "@/components/page-wrapper";
 
 export default function SettingsProfilePage() {
   const { data: session } = authClient.useSession();
-  const [profile, setProfile] = React.useState<UserProfile | null>(null);
+  const [profile, setProfile] = React.useState<User | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -40,19 +33,13 @@ export default function SettingsProfilePage() {
   const [name, setName] = React.useState("");
   const [imageUrl, setImageUrl] = React.useState("");
 
-  // Fetch profile
   React.useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const response = await fetch("http://localhost:3001/users/me", {
-          credentials: "include",
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setProfile(data);
-          setName(data.name || "");
-          setImageUrl(data.image || "");
-        }
+        const data = await apiClient.get<User>("/users/me");
+        setProfile(data);
+        setName(data.name || "");
+        setImageUrl(data.image || "");
       } catch (err) {
         console.error("Error fetching profile:", err);
       } finally {
@@ -72,25 +59,12 @@ export default function SettingsProfilePage() {
     setIsSaving(true);
 
     try {
-      const response = await fetch("http://localhost:3001/users/me", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          name: name || undefined,
-          image: imageUrl || undefined,
-        }),
+      const updated = await apiClient.patch<User>("/users/me", {
+        name: name || undefined,
+        image: imageUrl || undefined,
       });
-
-      if (!response.ok) {
-        throw new Error("Erreur lors de la mise à jour");
-      }
-
-      const updated = await response.json();
       setProfile((prev) => (prev ? { ...prev, ...updated } : prev));
-      setSuccess("Profil mis à jour avec succès");
+      setSuccess("Profil mis a jour avec succes");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue");
     } finally {
@@ -117,9 +91,9 @@ export default function SettingsProfilePage() {
   }
 
   return (
-    <div className="space-y-6">
+    <PageWrapper className="space-y-6">
       {/* Profile Card */}
-      <Card>
+      <Card variant="glass">
         <CardHeader>
           <CardTitle>Profil</CardTitle>
           <CardDescription>
@@ -130,7 +104,7 @@ export default function SettingsProfilePage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Avatar Section */}
             <div className="flex items-center gap-6">
-              <Avatar className="h-20 w-20">
+              <Avatar className="h-20 w-20 ring-2 ring-primary/20">
                 <AvatarImage src={imageUrl || profile?.image || undefined} />
                 <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
                   {name?.charAt(0)?.toUpperCase() ||
@@ -209,7 +183,7 @@ export default function SettingsProfilePage() {
       </Card>
 
       {/* Account Info Card */}
-      <Card>
+      <Card variant="glass">
         <CardHeader>
           <CardTitle>Informations du compte</CardTitle>
           <CardDescription>
@@ -247,7 +221,7 @@ export default function SettingsProfilePage() {
       </Card>
 
       {/* Danger Zone */}
-      <Card className="border-destructive/50">
+      <Card className="border-destructive/20 bg-destructive/5 backdrop-blur">
         <CardHeader>
           <CardTitle className="text-destructive">Zone de danger</CardTitle>
           <CardDescription>
@@ -268,6 +242,6 @@ export default function SettingsProfilePage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </PageWrapper>
   );
 }
