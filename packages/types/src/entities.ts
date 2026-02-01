@@ -57,6 +57,7 @@ export interface AI {
   logo?: string | null;
   maxTokens: number;
   temperature: number;
+  scoreThreshold: number;
   accessType: AccessType;
   price?: number | null;
   documentCount: number;
@@ -65,6 +66,26 @@ export interface AI {
   createdAt: string;
   updatedAt: string;
   /** @deprecated Use accessType instead. Computed field for backward compatibility. */
+  isPublic?: boolean;
+}
+
+/**
+ * Public AI info for widget/embed.
+ * Returned by the public API endpoint.
+ */
+export interface AIPublicInfo {
+  id: string;
+  slug: string;
+  name: string;
+  description?: string | null;
+  welcomeMessage?: string | null;
+  primaryColor: string;
+  logo?: string | null;
+  status: AIStatus;
+  accessType: AccessType;
+  /** Alias for logo (frontend compatibility) */
+  avatar?: string | null;
+  /** Computed: accessType === 'FREE' */
   isPublic?: boolean;
 }
 

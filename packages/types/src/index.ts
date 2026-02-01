@@ -23,6 +23,7 @@ export type {
   User,
   AIData,
   AI,
+  AIPublicInfo,
   Document,
   Conversation,
   Message,
