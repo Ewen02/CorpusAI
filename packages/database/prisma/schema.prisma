@@ -28,9 +28,10 @@ model User {
   stripeCustomerId   String?            @unique
 
   // Relations
-  ais      AI[]
-  sessions Session[]
-  accounts Account[]
+  ais        AI[]
+  sessions   Session[]
+  accounts   Account[]
+  dailyStats DailyStats[]
 
   @@index([email])
   @@index([stripeCustomerId])
@@ -109,10 +110,12 @@ model AI {
   logo           String?
   maxTokens      Int     @default(1024)
   temperature    Float   @default(0.7)
+  scoreThreshold Float   @default(0.6)
 
   // Access & Monetization
   accessType AccessType @default(FREE)
   price      Float?
+  isPublic   Boolean    @default(false)
 
   // Stats
   documentCount    Int @default(0)
@@ -123,6 +126,7 @@ model AI {
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   documents     Document[]
   conversations Conversation[]
+  dailyStats    DailyStats[]
 
   @@unique([userId, slug])
   @@index([userId])
@@ -147,9 +151,15 @@ model Document {
   url      String?
 
   // Processing
-  status     DocumentStatus @default(PENDING)
-  chunkCount Int            @default(0)
+  status       DocumentStatus @default(PENDING)
+  chunkCount   Int            @default(0)
   errorMessage String?
+
+  // Progress tracking
+  processingProgress    Float               @default(0) // 0-100
+  processingStep        ProcessingStep?
+  processingStartedAt   DateTime?
+  processingCompletedAt DateTime?
 
   // Metadata (extracted from document)
   pageCount Int?
@@ -250,6 +260,8 @@ model Message {
 
   @@index([conversationId])
   @@index([createdAt])
+  // Composite index for rate limiting queries (count messages by AI/date via conversation join)
+  @@index([conversationId, role, createdAt])
 }
 
 // ============================================
@@ -291,6 +303,13 @@ enum DocumentStatus {
   FAILED
 }
 
+enum ProcessingStep {
+  PARSING
+  CHUNKING
+  EMBEDDING
+  STORING
+}
+
 enum MessageRole {
   USER
   ASSISTANT
@@ -300,4 +319,29 @@ enum ConfidenceLevel {
   HIGH
   MEDIUM
   LOW
+}
+
+// ============================================
+// ANALYTICS
+// ============================================
+
+model DailyStats {
+  id        String   @id @default(cuid())
+  userId    String
+  aiId      String?
+  date      DateTime @db.Date
+  createdAt DateTime @default(now())
+
+  // Métriques (valeurs cumulées à cette date)
+  documentCount     Int @default(0)
+  conversationCount Int @default(0)
+  questionCount     Int @default(0)
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ai   AI?  @relation(fields: [aiId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, aiId, date])
+  @@index([userId, date])
+  @@index([aiId, date])
 }

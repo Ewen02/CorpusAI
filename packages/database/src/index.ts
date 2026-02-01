@@ -22,6 +22,7 @@ export {
   AIStatus,
   AccessType,
   DocumentStatus,
+  ProcessingStep,
   MessageRole,
   ConfidenceLevel,
 } from "@prisma/client";
