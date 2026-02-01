@@ -87,7 +87,7 @@ function SidebarHeader({
     <div className="flex items-center justify-between p-4">
       <div className="flex items-center gap-2">
         {logo || (
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm shadow-glow-sm">
             C
           </div>
         )}
@@ -137,10 +137,10 @@ function SidebarNav({
               key={item.id}
               onClick={() => handleClick(item.href)}
               className={cn(
-                'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150',
                 isActive
-                  ? 'bg-accent text-accent-foreground'
-                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                  ? 'bg-primary/10 text-primary border-l-2 border-primary'
+                  : 'text-muted-foreground hover:bg-white/[0.04] hover:text-foreground',
                 isCollapsed && 'justify-center px-2'
               )}
             >
@@ -202,13 +202,13 @@ function SidebarAIList({
               key={item.id}
               onClick={() => handleClick(item.href)}
               className={cn(
-                'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-150',
                 isActive
-                  ? 'bg-accent text-accent-foreground'
-                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:bg-white/[0.04] hover:text-foreground'
               )}
             >
-              <span className={cn('h-2 w-2 rounded-full shrink-0', statusColors[item.status])} />
+              <span className={cn('h-2 w-2 rounded-full shrink-0', statusColors[item.status], item.status === 'active' && 'ring-2 ring-green-500/20')} />
               <span className="flex-1 text-left truncate">{item.name}</span>
             </button>
           );
@@ -216,7 +216,7 @@ function SidebarAIList({
         {onCreateAI && (
           <button
             onClick={onCreateAI}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-white/[0.04] hover:text-foreground transition-all duration-150"
           >
             <PlusIcon className="h-4 w-4" />
             <span>Créer un AI</span>
@@ -245,10 +245,10 @@ function SidebarUser({
   };
 
   return (
-    <div className="p-3 border-t border-border">
+    <div className="p-3 border-t border-white/[0.06]">
       <div
         className={cn(
-          'flex items-center gap-3 rounded-lg p-2 cursor-pointer hover:bg-accent transition-colors',
+          'flex items-center gap-3 rounded-lg p-2 cursor-pointer hover:bg-white/[0.04] transition-all duration-150',
           isCollapsed && 'justify-center'
         )}
         onClick={() => setIsOpen(!isOpen)}
@@ -270,7 +270,7 @@ function SidebarUser({
         <div className="mt-2 space-y-1">
           <button
             onClick={onSignOut}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-white/[0.04] hover:text-foreground transition-all duration-150"
           >
             <LogOutIcon className="h-4 w-4" />
             <span>Déconnexion</span>
@@ -308,7 +308,7 @@ function Sidebar({
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-0 z-50 h-full bg-card border-r border-border flex flex-col transition-all duration-300',
+          'fixed left-0 top-0 z-50 h-full bg-card/80 backdrop-blur-xl border-r border-white/[0.06] flex flex-col transition-all duration-300',
           isCollapsed ? 'w-16' : 'w-72',
           isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}

@@ -56,12 +56,14 @@ export {
 // Molecules
 export {
   Card,
+  cardVariants,
   CardHeader,
   CardFooter,
   CardTitle,
   CardDescription,
   CardContent,
 } from "./molecules/card";
+export type { CardProps } from "./molecules/card";
 
 export {
   Tooltip,
@@ -69,6 +71,17 @@ export {
   TooltipContent,
   TooltipProvider,
 } from "./molecules/tooltip";
+
+export { TrendBadge } from "./molecules/trend-badge";
+export type { TrendBadgeProps } from "./molecules/trend-badge";
+
+export { StatCard } from "./molecules/stat-card";
+export type { StatCardProps } from "./molecules/stat-card";
+
+export { ChartTooltip } from "./molecules/chart-tooltip";
+export type { ChartTooltipProps } from "./molecules/chart-tooltip";
+
+export { MarkdownRenderer } from "./molecules/markdown-renderer";
 
 // Organisms
 export {
@@ -79,6 +92,7 @@ export type {
   ChatInterfaceProps,
   ChatMessage,
   ChatSource,
+  ConfidenceLevel,
 } from "./organisms/chat-interface";
 
 export {
