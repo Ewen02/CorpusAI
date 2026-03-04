@@ -5,8 +5,10 @@ export interface DocumentProcessingJobData {
   mimeType: string;
   url?: string;
   content?: string;
-  /** Base64-encoded file buffer */
+  /** Base64-encoded file buffer (legacy, avoid for large files) */
   buffer?: string;
+  /** Path to temp file on shared disk (preferred over buffer) */
+  filePath?: string;
 }
 
 export interface DocumentProgressEvent {
