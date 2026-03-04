@@ -105,6 +105,12 @@ export interface QueryMetrics {
   llmMs: number;
   /** Temps total de la query (ms) */
   totalMs: number;
+  /** Tokens utilisés pour le prompt */
+  promptTokens?: number;
+  /** Tokens générés en réponse */
+  completionTokens?: number;
+  /** Total tokens (prompt + completion) */
+  totalTokens?: number;
 }
 
 /**
@@ -125,8 +131,10 @@ export interface RAGResponse {
  * Configuration du LLM
  */
 export interface LLMConfig {
-  /** Clé API OpenAI */
+  /** Clé API (OpenAI, OpenRouter, ou tout provider compatible) */
   apiKey: string;
+  /** Base URL du provider (ex: https://openrouter.ai/api/v1). Défaut: OpenAI */
+  baseURL?: string;
   /** Modèle à utiliser */
   model?: string;
   /** Temperature (0 = déterministe, 1 = créatif) */
@@ -158,10 +166,7 @@ export interface RAGPipeline {
   /**
    * Pose une question avec streaming de la réponse.
    */
-  queryStream(
-    question: string,
-    options?: QueryOptions
-  ): AsyncGenerator<string, RAGResponse>;
+  queryStream(question: string, options?: QueryOptions): AsyncGenerator<string, RAGResponse>;
 
   /**
    * Supprime des documents de l'index.

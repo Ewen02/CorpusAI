@@ -76,9 +76,11 @@ describe('RAGPipelineImpl', () => {
       dimensions: 1536,
       model: 'text-embedding-3-small',
       embed: vi.fn().mockResolvedValue(createMockEmbedding(1)),
-      embedBatch: vi.fn().mockImplementation((texts: string[]) =>
-        Promise.resolve(texts.map((_, i) => createMockEmbedding(i)))
-      ),
+      embedBatch: vi
+        .fn()
+        .mockImplementation((texts: string[]) =>
+          Promise.resolve(texts.map((_, i) => createMockEmbedding(i)))
+        ),
     };
 
     // Setup mock vector store
@@ -404,16 +406,17 @@ describe('RAGPipelineImpl', () => {
       const tokens: string[] = [];
       const generator = pipeline.queryStream('Test question');
 
-      let result: { value: string; done: boolean } | { value: unknown; done: boolean };
-      while (!(result = await generator.next()).done) {
+      let result = await generator.next();
+      while (!result.done) {
         tokens.push(result.value as string);
+        result = await generator.next();
       }
 
       // Verify tokens were yielded
       expect(tokens).toEqual(['Hello', ' ', 'World']);
 
       // Verify final response
-      const finalResponse = result.value;
+      const finalResponse = result.value as { answer: string; sources: unknown[] };
       expect(finalResponse.answer).toBe('Hello World');
       expect(finalResponse.sources).toHaveLength(3);
     });
@@ -431,9 +434,10 @@ describe('RAGPipelineImpl', () => {
       const generator = pipeline.queryStream('Unknown question');
 
       const tokens: string[] = [];
-      let result: { value: unknown; done: boolean };
-      while (!(result = await generator.next()).done) {
+      let result = await generator.next();
+      while (!result.done) {
         tokens.push(result.value as string);
+        result = await generator.next();
       }
 
       // LLM is always called, should yield streamed tokens
@@ -460,9 +464,10 @@ describe('RAGPipelineImpl', () => {
       const tokens: string[] = [];
       const generator = pipeline.queryStream('Test');
 
-      let result: { value: unknown; done: boolean };
-      while (!(result = await generator.next()).done) {
+      let result = await generator.next();
+      while (!result.done) {
         tokens.push(result.value as string);
+        result = await generator.next();
       }
 
       // Should handle empty/undefined gracefully

@@ -53,7 +53,13 @@ export class RAGPipelineImpl implements RAGPipeline {
     private llmConfig: LLMConfig,
     private reranker?: Reranker
   ) {
-    this.openai = new OpenAI({ apiKey: llmConfig.apiKey });
+    this.openai = new OpenAI({
+      apiKey: llmConfig.apiKey,
+      baseURL: llmConfig.baseURL,
+      defaultHeaders: llmConfig.baseURL?.includes('openrouter')
+        ? { 'HTTP-Referer': 'https://corpusai.io', 'X-Title': 'CorpusAI' }
+        : undefined,
+    });
     this.model = llmConfig.model ?? 'gpt-4o-mini';
     this.temperature = llmConfig.temperature ?? 0.2;
     this.maxTokens = llmConfig.maxTokens ?? 1000;
@@ -89,6 +95,13 @@ export class RAGPipelineImpl implements RAGPipeline {
     const onProgress = options?.onProgress;
 
     await this.vectorStore.ensureCollection();
+
+    // Clean existing vectors for these documents (idempotent retry)
+    for (const doc of documents) {
+      await this.vectorStore.delete({
+        must: [{ key: 'documentId', match: { value: doc.id } }],
+      });
+    }
 
     // === PHASE 1: CHUNKING (0-10%) ===
     onProgress?.('chunking', 0, 'Starting chunking');
@@ -176,13 +189,29 @@ export class RAGPipelineImpl implements RAGPipeline {
    * Inclut des métriques de latence pour le monitoring.
    */
   async query(question: string, options: QueryOptions = {}): Promise<RAGResponse> {
-    const { topK = 5, scoreThreshold = 0.6, filter, includeSources = true, rerankerConfig, conversationHistory = [], maxContextChars } = options;
+    const {
+      topK = 5,
+      scoreThreshold = 0.6,
+      filter,
+      includeSources = true,
+      rerankerConfig,
+      conversationHistory = [],
+      maxContextChars,
+    } = options;
     const totalStart = Date.now();
-    const metrics: QueryMetrics = { embeddingMs: 0, searchMs: 0, rerankMs: 0, llmMs: 0, totalMs: 0 };
+    const metrics: QueryMetrics = {
+      embeddingMs: 0,
+      searchMs: 0,
+      rerankMs: 0,
+      llmMs: 0,
+      totalMs: 0,
+    };
 
     this.log('\n========== RAG QUERY ==========');
     this.log(`[RAG] Question: "${question}"`);
-    this.log(`[RAG] Options: topK=${topK}, scoreThreshold=${scoreThreshold}, historyLength=${conversationHistory.length}`);
+    this.log(
+      `[RAG] Options: topK=${topK}, scoreThreshold=${scoreThreshold}, historyLength=${conversationHistory.length}`
+    );
 
     // 1. Embedding de la question
     const embedStart = Date.now();
@@ -203,7 +232,9 @@ export class RAGPipelineImpl implements RAGPipeline {
 
     // Log each result with score
     results.forEach((r, i) => {
-      this.log(`[RAG]   #${i + 1} score=${r.score.toFixed(4)} source="${r.payload.source ?? 'unknown'}" text="${((r.payload.text as string) || '').slice(0, 80)}..."`);
+      this.log(
+        `[RAG]   #${i + 1} score=${r.score.toFixed(4)} source="${r.payload.source ?? 'unknown'}" text="${((r.payload.text as string) || '').slice(0, 80)}..."`
+      );
     });
 
     // 3. Appliquer le reranking si configuré
@@ -229,9 +260,8 @@ export class RAGPipelineImpl implements RAGPipeline {
       this.log('[RAG] No results found - calling LLM without context');
     }
 
-    const avgScore = sources.length > 0
-      ? sources.reduce((sum, s) => sum + s.score, 0) / sources.length
-      : 0;
+    const avgScore =
+      sources.length > 0 ? sources.reduce((sum, s) => sum + s.score, 0) / sources.length : 0;
     this.log(`[RAG] Average score: ${avgScore.toFixed(4)}`);
 
     const lowRelevance = rankedResults.length === 0 || avgScore < 0.5;
@@ -264,6 +294,9 @@ export class RAGPipelineImpl implements RAGPipeline {
     });
     metrics.llmMs = Date.now() - llmStart;
     metrics.totalMs = Date.now() - totalStart;
+    metrics.promptTokens = response.usage?.prompt_tokens;
+    metrics.completionTokens = response.usage?.completion_tokens;
+    metrics.totalTokens = response.usage?.total_tokens;
 
     const answer = response.choices[0]?.message.content || '';
     this.log(`[RAG] LLM response: ${metrics.llmMs}ms, ${answer.length} chars`);
@@ -285,11 +318,21 @@ export class RAGPipelineImpl implements RAGPipeline {
     question: string,
     options: QueryOptions = {}
   ): AsyncGenerator<string, RAGResponse> {
-    const { topK = 5, scoreThreshold = 0.6, filter, includeSources = true, rerankerConfig, conversationHistory = [], maxContextChars } = options;
+    const {
+      topK = 5,
+      scoreThreshold = 0.6,
+      filter,
+      includeSources = true,
+      rerankerConfig,
+      conversationHistory = [],
+      maxContextChars,
+    } = options;
 
     this.log('\n========== RAG QUERY STREAM ==========');
     this.log(`[RAG-STREAM] Question: "${question}"`);
-    this.log(`[RAG-STREAM] Options: topK=${topK}, scoreThreshold=${scoreThreshold}, historyLength=${conversationHistory.length}`);
+    this.log(
+      `[RAG-STREAM] Options: topK=${topK}, scoreThreshold=${scoreThreshold}, historyLength=${conversationHistory.length}`
+    );
 
     // 1. Embedding de la question
     const questionEmbedding = await this.embeddings.embed(question);
@@ -304,7 +347,9 @@ export class RAGPipelineImpl implements RAGPipeline {
 
     this.log(`[RAG-STREAM] Search: ${results.length} results`);
     results.forEach((r, i) => {
-      this.log(`[RAG-STREAM]   #${i + 1} score=${r.score.toFixed(4)} source="${r.payload.source}" text="${(r.payload.text as string).slice(0, 80)}..."`);
+      this.log(
+        `[RAG-STREAM]   #${i + 1} score=${r.score.toFixed(4)} source="${r.payload.source}" text="${(r.payload.text as string).slice(0, 80)}..."`
+      );
     });
 
     // 3. Appliquer le reranking si configuré
@@ -320,9 +365,8 @@ export class RAGPipelineImpl implements RAGPipeline {
 
     const context = this.buildContext(sources, maxContextChars);
 
-    const avgScore = sources.length > 0
-      ? sources.reduce((sum, s) => sum + s.score, 0) / sources.length
-      : 0;
+    const avgScore =
+      sources.length > 0 ? sources.reduce((sum, s) => sum + s.score, 0) / sources.length : 0;
     this.log(`[RAG-STREAM] Average score: ${avgScore.toFixed(4)}`);
 
     const lowRelevance = rankedResults.length === 0 || avgScore < 0.5;
@@ -346,6 +390,7 @@ export class RAGPipelineImpl implements RAGPipeline {
       temperature: this.temperature,
       max_tokens: this.maxTokens,
       stream: true,
+      stream_options: { include_usage: true },
       messages: [
         { role: 'system', content: systemContent },
         ...historyMessages,
@@ -357,11 +402,20 @@ export class RAGPipelineImpl implements RAGPipeline {
 
     // Use array buffer instead of string concatenation for O(n) performance
     const tokens: string[] = [];
+    let streamUsage:
+      | { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }
+      | undefined;
 
     for await (const chunk of stream) {
       const token = chunk.choices[0]?.delta?.content || '';
-      tokens.push(token);
-      yield token;
+      if (token) {
+        tokens.push(token);
+        yield token;
+      }
+      // Usage is included in the last chunk when stream_options.include_usage is true
+      if (chunk.usage) {
+        streamUsage = chunk.usage;
+      }
     }
 
     const answer = tokens.join('');
@@ -372,6 +426,16 @@ export class RAGPipelineImpl implements RAGPipeline {
       answer,
       sources: includeSources ? sources : [],
       context,
+      metrics: {
+        embeddingMs: 0,
+        searchMs: 0,
+        rerankMs: 0,
+        llmMs: 0,
+        totalMs: 0,
+        promptTokens: streamUsage?.prompt_tokens,
+        completionTokens: streamUsage?.completion_tokens,
+        totalTokens: streamUsage?.total_tokens,
+      },
     };
   }
 
