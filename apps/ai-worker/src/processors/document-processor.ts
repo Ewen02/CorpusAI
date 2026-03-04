@@ -1,17 +1,22 @@
-import { prisma, DocumentStatus, ProcessingStep } from "@corpusai/database";
-import { DocumentParserService, type ProcessingStage } from "@corpusai/corpus";
-import type { DocumentProcessingJobData } from "@corpusai/queue";
-import { getProgressService } from "../services/progress.service";
-import { createPipelineForAI } from "../services/rag-factory";
+import * as fs from 'node:fs/promises';
+import { prisma, DocumentStatus, ProcessingStep } from '@corpusai/database';
+import { DocumentParserService, type ProcessingStage } from '@corpusai/corpus';
+import type { DocumentProcessingJobData, DocumentProgressEvent } from '@corpusai/queue';
+import { getProgressService } from '../services/progress.service';
+import { createPipelineForAI } from '../services/rag-factory';
 
 const parserService = new DocumentParserService();
 
 function mapStageToStep(stage: ProcessingStage): ProcessingStep {
   switch (stage) {
-    case "chunking": return ProcessingStep.CHUNKING;
-    case "embedding": return ProcessingStep.EMBEDDING;
-    case "storing": return ProcessingStep.STORING;
-    default: return ProcessingStep.CHUNKING;
+    case 'chunking':
+      return ProcessingStep.CHUNKING;
+    case 'embedding':
+      return ProcessingStep.EMBEDDING;
+    case 'storing':
+      return ProcessingStep.STORING;
+    default:
+      return ProcessingStep.CHUNKING;
   }
 }
 
@@ -20,7 +25,7 @@ async function publishProgress(
   status: DocumentStatus,
   progress: number,
   step: ProcessingStep | null,
-  errorMessage?: string,
+  errorMessage?: string
 ): Promise<void> {
   const progressService = getProgressService();
 
@@ -40,17 +45,18 @@ async function publishProgress(
   });
 
   // Publish to Redis for SSE
+  // Map Prisma enums to queue event string literals (same values, different types)
   await progressService.publish({
     documentId,
-    status: status as any,
+    status: status as DocumentProgressEvent['status'],
     progress: Math.min(100, Math.max(0, progress)),
-    step: step as any,
+    step: step as DocumentProgressEvent['step'],
     errorMessage,
   });
 }
 
 export async function processDocument(data: DocumentProcessingJobData): Promise<void> {
-  const { documentId, aiId, filename, mimeType, url, content, buffer } = data;
+  const { documentId, aiId, filename, mimeType, url, content, buffer, filePath } = data;
 
   // Mark as processing
   await prisma.document.update({
@@ -79,13 +85,20 @@ export async function processDocument(data: DocumentProcessingJobData): Promise<
       // Direct text content — no parsing needed
       parsedContent = content;
     } else {
-      // Parse from buffer or URL
-      const source = buffer
-        ? Buffer.from(buffer, "base64")
-        : url;
+      // Parse from filePath, buffer, or URL
+      let source: Buffer | string | undefined;
+      if (filePath) {
+        source = await fs.readFile(filePath);
+        // Clean up temp file after reading
+        fs.unlink(filePath).catch(() => {});
+      } else if (buffer) {
+        source = Buffer.from(buffer, 'base64');
+      } else {
+        source = url;
+      }
 
       if (!source) {
-        throw new Error("No content, buffer, or URL provided");
+        throw new Error('No content, filePath, buffer, or URL provided');
       }
 
       const parsed = await parserService.parse({
@@ -105,7 +118,7 @@ export async function processDocument(data: DocumentProcessingJobData): Promise<
     }
 
     if (!parsedContent || parsedContent.trim().length === 0) {
-      throw new Error("Document content is empty");
+      throw new Error('Document content is empty');
     }
 
     await publishProgress(documentId, DocumentStatus.PROCESSING, 10, ProcessingStep.PARSING);
@@ -128,11 +141,12 @@ export async function processDocument(data: DocumentProcessingJobData): Promise<
           const step = mapStageToStep(stage);
           await publishProgress(documentId, DocumentStatus.PROCESSING, overallProgress, step);
         },
-      },
+      }
     );
 
     // Calculate word count if not from parser
-    const wordCount = metadata.wordCount ?? parsedContent.split(/\s+/).filter((w) => w.length > 0).length;
+    const wordCount =
+      metadata.wordCount ?? parsedContent.split(/\s+/).filter((w) => w.length > 0).length;
 
     // Mark as indexed
     await prisma.document.update({
@@ -153,9 +167,11 @@ export async function processDocument(data: DocumentProcessingJobData): Promise<
 
     await publishProgress(documentId, DocumentStatus.INDEXED, 100, null);
 
-    console.log(`Document ${documentId} indexed: ${result.chunksCreated} chunks, ${wordCount} words`);
+    console.log(
+      `Document ${documentId} indexed: ${result.chunksCreated} chunks, ${wordCount} words`
+    );
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error(`Failed to process document ${documentId}: ${errorMessage}`);
 
     await prisma.document.update({

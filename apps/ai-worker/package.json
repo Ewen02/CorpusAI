@@ -10,7 +10,8 @@
     "experiment:qdrant": "tsx src/experiments/qdrant.ts",
     "experiment:chunking": "tsx src/experiments/chunking.ts",
     "experiment:rag": "tsx src/experiments/rag-pipeline.ts",
-    "experiment:corpus": "tsx src/experiments/corpus-test.ts"
+    "experiment:corpus": "tsx src/experiments/corpus-test.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@corpusai/ai-rules": "workspace:*",
