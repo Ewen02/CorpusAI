@@ -16,11 +16,19 @@
      ▼             ▼             ▼             ▼
 ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌──────────┐
 │PostgreSQL│  │ Qdrant  │  │  Redis  │  │  OpenAI  │
-│ (Neon)   │  │(vectors)│  │ (cache) │  │   API    │
-└─────────┘  └─────────┘  └─────────┘  └──────────┘
+│ (Neon)   │  │(vectors)│  │(cache + │  │   API    │
+└─────────┘  └─────────┘  │ BullMQ +│  └──────────┘
+                          │ pub/sub)│
+                          └────┬────┘
+                               │
+                    ┌──────────▼──────────┐
+                    │ apps/ai-worker      │
+                    │ BullMQ worker       │
+                    │ (document processor)│
+                    └─────────────────────┘
 ```
 
-> `apps/ai-worker/` contient uniquement des scripts d'experimentation (embeddings, chunking, qdrant, rag). Le processing de documents se fait dans l'API de maniere synchrone.
+> `apps/ai-worker/` est un worker BullMQ de production (concurrency 3) qui traite les documents de maniere asynchrone : parse → chunk → embed → store dans Qdrant. Il contient aussi des scripts d'experimentation dans `src/experiments/`.
 
 ---
 
@@ -31,13 +39,14 @@ corpusai/
 ├── apps/
 │   ├── web/              # Next.js 15 — interface createurs + widget
 │   ├── api/              # NestJS 11 — backend principal
-│   └── ai-worker/        # Scripts d'experimentation
+│   └── ai-worker/        # BullMQ worker — document processing async
 ├── packages/
 │   ├── types/            # Types TypeScript partages (entites, API, enums)
 │   ├── subscription/     # Logique abonnements & limites par plan
 │   ├── ai-rules/         # Source unique de verite : prompts systeme, confidence
 │   ├── database/         # Prisma schema & client PostgreSQL
 │   ├── corpus/           # Pipeline RAG complet (parsers → vectors → LLM)
+│   ├── queue/            # BullMQ queue client, job types, retry config
 │   └── ui/               # Composants React (Atomic Design)
 └── tooling/
     └── typescript-config/ # Configs TS partagees
@@ -255,6 +264,6 @@ ConfidenceLevel     : HIGH, MEDIUM, LOW
 |---------|-------|--------|
 | PostgreSQL (Neon) | Base de donnees principale | DATABASE_URL |
 | Qdrant Cloud | Stockage vecteurs embeddings | QDRANT_URL, QDRANT_API_KEY |
-| Redis | Cache embeddings | REDIS_URL |
+| Redis | Cache embeddings + BullMQ queue + pub/sub progress | REDIS_URL |
 | OpenAI | Embeddings + LLM (chat) | OPENAI_API_KEY |
 | Better Auth | Auth sessions + OAuth | BETTER_AUTH_SECRET |

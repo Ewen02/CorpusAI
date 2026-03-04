@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git stash:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm dev:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm remove:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm --filter:*)",
+      "Bash(pnpm outdated:*)",
+      "Bash(npx prisma:*)",
+      "Bash(nest:*)",
+      "Bash(tsx:*)",
+      "Bash(turbo:*)",
+      "Bash(docker:*)",
+      "Bash(wc:*)",
+      "Bash(ls:*)"
+    ],
+    "deny": []
+  }
+}

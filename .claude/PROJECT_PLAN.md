@@ -40,7 +40,7 @@ EndUser (1) ──── (N) Conversation
 | Frontend | Next.js 15, React 19, Tailwind, shadcn/ui |
 | Backend | NestJS 11, Prisma 6, PostgreSQL (Neon) |
 | Vector DB | Qdrant Cloud |
-| Cache | Redis (cache embeddings) |
+| Cache + Queue | Redis (cache embeddings + BullMQ + pub/sub) |
 | Embeddings | OpenAI text-embedding-3-small (1536 dims) |
 | LLM | OpenAI GPT-4o-mini / GPT-4o |
 | Auth | Better Auth (email + OAuth Google/GitHub) |
@@ -61,7 +61,7 @@ EndUser (1) ──── (N) Conversation
 | Widget embeddable | 100% | /embed/[slug] avec params (theme, color, height) |
 | Analytics | 90% | Dashboard global + par AI, graphiques Recharts |
 | Securite | 90% | SSRF, AuthGuard, ownership checks, abort streaming |
-| Background workers | 0% | Document processing synchrone dans l'API |
+| Background workers | 90% | BullMQ + Redis + @corpusai/queue + ai-worker production (manque dead-letter queue polish) |
 | Rate limiting | 50% | Logique dans @corpusai/subscription, pas enforced |
 | Tests | 20% | Seulement @corpusai/corpus (127 tests) |
 
@@ -73,7 +73,7 @@ EndUser (1) ──── (N) Conversation
 
 | Tache | Description |
 |-------|-------------|
-| **Background workers** | BullMQ + Redis pour processing documents async (actuellement synchrone dans l'API) |
+| ~~**Background workers**~~ | ~~Implemente : BullMQ + Redis + @corpusai/queue + ai-worker~~ |
 | **Rate limiting** | Enforcement dans l'API (par endpoint, par plan, compteur questions/jour) |
 
 ### P1 — Important

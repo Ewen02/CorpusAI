@@ -17,17 +17,31 @@
 
 ---
 
+## Monorepo Structure
+
+```
+corpusai/
+├── apps/
+│   ├── web/              # Next.js 15 — frontend createurs + widget
+│   ├── api/              # NestJS 11 — backend REST API
+│   └── ai-worker/        # BullMQ worker — document processing async
+├── packages/
+│   ├── types/            # Types TypeScript partages (entites, API, enums)
+│   ├── ui/               # Composants React (Atomic Design)
+│   ├── database/         # Prisma 6 schema & client PostgreSQL
+│   ├── corpus/           # Pipeline RAG complet (parsers → vectors → LLM)
+│   ├── ai-rules/         # Prompts systeme, confidence, context formatting
+│   ├── subscription/     # Logique abonnements & limites par plan
+│   └── queue/            # BullMQ queue client, job types, retry config
+└── tooling/
+    └── typescript-config/ # Configs TS partagees
+```
+
+---
+
 ## Conventional Commits
 
-Mandatory format for all commits:
-
-```
-<type>(<scope>): <description>
-
-[optional body]
-
-[optional footer]
-```
+Mandatory format: `<type>(<scope>): <description>`
 
 ### Allowed Types
 | Type | Usage |
@@ -41,16 +55,8 @@ Mandatory format for all commits:
 | `test` | Adding or modifying tests |
 | `chore` | Maintenance, dependencies, config |
 
-### Recommended Scopes
-- `web`, `api`, `ui`, `types`, `database`, `corpus`, `ai-rules`, `subscription`
-
-### Examples
-```
-feat(web): add document upload drag-and-drop
-fix(api): prevent duplicate embeddings on re-upload
-perf(corpus): batch embedding requests for faster indexing
-refactor(ui): extract ChatMessage into atomic component
-```
+### Scopes
+`web`, `api`, `ai-worker`, `ui`, `types`, `database`, `corpus`, `ai-rules`, `subscription`, `queue`
 
 ### Strict Rules
 - **NEVER mention Claude, AI assistant, or similar tools in commits**
@@ -61,78 +67,24 @@ refactor(ui): extract ChatMessage into atomic component
 
 ---
 
-## Atomic Design (UI)
+## Import Ordering
 
-The `@corpusai/ui` package strictly follows Atomic Design:
-
-### Component Hierarchy
-
+```typescript
+// 1. External packages
+import { Injectable } from "@nestjs/common";
+// 2. Internal packages (@corpusai/*)
+import { AIData } from "@corpusai/types";
+// 3. Local imports
+import { MyService } from "./my.service";
 ```
-src/
-├── atoms/          # Indivisible elements
-│   ├── Button.tsx
-│   ├── Input.tsx
-│   ├── Badge.tsx
-│   ├── Avatar.tsx
-│   ├── Skeleton.tsx
-│   └── Icon.tsx
-│
-├── molecules/      # Atom combinations
-│   ├── FormField.tsx      # Label + Input + Error
-│   ├── Card.tsx           # Container + Header + Body
-│   ├── Toast.tsx          # Icon + Message + Action
-│   ├── Tooltip.tsx        # Trigger + Content
-│   └── SearchBar.tsx      # Input + Button + Icon
-│
-├── organisms/      # Complete sections
-│   ├── ChatInterface.tsx  # Messages + Input + Actions
-│   ├── DocumentUploader.tsx
-│   ├── AICard.tsx
-│   ├── ConversationList.tsx
-│   └── SourceCitation.tsx
-│
-├── templates/      # Page layouts
-│   ├── DashboardLayout.tsx
-│   ├── ChatLayout.tsx
-│   └── WidgetLayout.tsx
-│
-└── pages/          # Final assembly (in apps/web)
-```
-
-### Atomic Design Rules
-1. **Atoms**: No dependency on other UI components
-2. **Molecules**: Composed only of atoms
-3. **Organisms**: Can use atoms, molecules, and other organisms
-4. **Templates**: Structure without real data
-5. **Pages**: Connect templates to data
-
-### Naming Conventions
-- PascalCase for components
-- One file = one default exported component
-- Props typed with `interface ComponentNameProps`
-- Variants via `cva()` from class-variance-authority
 
 ---
 
 ## Performance Guidelines
 
-### Front-end
-- Images: Next/Image with AVIF/WebP formats
-- Fonts: `next/font` with subset
-- Bundle: Regularly analyze with `@next/bundle-analyzer`
-- Hydration: Minimize client components
-
-### Back-end
-- Queries: Always use `select` to limit fields
-- N+1: Use Prisma `include` intelligently
-- Cache: Redis for frequent data (appropriate TTL)
-- Rate limiting: Configure per endpoint
-
-### AI/RAG
-- Embeddings: Batch requests (max 100 per call)
-- Qdrant: HNSW index for fast search
-- Chunks: Optimal size 500-1000 tokens
-- LLM: Streaming for reactive UX
+- **Front-end**: Next/Image (AVIF/WebP), `next/font` with subset, minimize client components
+- **Back-end**: Always `select` to limit fields, Prisma `include` wisely, Redis cache with TTL
+- **AI/RAG**: Batch embeddings (max 100/call), chunks 400-1000 tokens, streaming for UX
 
 ---
 
@@ -141,22 +93,15 @@ src/
 ### Color Palette (Dark Theme)
 ```css
 :root {
-  /* Dark/neutral base */
-  --background: 240 10% 3.9%;        /* #0a0a0f */
+  --background: 240 10% 3.9%;
   --foreground: 0 0% 98%;
   --card: 240 10% 5.9%;
   --muted: 240 5% 15%;
   --muted-foreground: 240 5% 65%;
-
-  /* Cold primary color (blue-violet) */
   --primary: 221 83% 53%;
   --primary-foreground: 0 0% 100%;
-
-  /* Discrete accent */
   --accent: 240 5% 15%;
   --accent-foreground: 0 0% 98%;
-
-  /* States */
   --destructive: 0 62% 50%;
   --success: 142 76% 36%;
   --warning: 38 92% 50%;
@@ -173,23 +118,31 @@ src/
 - Dark base for reduced eye strain
 - Cold blue accent for primary actions, never aggressive
 - Soft contrasts, clear hierarchy
-- Inter for text, generous sizes
 
 ---
 
-## Agents de développement
+## Monorepo Commands
 
-Selon le contexte de la tâche, utiliser automatiquement l'agent approprié :
+```bash
+pnpm build                                    # Build all packages
+pnpm lint                                     # Lint everything
+pnpm typecheck                                # TypeScript check
+pnpm --filter @corpusai/database db:push      # Push Prisma schema
+pnpm --filter @corpusai/corpus test           # Run corpus tests (127 tests)
+```
 
-| Agent | Fichier | Contexte d'utilisation |
-|-------|---------|------------------------|
-| Frontend Engineer | `.claude/agents/frontend-engineer.md` | `apps/web/`, `packages/ui/`, composants React, pages Next.js |
-| Backend Engineer | `.claude/agents/backend-engineer.md` | `apps/api/`, `packages/database/`, endpoints, Prisma |
-| AI/RAG Engineer | `.claude/agents/ai-rag-engineer.md` | `apps/ai-worker/`, `packages/corpus/`, embeddings, Qdrant |
-| Fullstack Lead | `.claude/agents/fullstack-lead.md` | Architecture globale, refactoring cross-packages, code review |
+---
 
-### Règles d'utilisation
-1. Identifier le domaine principal de la tâche
-2. Lire l'agent correspondant pour appliquer ses standards
-3. Si multi-domaines → utiliser Fullstack Lead
-4. Toujours respecter les checklists qualité de l'agent
+## Domain-Specific Instructions
+
+Each app/package has its own `CLAUDE.md` with detailed domain instructions.
+They are loaded automatically when working on files in that directory.
+
+| Directory | CLAUDE.md Content |
+|-----------|-------------------|
+| `apps/web/` | Next.js routes, React Query hooks, apiClient, auth, components |
+| `apps/api/` | NestJS modules, guards, DTOs, Swagger, ownership, Prisma |
+| `apps/ai-worker/` | BullMQ worker, document processor, progress pub/sub |
+| `packages/ui/` | Atomic Design rules, cva() pattern, component inventory |
+| `packages/corpus/` | RAG pipeline, chunking, embeddings, reranking, tests |
+| `packages/database/` | Prisma schema, models, enums, commands |

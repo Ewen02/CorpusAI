@@ -2,12 +2,6 @@
 
 ## P0 — Requis pour lancement
 
-- [ ] **Background workers**
-  - Setup BullMQ + Redis dans apps/ai-worker
-  - Job queue pour document processing (actuellement synchrone dans l'API)
-  - Worker: parse > chunk > embed > store
-  - Retry/dead-letter pour les jobs echoues
-
 - [ ] **Rate limiting**
   - Guard NestJS par endpoint et par plan
   - Compteur questions/jour par AI (utiliser @corpusai/subscription)
@@ -39,13 +33,22 @@
 - [ ] Onboarding ameliore (wizard guide, templates AI)
 - [ ] API publique documentee
 - [ ] Multi-langue prompts dans ai-rules (EN)
+- [ ] Integration Stripe (checkout, webhooks, gestion abonnements)
+- [ ] Analytics reelles (ecrire dans DailyStats a chaque interaction)
+- [ ] Forgot password page
+- [ ] Changement mot de passe fonctionnel (settings/security)
 
 ---
 
-## Fait recemment (reference)
+## Fait (reference)
 
-- Refactoring ai-rules comme source unique de verite (prompts, confidence)
-- Securite : SSRF protection, AuthGuard RAG, ownership SSE, abort streaming
-- Debug logging conditionnel, maxContextChars, scoreThreshold unifie
-- Conversation history multi-turn, DRY getConversationHistory()
-- Tests pipeline alignes avec implementation (127 tests passing)
+- [x] **Background workers** — BullMQ + Redis + @corpusai/queue package + ai-worker production worker (concurrency 3, retry 3x, exponential backoff)
+- [x] Refactoring ai-rules comme source unique de verite (prompts, confidence)
+- [x] Securite : SSRF protection, AuthGuard RAG, ownership SSE, abort streaming
+- [x] Debug logging conditionnel, maxContextChars, scoreThreshold unifie
+- [x] Conversation history multi-turn, DRY getConversationHistory()
+- [x] Tests pipeline alignes avec implementation (127 tests passing)
+- [x] Widget embeddable /embed/[slug] avec params (theme, color, height)
+- [x] Dashboard createur avec stats reelles + graphiques Recharts
+- [x] Chat streaming SSE complet avec citations sources et niveaux confiance
+- [x] Setup Claude Code optimal (CLAUDE.md split, slash commands, settings.json)
