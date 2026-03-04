@@ -1,14 +1,10 @@
-import {
-  Injectable,
-  NotFoundException,
-  ForbiddenException,
-  Logger,
-} from "@nestjs/common";
-import { prisma, MessageRole, AIStatus, ConfidenceLevel } from "@corpusai/database";
-import { canAskQuestion } from "@corpusai/subscription";
-import { determineConfidence } from "@corpusai/ai-rules";
-import type { Source } from "@corpusai/corpus";
-import { RagService } from "../rag";
+import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
+import { prisma, MessageRole, AIStatus, ConfidenceLevel } from '@corpusai/database';
+import { canAskQuestion } from '@corpusai/subscription';
+import { determineConfidence } from '@corpusai/ai-rules';
+import type { Source, RAGResponse } from '@corpusai/corpus';
+import { RagService } from '../rag';
+import { incrementDailyStats } from '../../shared/daily-stats';
 
 @Injectable()
 export class ConversationsService {
@@ -33,7 +29,7 @@ export class ConversationsService {
       .reverse()
       .filter((m) => m.role === MessageRole.USER || m.role === MessageRole.ASSISTANT)
       .map((m) => ({
-        role: m.role === MessageRole.USER ? 'user' as const : 'assistant' as const,
+        role: m.role === MessageRole.USER ? ('user' as const) : ('assistant' as const),
         content: m.content,
       }));
   }
@@ -58,14 +54,14 @@ export class ConversationsService {
     });
 
     if (!ai) {
-      throw new NotFoundException("AI not found");
+      throw new NotFoundException('AI not found');
     }
 
     // Transform for widget compatibility
     return {
       ...ai,
       avatar: ai.logo, // Alias for frontend
-      isPublic: ai.accessType === "FREE", // Free access = public
+      isPublic: ai.accessType === 'FREE', // Free access = public
     };
   }
 
@@ -76,12 +72,12 @@ export class ConversationsService {
     });
 
     if (!ai) {
-      throw new NotFoundException("AI not found");
+      throw new NotFoundException('AI not found');
     }
 
     return prisma.conversation.findMany({
       where: { aiId },
-      orderBy: { updatedAt: "desc" },
+      orderBy: { updatedAt: 'desc' },
       select: {
         id: true,
         title: true,
@@ -105,7 +101,8 @@ export class ConversationsService {
       where: { id: conversationId },
       include: {
         messages: {
-          orderBy: { createdAt: "asc" },
+          orderBy: { createdAt: 'desc' },
+          take: 100,
           select: {
             id: true,
             role: true,
@@ -127,8 +124,11 @@ export class ConversationsService {
     });
 
     if (!conversation) {
-      throw new NotFoundException("Conversation not found");
+      throw new NotFoundException('Conversation not found');
     }
+
+    // Reverse messages to chronological order (fetched desc for take limit)
+    conversation.messages.reverse();
 
     return conversation;
   }
@@ -140,12 +140,12 @@ export class ConversationsService {
     });
 
     if (!conversation) {
-      throw new NotFoundException("Conversation not found");
+      throw new NotFoundException('Conversation not found');
     }
 
     return prisma.message.findMany({
       where: { conversationId },
-      orderBy: { createdAt: "asc" },
+      orderBy: { createdAt: 'asc' },
       select: {
         id: true,
         role: true,
@@ -164,7 +164,7 @@ export class ConversationsService {
 
     // Allow ACTIVE and DRAFT (for owner testing)
     if (!ai || (ai.status !== AIStatus.ACTIVE && ai.status !== AIStatus.DRAFT)) {
-      throw new NotFoundException("AI not found or not active");
+      throw new NotFoundException('AI not found or not active');
     }
 
     // Find or create end user
@@ -208,6 +208,8 @@ export class ConversationsService {
         data: { conversationCount: { increment: 1 } },
       });
 
+      await incrementDailyStats(tx, ai.userId, ai.id, 'conversationCount');
+
       return newConversation;
     });
 
@@ -221,6 +223,7 @@ export class ConversationsService {
         ai: {
           select: {
             id: true,
+            userId: true,
             systemPrompt: true,
             temperature: true,
             maxTokens: true,
@@ -234,7 +237,7 @@ export class ConversationsService {
     });
 
     if (!conversation) {
-      throw new NotFoundException("Conversation not found");
+      throw new NotFoundException('Conversation not found');
     }
 
     // Check rate limits
@@ -252,9 +255,7 @@ export class ConversationsService {
     });
 
     if (!canAskQuestion(conversation.ai.user.subscriptionPlan, todayQuestions)) {
-      throw new ForbiddenException(
-        "Daily question limit reached for this AI"
-      );
+      throw new ForbiddenException('Daily question limit reached for this AI');
     }
 
     // Save user message
@@ -311,11 +312,12 @@ export class ConversationsService {
           confidence,
           sources,
           latencyMs,
+          tokenUsage: ragResponse.metrics?.totalTokens ?? null,
         },
       });
 
       this.logger.log(
-        `RAG response for conversation ${conversationId}: ${ragResponse.sources.length} sources, ${latencyMs}ms`
+        `RAG response for conversation ${conversationId}: ${ragResponse.sources.length} sources, ${latencyMs}ms, ${ragResponse.metrics?.totalTokens ?? '?'} tokens`
       );
     } catch (error) {
       this.logger.error(`RAG query failed: ${error}`);
@@ -334,25 +336,26 @@ export class ConversationsService {
     }
 
     // Update conversation and AI question count atomically
-    await prisma.$transaction([
-      prisma.conversation.update({
+    await prisma.$transaction(async (tx) => {
+      await tx.conversation.update({
         where: { id: conversationId },
         data: {
           messageCount: { increment: 2 },
           title: conversation.title || content.slice(0, 50),
         },
-      }),
-      prisma.aI.update({
+      });
+      await tx.aI.update({
         where: { id: conversation.aiId },
         data: { questionCount: { increment: 1 } },
-      }),
-    ]);
+      });
+      await incrementDailyStats(tx, conversation.ai.userId, conversation.aiId, 'questionCount');
+    });
 
     return {
       userMessage,
       assistantMessage,
       isError,
-      errorType: isError ? 'rag_failure' as const : undefined,
+      errorType: isError ? ('rag_failure' as const) : undefined,
     };
   }
 
@@ -360,17 +363,20 @@ export class ConversationsService {
    * Type pour les événements de streaming.
    */
   static StreamEventType = {
-    TOKEN: "token",
-    SOURCES: "sources",
-    DONE: "done",
-    ERROR: "error",
+    TOKEN: 'token',
+    SOURCES: 'sources',
+    DONE: 'done',
+    ERROR: 'error',
   } as const;
 
   /**
    * Envoie un message avec streaming de la réponse.
    */
-  async *sendMessageStream(conversationId: string, content: string): AsyncGenerator<{
-    type: "token" | "sources" | "done" | "error";
+  async *sendMessageStream(
+    conversationId: string,
+    content: string
+  ): AsyncGenerator<{
+    type: 'token' | 'sources' | 'done' | 'error';
     data: unknown;
   }> {
     const conversation = await prisma.conversation.findUnique({
@@ -379,6 +385,7 @@ export class ConversationsService {
         ai: {
           select: {
             id: true,
+            userId: true,
             systemPrompt: true,
             temperature: true,
             maxTokens: true,
@@ -392,7 +399,7 @@ export class ConversationsService {
     });
 
     if (!conversation) {
-      yield { type: "error", data: { message: "Conversation not found" } };
+      yield { type: 'error', data: { message: 'Conversation not found' } };
       return;
     }
 
@@ -409,7 +416,7 @@ export class ConversationsService {
     });
 
     if (!canAskQuestion(conversation.ai.user.subscriptionPlan, todayQuestions)) {
-      yield { type: "error", data: { message: "Daily question limit reached for this AI" } };
+      yield { type: 'error', data: { message: 'Daily question limit reached for this AI' } };
       return;
     }
 
@@ -442,15 +449,15 @@ export class ConversationsService {
         }
       );
 
-      let fullAnswer = "";
-      let ragResponse: { answer: string; sources: Source[]; context: string } | undefined;
+      let fullAnswer = '';
+      let ragResponse: RAGResponse | undefined;
 
       // Yield tokens as they come
-      let result: IteratorResult<string, { answer: string; sources: Source[]; context: string }>;
+      let result: IteratorResult<string, RAGResponse>;
       while (!(result = await generator.next()).done) {
         const token = result.value;
         fullAnswer += token;
-        yield { type: "token", data: { token } };
+        yield { type: 'token', data: { token } };
       }
 
       ragResponse = result.value;
@@ -468,7 +475,7 @@ export class ConversationsService {
       }));
 
       // Yield sources
-      yield { type: "sources", data: { sources } };
+      yield { type: 'sources', data: { sources } };
 
       // Save assistant message
       const assistantMessage = await prisma.message.create({
@@ -479,23 +486,25 @@ export class ConversationsService {
           confidence,
           sources,
           latencyMs,
+          tokenUsage: ragResponse.metrics?.totalTokens ?? null,
         },
       });
 
       // Update conversation and AI question count atomically
-      await prisma.$transaction([
-        prisma.conversation.update({
+      await prisma.$transaction(async (tx) => {
+        await tx.conversation.update({
           where: { id: conversationId },
           data: {
             messageCount: { increment: 2 },
             title: conversation.title || content.slice(0, 50),
           },
-        }),
-        prisma.aI.update({
+        });
+        await tx.aI.update({
           where: { id: conversation.aiId },
           data: { questionCount: { increment: 1 } },
-        }),
-      ]);
+        });
+        await incrementDailyStats(tx, conversation.ai.userId, conversation.aiId, 'questionCount');
+      });
 
       this.logger.log(
         `RAG stream for conversation ${conversationId}: ${ragResponse.sources.length} sources, ${latencyMs}ms`
@@ -503,7 +512,7 @@ export class ConversationsService {
 
       // Yield done event
       yield {
-        type: "done",
+        type: 'done',
         data: {
           userMessage: {
             id: userMessage.id,
@@ -536,9 +545,9 @@ export class ConversationsService {
       });
 
       yield {
-        type: "error",
+        type: 'error',
         data: {
-          message: "Failed to generate response",
+          message: 'Failed to generate response',
           assistantMessage: {
             id: assistantMessage.id,
             role: assistantMessage.role,
@@ -563,7 +572,7 @@ export class ConversationsService {
     });
 
     if (!conversation || conversation.ai.userId !== userId) {
-      throw new NotFoundException("Conversation not found");
+      throw new NotFoundException('Conversation not found');
     }
 
     // Delete conversation and update counter atomically
@@ -579,5 +588,4 @@ export class ConversationsService {
 
     return { success: true };
   }
-
 }

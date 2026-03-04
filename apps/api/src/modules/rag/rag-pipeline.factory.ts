@@ -31,12 +31,20 @@ export class RagPipelineFactory implements OnModuleDestroy {
   private chunker: TokenChunker;
   private reranker: Reranker;
   private redis?: Redis;
+  private readonly llmApiKey: string;
+  private readonly llmBaseURL?: string;
+  private readonly llmModel: string;
 
   constructor(private configService: ConfigService) {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY');
     if (!apiKey) {
       throw new Error('OPENAI_API_KEY is required');
     }
+
+    // LLM config: supports OpenRouter, Together, Groq, or any OpenAI-compatible provider
+    this.llmApiKey = this.configService.get<string>('LLM_API_KEY') || apiKey;
+    this.llmBaseURL = this.configService.get<string>('LLM_BASE_URL');
+    this.llmModel = this.configService.get<string>('LLM_MODEL') || 'gpt-4o-mini';
 
     // Service d'embedding de base
     const baseEmbeddingService = new OpenAIEmbeddingService({
@@ -105,7 +113,10 @@ export class RagPipelineFactory implements OnModuleDestroy {
         return redis.mget(...keys);
       },
 
-      mset: async (entries: Array<{ key: string; value: string }>, ttlSeconds?: number): Promise<void> => {
+      mset: async (
+        entries: Array<{ key: string; value: string }>,
+        ttlSeconds?: number
+      ): Promise<void> => {
         if (entries.length === 0) return;
 
         const pipeline = redis.pipeline();
@@ -141,8 +152,9 @@ export class RagPipelineFactory implements OnModuleDestroy {
       vectorStore,
       this.chunker,
       {
-        apiKey: this.configService.get<string>('OPENAI_API_KEY')!,
-        model: llmConfig?.model || 'gpt-4o-mini',
+        apiKey: this.llmApiKey,
+        baseURL: this.llmBaseURL,
+        model: llmConfig?.model || this.llmModel,
         temperature: llmConfig?.temperature ?? 0.2,
         maxTokens: llmConfig?.maxTokens ?? 1000,
         systemPrompt: llmConfig?.systemPrompt,

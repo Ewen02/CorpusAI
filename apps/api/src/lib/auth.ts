@@ -1,27 +1,30 @@
-import "dotenv/config";
-import { betterAuth } from "better-auth";
-import { prismaAdapter } from "better-auth/adapters/prisma";
-import { prisma } from "@corpusai/database";
+import 'dotenv/config';
+import { betterAuth } from 'better-auth';
+import { prismaAdapter } from 'better-auth/adapters/prisma';
+import { prisma } from '@corpusai/database';
+import { Logger } from '@nestjs/common';
+
+const logger = new Logger('Auth');
 
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
-  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3001",
-  basePath: "/auth",
+  baseURL: process.env.BETTER_AUTH_URL || 'http://localhost:3001',
+  basePath: '/auth',
   database: prismaAdapter(prisma, {
-    provider: "postgresql",
+    provider: 'postgresql',
   }),
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: false, // Set to true in production
+    requireEmailVerification: process.env.NODE_ENV === 'production',
   },
   socialProviders: {
     google: {
-      clientId: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
     },
     github: {
-      clientId: process.env.GITHUB_CLIENT_ID || "",
-      clientSecret: process.env.GITHUB_CLIENT_SECRET || "",
+      clientId: process.env.GITHUB_CLIENT_ID || '',
+      clientSecret: process.env.GITHUB_CLIENT_SECRET || '',
     },
   },
   session: {
@@ -35,20 +38,36 @@ export const auth = betterAuth({
   user: {
     additionalFields: {
       subscriptionPlan: {
-        type: "string",
+        type: 'string',
         required: false,
-        defaultValue: "FREE",
+        defaultValue: 'FREE',
       },
       subscriptionStatus: {
-        type: "string",
+        type: 'string',
         required: false,
-        defaultValue: "ACTIVE",
+        defaultValue: 'ACTIVE',
       },
     },
   },
-  trustedOrigins: [
-    process.env.FRONTEND_URL || "http://localhost:3000",
-  ],
+  trustedOrigins: [process.env.FRONTEND_URL!],
+  hooks: {
+    // Better Auth's MiddlewareInputContext type is opaque — cast required to access request info
+    after: async (ctx) => {
+      const rawCtx = ctx as unknown as {
+        context?: { request?: { url?: string; method?: string } };
+      };
+      const url = rawCtx.context?.request?.url;
+      const method = rawCtx.context?.request?.method;
+      if (url) {
+        const path = new URL(url, 'http://localhost').pathname;
+        const authPaths = ['/auth/sign-in/email', '/auth/sign-up/email', '/auth/sign-out'];
+        if (authPaths.some((p) => path.endsWith(p))) {
+          logger.log(`Auth event: ${method ?? '?'} ${path}`);
+        }
+      }
+      return ctx;
+    },
+  },
 });
 
 export type Session = typeof auth.$Infer.Session;

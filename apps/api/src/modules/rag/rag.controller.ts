@@ -1,5 +1,12 @@
 import { Controller, Get, Param, Query, BadRequestException, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { RagService } from './rag.service';
 import { AuthGuard } from '../auth';
 
@@ -20,6 +27,9 @@ export class RagController {
    * - cacheEnabled: indique si le cache Redis est actif
    */
   @Get('metrics')
+  @ApiOperation({ summary: 'Get RAG cache metrics' })
+  @ApiResponse({ status: 200, description: 'RAG cache metrics returned' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   getMetrics() {
     return {
       cache: this.ragService.getCacheMetrics(),
@@ -34,6 +44,18 @@ export class RagController {
    * @example GET /rag/:aiId/debug-query?q=Comment%20commencer&threshold=0.6
    */
   @Get(':aiId/debug-query')
+  @ApiOperation({ summary: 'Debug RAG retrieval for an AI without generating an LLM response' })
+  @ApiParam({ name: 'aiId', description: 'AI ID' })
+  @ApiQuery({ name: 'q', required: true, description: 'Question to retrieve sources for' })
+  @ApiQuery({ name: 'topK', required: false, description: 'Number of sources to retrieve' })
+  @ApiQuery({
+    name: 'threshold',
+    required: false,
+    description: 'Minimum similarity score threshold',
+  })
+  @ApiResponse({ status: 200, description: 'Retrieved sources returned' })
+  @ApiResponse({ status: 400, description: 'Query parameter "q" is required' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async debugQuery(
     @Param('aiId') aiId: string,
     @Query('q') question: string,

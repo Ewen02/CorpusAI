@@ -5,16 +5,20 @@ import {
   ForbiddenException,
   BadRequestException,
   Logger,
-} from "@nestjs/common";
-import { prisma, DocumentStatus } from "@corpusai/database";
-import { getFeatureLimits, canUploadDocument, canAddDocument } from "@corpusai/subscription";
-import { SUPPORTED_DOCUMENT_TYPES } from "@corpusai/types";
-import type { Queue } from "bullmq";
-import type { DocumentProcessingJobData } from "@corpusai/queue";
-import { JOB_RETRY_CONFIG } from "@corpusai/queue";
-import { CreateDocumentDto } from "./dto/create-document.dto";
-import { CreateTextDocumentDto } from "./dto/create-text-document.dto";
-import { RagService } from "../rag";
+} from '@nestjs/common';
+import { prisma, DocumentStatus } from '@corpusai/database';
+import { getFeatureLimits, canUploadDocument, canAddDocument } from '@corpusai/subscription';
+import { SUPPORTED_DOCUMENT_TYPES, type SupportedDocumentType } from '@corpusai/types';
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
+import * as os from 'node:os';
+import type { Queue } from 'bullmq';
+import type { DocumentProcessingJobData } from '@corpusai/queue';
+import { JOB_RETRY_CONFIG } from '@corpusai/queue';
+import { CreateDocumentDto } from './dto/create-document.dto';
+import { CreateTextDocumentDto } from './dto/create-text-document.dto';
+import { RagService } from '../rag';
+import { incrementDailyStats } from '../../shared/daily-stats';
 
 export interface PaginationOptions {
   skip?: number;
@@ -27,7 +31,7 @@ export class DocumentsService {
 
   constructor(
     private ragService: RagService,
-    @Inject("DOCUMENT_QUEUE") private documentQueue: Queue<DocumentProcessingJobData>,
+    @Inject('DOCUMENT_QUEUE') private documentQueue: Queue<DocumentProcessingJobData>
   ) {}
 
   async findAllByAI(userId: string, aiId: string, options?: PaginationOptions) {
@@ -38,12 +42,12 @@ export class DocumentsService {
     });
 
     if (!ai) {
-      throw new NotFoundException("AI not found");
+      throw new NotFoundException('AI not found');
     }
 
     return prisma.document.findMany({
       where: { aiId },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
       skip,
       take,
       select: {
@@ -72,7 +76,7 @@ export class DocumentsService {
     });
 
     if (!document || document.ai.userId !== userId) {
-      throw new NotFoundException("Document not found");
+      throw new NotFoundException('Document not found');
     }
 
     return document;
@@ -92,7 +96,7 @@ export class DocumentsService {
     });
 
     if (!ai) {
-      throw new NotFoundException("AI not found");
+      throw new NotFoundException('AI not found');
     }
 
     const limits = getFeatureLimits(ai.user.subscriptionPlan);
@@ -110,10 +114,10 @@ export class DocumentsService {
       );
     }
 
-    const isSupported = SUPPORTED_DOCUMENT_TYPES.includes(dto.mimeType as any);
+    const isSupported = SUPPORTED_DOCUMENT_TYPES.includes(dto.mimeType as SupportedDocumentType);
     if (!isSupported) {
       throw new BadRequestException(
-        `Unsupported file type. Supported types: ${SUPPORTED_DOCUMENT_TYPES.join(", ")}`
+        `Unsupported file type. Supported types: ${SUPPORTED_DOCUMENT_TYPES.join(', ')}`
       );
     }
 
@@ -134,11 +138,13 @@ export class DocumentsService {
         data: { documentCount: { increment: 1 } },
       });
 
+      await incrementDailyStats(tx, userId, aiId, 'documentCount');
+
       return newDocument;
     });
 
     await this.documentQueue.add(
-      "process",
+      'process',
       {
         documentId: document.id,
         aiId,
@@ -146,7 +152,7 @@ export class DocumentsService {
         mimeType: dto.mimeType,
         url: dto.url,
       },
-      JOB_RETRY_CONFIG,
+      JOB_RETRY_CONFIG
     );
 
     this.logger.log(`Document ${document.id} queued for processing`);
@@ -167,7 +173,7 @@ export class DocumentsService {
     });
 
     if (!ai) {
-      throw new NotFoundException("AI not found");
+      throw new NotFoundException('AI not found');
     }
 
     const limits = getFeatureLimits(ai.user.subscriptionPlan);
@@ -178,7 +184,7 @@ export class DocumentsService {
       );
     }
 
-    const sizeMB = Buffer.byteLength(dto.content, "utf8") / (1024 * 1024);
+    const sizeMB = Buffer.byteLength(dto.content, 'utf8') / (1024 * 1024);
     if (!canUploadDocument(ai.user.subscriptionPlan, sizeMB)) {
       throw new ForbiddenException(
         `Content size exceeds the limit (${limits.maxDocumentSizeMB}MB) for your plan`
@@ -190,8 +196,8 @@ export class DocumentsService {
         data: {
           aiId,
           filename: dto.filename,
-          mimeType: "text/plain",
-          size: Buffer.byteLength(dto.content, "utf8"),
+          mimeType: 'text/plain',
+          size: Buffer.byteLength(dto.content, 'utf8'),
           status: DocumentStatus.PENDING,
         },
       });
@@ -201,19 +207,21 @@ export class DocumentsService {
         data: { documentCount: { increment: 1 } },
       });
 
+      await incrementDailyStats(tx, userId, aiId, 'documentCount');
+
       return newDocument;
     });
 
     await this.documentQueue.add(
-      "process",
+      'process',
       {
         documentId: document.id,
         aiId,
         filename: dto.filename,
-        mimeType: "text/plain",
+        mimeType: 'text/plain',
         content: dto.content,
       },
-      JOB_RETRY_CONFIG,
+      JOB_RETRY_CONFIG
     );
 
     this.logger.log(`Text document ${document.id} queued for processing`);
@@ -234,7 +242,7 @@ export class DocumentsService {
     });
 
     if (!ai) {
-      throw new NotFoundException("AI not found");
+      throw new NotFoundException('AI not found');
     }
 
     const limits = getFeatureLimits(ai.user.subscriptionPlan);
@@ -252,10 +260,10 @@ export class DocumentsService {
       );
     }
 
-    const isSupported = SUPPORTED_DOCUMENT_TYPES.includes(file.mimetype as any);
+    const isSupported = SUPPORTED_DOCUMENT_TYPES.includes(file.mimetype as SupportedDocumentType);
     if (!isSupported) {
       throw new BadRequestException(
-        `Unsupported file type: ${file.mimetype}. Supported types: ${SUPPORTED_DOCUMENT_TYPES.join(", ")}`
+        `Unsupported file type: ${file.mimetype}. Supported types: ${SUPPORTED_DOCUMENT_TYPES.join(', ')}`
       );
     }
 
@@ -275,19 +283,27 @@ export class DocumentsService {
         data: { documentCount: { increment: 1 } },
       });
 
+      await incrementDailyStats(tx, userId, aiId, 'documentCount');
+
       return newDocument;
     });
 
+    // Write file to temp directory to avoid storing large buffers in Redis
+    const tmpDir = path.join(os.tmpdir(), 'corpusai-uploads');
+    await fs.mkdir(tmpDir, { recursive: true });
+    const filePath = path.join(tmpDir, `${document.id}-${file.originalname}`);
+    await fs.writeFile(filePath, file.buffer);
+
     await this.documentQueue.add(
-      "process",
+      'process',
       {
         documentId: document.id,
         aiId,
         filename: file.originalname,
         mimeType: file.mimetype,
-        buffer: file.buffer.toString("base64"),
+        filePath,
       },
-      JOB_RETRY_CONFIG,
+      JOB_RETRY_CONFIG
     );
 
     this.logger.log(`Uploaded document ${document.id} queued for processing`);
@@ -312,7 +328,7 @@ export class DocumentsService {
     });
 
     if (!document || document.ai.userId !== userId) {
-      throw new NotFoundException("Document not found");
+      throw new NotFoundException('Document not found');
     }
 
     return {
@@ -337,7 +353,7 @@ export class DocumentsService {
     });
 
     if (!document || document.ai.userId !== userId) {
-      throw new NotFoundException("Document not found");
+      throw new NotFoundException('Document not found');
     }
 
     try {
@@ -370,11 +386,11 @@ export class DocumentsService {
     });
 
     if (!document || document.ai.userId !== userId) {
-      throw new NotFoundException("Document not found");
+      throw new NotFoundException('Document not found');
     }
 
     if (document.status !== DocumentStatus.FAILED) {
-      throw new BadRequestException("Only failed documents can be retried");
+      throw new BadRequestException('Only failed documents can be retried');
     }
 
     await prisma.document.update({
@@ -388,7 +404,7 @@ export class DocumentsService {
     });
 
     await this.documentQueue.add(
-      "process",
+      'process',
       {
         documentId: document.id,
         aiId: document.aiId,
@@ -396,7 +412,7 @@ export class DocumentsService {
         mimeType: document.mimeType,
         url: document.url ?? undefined,
       },
-      JOB_RETRY_CONFIG,
+      JOB_RETRY_CONFIG
     );
 
     this.logger.log(`Document ${documentId} re-queued for processing`);

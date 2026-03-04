@@ -1,50 +1,58 @@
-import { Controller, Get, Patch, Body, Query, UseGuards } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from "@nestjs/swagger";
-import { UsersService } from "./users.service";
-import { AuthGuard, CurrentUser, type CurrentUserData } from "../auth";
-import { UpdateProfileDto } from "./dto/update-profile.dto";
+import { Controller, Get, Patch, Body, Query, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import { UsersService } from './users.service';
+import { AuthGuard, CurrentUser, type CurrentUserData } from '../auth';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
-@ApiTags("users")
+@ApiTags('users')
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
-@Controller("users")
+@Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Get("me")
-  @ApiOperation({ summary: "Get current user profile" })
+  @Get('me')
+  @ApiOperation({ summary: 'Get current user profile' })
+  @ApiResponse({ status: 200, description: 'User profile returned' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getProfile(@CurrentUser() user: CurrentUserData) {
     return this.usersService.getProfile(user.id);
   }
 
-  @Patch("me")
-  @ApiOperation({ summary: "Update current user profile" })
-  async updateProfile(
-    @CurrentUser() user: CurrentUserData,
-    @Body() dto: UpdateProfileDto
-  ) {
+  @Patch('me')
+  @ApiOperation({ summary: 'Update current user profile' })
+  @ApiResponse({ status: 200, description: 'Profile updated successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid request body' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async updateProfile(@CurrentUser() user: CurrentUserData, @Body() dto: UpdateProfileDto) {
     return this.usersService.updateProfile(user.id, dto);
   }
 
-  @Get("me/stats")
-  @ApiOperation({ summary: "Get dashboard statistics" })
+  @Get('me/stats')
+  @ApiOperation({ summary: 'Get dashboard statistics' })
+  @ApiResponse({ status: 200, description: 'Dashboard statistics returned' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getStats(@CurrentUser() user: CurrentUserData) {
     return this.usersService.getDashboardStats(user.id);
   }
 
-  @Get("me/accounts")
+  @Get('me/accounts')
   @ApiOperation({ summary: "Get user's connected accounts (OAuth providers)" })
+  @ApiResponse({ status: 200, description: 'Connected OAuth accounts returned' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getAccounts(@CurrentUser() user: CurrentUserData) {
     return this.usersService.getAccounts(user.id);
   }
 
-  @Get("me/analytics")
-  @ApiOperation({ summary: "Get analytics data with trends" })
-  @ApiQuery({ name: "period", required: false, enum: ["7d", "30d", "90d"] })
+  @Get('me/analytics')
+  @ApiOperation({ summary: 'Get analytics data with trends' })
+  @ApiQuery({ name: 'period', required: false, enum: ['7d', '30d', '90d'] })
+  @ApiResponse({ status: 200, description: 'Analytics data returned' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getAnalytics(
     @CurrentUser() user: CurrentUserData,
-    @Query("period") period?: "7d" | "30d" | "90d"
+    @Query('period') period?: '7d' | '30d' | '90d'
   ) {
-    return this.usersService.getAnalytics(user.id, period || "30d");
+    return this.usersService.getAnalytics(user.id, period || '30d');
   }
 }

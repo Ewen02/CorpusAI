@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { prisma } from "@corpusai/database";
-import { UpdateProfileDto } from "./dto/update-profile.dto";
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { prisma } from '@corpusai/database';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class UsersService {
@@ -26,7 +26,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException("User not found");
+      throw new NotFoundException('User not found');
     }
 
     return user;
@@ -68,7 +68,7 @@ export class UsersService {
     ]);
 
     if (!user) {
-      throw new NotFoundException("User not found");
+      throw new NotFoundException('User not found');
     }
 
     return {
@@ -95,18 +95,73 @@ export class UsersService {
   async getAnalytics(userId: string, period: '7d' | '30d' | '90d' = '30d') {
     const days = period === '7d' ? 7 : period === '90d' ? 90 : 30;
 
-    // Get current totals
-    const currentStats = await this.getDashboardStats(userId);
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    startDate.setHours(0, 0, 0, 0);
 
-    // Generate data based on current totals (synthetic until we have real history)
-    const daily = this.generateDailyData(currentStats, days);
+    // Query global DailyStats (aiId = null) for the period
+    const stats = await prisma.dailyStats.findMany({
+      where: {
+        userId,
+        aiId: null,
+        date: { gte: startDate },
+      },
+      orderBy: { date: 'asc' },
+      select: {
+        date: true,
+        documentCount: true,
+        conversationCount: true,
+        questionCount: true,
+      },
+    });
 
-    // Calculate trends (compare first half to second half)
+    // Build date -> stats map for gap filling
+    const statsMap = new Map<string, (typeof stats)[0]>();
+    for (const s of stats) {
+      const dateKey = s.date.toISOString().split('T')[0]!;
+      statsMap.set(dateKey, s);
+    }
+
+    // Generate daily array with gap filling (0 for missing days)
+    type DailyDataPoint = {
+      date: string;
+      documents: number;
+      conversations: number;
+      questions: number;
+    };
+    const daily: DailyDataPoint[] = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dateKey = d.toISOString().split('T')[0]!;
+      const dayStats = statsMap.get(dateKey);
+
+      daily.push({
+        date: dateKey,
+        documents: dayStats?.documentCount ?? 0,
+        conversations: dayStats?.conversationCount ?? 0,
+        questions: dayStats?.questionCount ?? 0,
+      });
+    }
+
+    // Calculate totals (sum over the period)
+    const totals = daily.reduce(
+      (acc, d) => ({
+        documents: acc.documents + d.documents,
+        conversations: acc.conversations + d.conversations,
+        questions: acc.questions + d.questions,
+      }),
+      { documents: 0, conversations: 0, questions: 0 }
+    );
+
+    // Calculate trends (compare first half vs second half)
     const midpoint = Math.floor(daily.length / 2);
     const firstHalf = daily.slice(0, midpoint);
     const secondHalf = daily.slice(midpoint);
 
-    type DailyDataPoint = { date: string; documents: number; conversations: number; questions: number };
     type MetricKey = 'documents' | 'conversations' | 'questions';
 
     const sumMetric = (arr: DailyDataPoint[], key: MetricKey): number =>
@@ -121,42 +176,12 @@ export class UsersService {
 
     return {
       daily,
-      totals: {
-        documents: currentStats.documentCount,
-        conversations: currentStats.conversationCount,
-        questions: currentStats.questionCount,
-      },
+      totals,
       trends: {
         documents: calcTrend('documents'),
         conversations: calcTrend('conversations'),
         questions: calcTrend('questions'),
       },
     };
-  }
-
-  private generateDailyData(
-    currentStats: { documentCount: number; conversationCount: number; questionCount: number },
-    days: number
-  ) {
-    const data: { date: string; documents: number; conversations: number; questions: number }[] = [];
-    const today = new Date();
-
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-
-      // Progressive growth towards current values with some variance
-      const progress = (days - i) / days;
-      const variance = 0.8 + Math.random() * 0.4;
-
-      data.push({
-        date: date.toISOString().split('T')[0] as string,
-        documents: Math.round(currentStats.documentCount * progress * variance),
-        conversations: Math.round(currentStats.conversationCount * progress * variance),
-        questions: Math.round(currentStats.questionCount * progress * variance),
-      });
-    }
-
-    return data;
   }
 }

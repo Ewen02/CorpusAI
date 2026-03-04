@@ -9,20 +9,22 @@ import {
   UseGuards,
   Headers,
   Res,
-} from "@nestjs/common";
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiBearerAuth,
   ApiParam,
   ApiHeader,
-} from "@nestjs/swagger";
-import type { Request, Response } from "express";
-import { ConversationsService } from "./conversations.service";
-import { AuthGuard, CurrentUser, type CurrentUserData } from "../auth";
-import { SendMessageDto } from "./dto/send-message.dto";
+  ApiResponse,
+} from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
+import type { Request, Response } from 'express';
+import { ConversationsService } from './conversations.service';
+import { AuthGuard, CurrentUser, type CurrentUserData } from '../auth';
+import { SendMessageDto } from './dto/send-message.dto';
 
-@ApiTags("conversations")
+@ApiTags('conversations')
 @Controller()
 export class ConversationsController {
   constructor(private readonly conversationsService: ConversationsService) {}
@@ -31,27 +33,27 @@ export class ConversationsController {
   // Creator endpoints (authenticated)
   // ============================================
 
-  @Get("ais/:aiId/conversations")
+  @Get('ais/:aiId/conversations')
   @ApiBearerAuth()
   @UseGuards(AuthGuard)
-  @ApiOperation({ summary: "List all conversations for an AI (creator view)" })
-  @ApiParam({ name: "aiId", description: "AI ID" })
-  async findAllByAI(
-    @CurrentUser() user: CurrentUserData,
-    @Param("aiId") aiId: string
-  ) {
+  @ApiOperation({ summary: 'List all conversations for an AI (creator view)' })
+  @ApiParam({ name: 'aiId', description: 'AI ID' })
+  @ApiResponse({ status: 200, description: 'List of conversations returned' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'AI not found' })
+  async findAllByAI(@CurrentUser() user: CurrentUserData, @Param('aiId') aiId: string) {
     return this.conversationsService.findAllByAI(user.id, aiId);
   }
 
-  @Delete("conversations/:id")
+  @Delete('conversations/:id')
   @ApiBearerAuth()
   @UseGuards(AuthGuard)
-  @ApiOperation({ summary: "Delete a conversation (creator only)" })
-  @ApiParam({ name: "id", description: "Conversation ID" })
-  async delete(
-    @CurrentUser() user: CurrentUserData,
-    @Param("id") id: string
-  ) {
+  @ApiOperation({ summary: 'Delete a conversation (creator only)' })
+  @ApiParam({ name: 'id', description: 'Conversation ID' })
+  @ApiResponse({ status: 200, description: 'Conversation deleted successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Conversation not found' })
+  async delete(@CurrentUser() user: CurrentUserData, @Param('id') id: string) {
     return this.conversationsService.delete(user.id, id);
   }
 
@@ -59,59 +61,71 @@ export class ConversationsController {
   // Public endpoints (for widget/end users)
   // ============================================
 
-  @Get("chat/:aiSlug/info")
-  @ApiOperation({ summary: "Get public AI info for widget" })
-  @ApiParam({ name: "aiSlug", description: "AI slug" })
-  async getAIPublicInfo(@Param("aiSlug") aiSlug: string) {
+  @Get('chat/:aiSlug/info')
+  @ApiOperation({ summary: 'Get public AI info for widget' })
+  @ApiParam({ name: 'aiSlug', description: 'AI slug' })
+  @ApiResponse({ status: 200, description: 'Public AI info returned' })
+  @ApiResponse({ status: 404, description: 'AI not found' })
+  async getAIPublicInfo(@Param('aiSlug') aiSlug: string) {
     return this.conversationsService.getAIPublicInfo(aiSlug);
   }
 
-  @Post("chat/:aiSlug/start")
-  @ApiOperation({ summary: "Start a new conversation with an AI" })
-  @ApiParam({ name: "aiSlug", description: "AI slug" })
-  @ApiHeader({ name: "x-session-id", required: false, description: "End user session ID" })
+  @Post('chat/:aiSlug/start')
+  @ApiOperation({ summary: 'Start a new conversation with an AI' })
+  @ApiParam({ name: 'aiSlug', description: 'AI slug' })
+  @ApiHeader({ name: 'x-session-id', required: false, description: 'End user session ID' })
+  @ApiResponse({ status: 201, description: 'Conversation started' })
+  @ApiResponse({ status: 404, description: 'AI not found' })
   async startConversation(
-    @Param("aiSlug") aiSlug: string,
-    @Headers("x-session-id") sessionId?: string
+    @Param('aiSlug') aiSlug: string,
+    @Headers('x-session-id') sessionId?: string
   ) {
     return this.conversationsService.create(aiSlug, sessionId);
   }
 
-  @Get("chat/conversations/:id")
-  @ApiOperation({ summary: "Get conversation with messages" })
-  @ApiParam({ name: "id", description: "Conversation ID" })
-  async getConversation(@Param("id") id: string) {
+  @Get('chat/conversations/:id')
+  @ApiOperation({ summary: 'Get conversation with messages' })
+  @ApiParam({ name: 'id', description: 'Conversation ID' })
+  @ApiResponse({ status: 200, description: 'Conversation with messages returned' })
+  @ApiResponse({ status: 404, description: 'Conversation not found' })
+  async getConversation(@Param('id') id: string) {
     return this.conversationsService.findOne(id);
   }
 
-  @Get("chat/conversations/:id/messages")
-  @ApiOperation({ summary: "Get messages for a conversation" })
-  @ApiParam({ name: "id", description: "Conversation ID" })
-  async getMessages(@Param("id") id: string) {
+  @Get('chat/conversations/:id/messages')
+  @ApiOperation({ summary: 'Get messages for a conversation' })
+  @ApiParam({ name: 'id', description: 'Conversation ID' })
+  @ApiResponse({ status: 200, description: 'List of messages returned' })
+  @ApiResponse({ status: 404, description: 'Conversation not found' })
+  async getMessages(@Param('id') id: string) {
     return this.conversationsService.getMessages(id);
   }
 
   // NOTE: Stream route must be declared BEFORE the non-stream route
   // to prevent NestJS from matching /messages/stream as /messages with id="stream"
-  @Post("chat/conversations/:id/messages/stream")
-  @ApiOperation({ summary: "Send a message with streaming response (SSE)" })
-  @ApiParam({ name: "id", description: "Conversation ID" })
+  @Throttle({ short: { limit: 1, ttl: 1000 }, medium: { limit: 10, ttl: 60000 } })
+  @Post('chat/conversations/:id/messages/stream')
+  @ApiOperation({ summary: 'Send a message with streaming response (SSE)' })
+  @ApiParam({ name: 'id', description: 'Conversation ID' })
+  @ApiResponse({ status: 200, description: 'SSE stream of AI response tokens' })
+  @ApiResponse({ status: 400, description: 'Invalid request body' })
+  @ApiResponse({ status: 404, description: 'Conversation not found' })
   async sendMessageStream(
-    @Param("id") id: string,
+    @Param('id') id: string,
     @Body() dto: SendMessageDto,
     @Req() req: Request,
     @Res() res: Response
   ) {
     // Set SSE headers
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
-    res.setHeader("X-Accel-Buffering", "no");
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
     res.flushHeaders();
 
     // Abort streaming if client disconnects
     let clientDisconnected = false;
-    req.on("close", () => {
+    req.on('close', () => {
       clientDisconnected = true;
     });
 
@@ -124,20 +138,23 @@ export class ConversationsController {
       }
     } catch (error) {
       if (!clientDisconnected) {
-        res.write(`data: ${JSON.stringify({ type: "error", data: { message: "Internal server error" } })}\n\n`);
+        res.write(
+          `data: ${JSON.stringify({ type: 'error', data: { message: 'Internal server error' } })}\n\n`
+        );
       }
     }
 
     res.end();
   }
 
-  @Post("chat/conversations/:id/messages")
-  @ApiOperation({ summary: "Send a message in a conversation" })
-  @ApiParam({ name: "id", description: "Conversation ID" })
-  async sendMessage(
-    @Param("id") id: string,
-    @Body() dto: SendMessageDto
-  ) {
+  @Throttle({ short: { limit: 1, ttl: 1000 }, medium: { limit: 10, ttl: 60000 } })
+  @Post('chat/conversations/:id/messages')
+  @ApiOperation({ summary: 'Send a message in a conversation' })
+  @ApiParam({ name: 'id', description: 'Conversation ID' })
+  @ApiResponse({ status: 201, description: 'Message sent and AI response returned' })
+  @ApiResponse({ status: 400, description: 'Invalid request body' })
+  @ApiResponse({ status: 404, description: 'Conversation not found' })
+  async sendMessage(@Param('id') id: string, @Body() dto: SendMessageDto) {
     return this.conversationsService.sendMessage(id, dto.content);
   }
 }

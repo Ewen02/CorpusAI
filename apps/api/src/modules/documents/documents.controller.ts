@@ -14,8 +14,8 @@ import {
   MaxFileSizeValidator,
   BadRequestException,
   MessageEvent,
-} from "@nestjs/common";
-import { FileInterceptor } from "@nestjs/platform-express";
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
@@ -23,87 +23,102 @@ import {
   ApiParam,
   ApiConsumes,
   ApiBody,
-} from "@nestjs/swagger";
-import { Observable } from "rxjs";
-import Redis from "ioredis";
-import { REDIS_CHANNELS, type DocumentProgressEvent } from "@corpusai/queue";
-import { DocumentsService } from "./documents.service";
-import { AuthGuard, CurrentUser, type CurrentUserData } from "../auth";
-import { CreateDocumentDto } from "./dto/create-document.dto";
-import { CreateTextDocumentDto } from "./dto/create-text-document.dto";
+  ApiResponse,
+} from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
+import { Observable } from 'rxjs';
+import { EventEmitter } from 'node:events';
+import type { DocumentProgressEvent } from '@corpusai/queue';
+import { DocumentsService } from './documents.service';
+import { AuthGuard, CurrentUser, type CurrentUserData } from '../auth';
+import { CreateDocumentDto } from './dto/create-document.dto';
+import { CreateTextDocumentDto } from './dto/create-text-document.dto';
 
-@ApiTags("documents")
+@ApiTags('documents')
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
-@Controller("ais/:aiId/documents")
+@Throttle({ short: { limit: 10, ttl: 1000 } })
+@Controller('ais/:aiId/documents')
 export class DocumentsController {
   constructor(
     private readonly documentsService: DocumentsService,
-    @Inject("REDIS_URL") private readonly redisUrl: string,
+    @Inject('PROGRESS_EMITTER') private readonly progressEmitter: EventEmitter
   ) {}
 
   @Get()
-  @ApiOperation({ summary: "List all documents for an AI" })
-  @ApiParam({ name: "aiId", description: "AI ID" })
-  async findAll(
-    @CurrentUser() user: CurrentUserData,
-    @Param("aiId") aiId: string
-  ) {
+  @ApiOperation({ summary: 'List all documents for an AI' })
+  @ApiParam({ name: 'aiId', description: 'AI ID' })
+  @ApiResponse({ status: 200, description: 'List of documents returned' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'AI not found' })
+  async findAll(@CurrentUser() user: CurrentUserData, @Param('aiId') aiId: string) {
     return this.documentsService.findAllByAI(user.id, aiId);
   }
 
-  @Get(":id")
-  @ApiOperation({ summary: "Get document by ID" })
-  @ApiParam({ name: "aiId", description: "AI ID" })
-  @ApiParam({ name: "id", description: "Document ID" })
-  async findOne(
-    @CurrentUser() user: CurrentUserData,
-    @Param("id") id: string
-  ) {
+  @Get(':id')
+  @ApiOperation({ summary: 'Get document by ID' })
+  @ApiParam({ name: 'aiId', description: 'AI ID' })
+  @ApiParam({ name: 'id', description: 'Document ID' })
+  @ApiResponse({ status: 200, description: 'Document returned' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  async findOne(@CurrentUser() user: CurrentUserData, @Param('id') id: string) {
     return this.documentsService.findOne(user.id, id);
   }
 
   @Post()
-  @ApiOperation({ summary: "Create a new document (after upload)" })
-  @ApiParam({ name: "aiId", description: "AI ID" })
+  @ApiOperation({ summary: 'Create a new document (after upload)' })
+  @ApiParam({ name: 'aiId', description: 'AI ID' })
+  @ApiResponse({ status: 201, description: 'Document created successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid request body' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'AI not found' })
   async create(
     @CurrentUser() user: CurrentUserData,
-    @Param("aiId") aiId: string,
+    @Param('aiId') aiId: string,
     @Body() dto: CreateDocumentDto
   ) {
     return this.documentsService.create(user.id, aiId, dto);
   }
 
-  @Post("text")
-  @ApiOperation({ summary: "Create a document from text content" })
-  @ApiParam({ name: "aiId", description: "AI ID" })
+  @Post('text')
+  @ApiOperation({ summary: 'Create a document from text content' })
+  @ApiParam({ name: 'aiId', description: 'AI ID' })
+  @ApiResponse({ status: 201, description: 'Text document created successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid request body' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'AI not found' })
   async createFromText(
     @CurrentUser() user: CurrentUserData,
-    @Param("aiId") aiId: string,
+    @Param('aiId') aiId: string,
     @Body() dto: CreateTextDocumentDto
   ) {
     return this.documentsService.createFromText(user.id, aiId, dto);
   }
 
-  @Post("upload")
-  @ApiOperation({ summary: "Upload a document file directly" })
-  @ApiParam({ name: "aiId", description: "AI ID" })
-  @ApiConsumes("multipart/form-data")
+  @Post('upload')
+  @ApiOperation({ summary: 'Upload a document file directly' })
+  @ApiParam({ name: 'aiId', description: 'AI ID' })
+  @ApiResponse({ status: 201, description: 'File uploaded and document created' })
+  @ApiResponse({ status: 400, description: 'No file provided or file too large' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'AI not found' })
+  @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
-      type: "object",
+      type: 'object',
       properties: {
         file: {
-          type: "string",
-          format: "binary",
-          description: "Document file (PDF, DOCX, TXT, MD, CSV, HTML)",
+          type: 'string',
+          format: 'binary',
+          description: 'Document file (PDF, DOCX, TXT, MD, CSV, HTML)',
         },
       },
-      required: ["file"],
+      required: ['file'],
     },
   })
   @UseInterceptors(
-    FileInterceptor("file", {
+    FileInterceptor('file', {
       limits: {
         fileSize: 50 * 1024 * 1024,
       },
@@ -111,111 +126,105 @@ export class DocumentsController {
   )
   async upload(
     @CurrentUser() user: CurrentUserData,
-    @Param("aiId") aiId: string,
+    @Param('aiId') aiId: string,
     @UploadedFile(
       new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: 50 * 1024 * 1024 }),
-        ],
+        validators: [new MaxFileSizeValidator({ maxSize: 50 * 1024 * 1024 })],
       })
     )
     file: Express.Multer.File
   ) {
     if (!file) {
-      throw new BadRequestException("No file provided");
+      throw new BadRequestException('No file provided');
     }
 
     return this.documentsService.createFromUpload(user.id, aiId, file);
   }
 
-  @Delete(":id")
-  @ApiOperation({ summary: "Delete a document" })
-  @ApiParam({ name: "aiId", description: "AI ID" })
-  @ApiParam({ name: "id", description: "Document ID" })
-  async delete(
-    @CurrentUser() user: CurrentUserData,
-    @Param("id") id: string
-  ) {
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a document' })
+  @ApiParam({ name: 'aiId', description: 'AI ID' })
+  @ApiParam({ name: 'id', description: 'Document ID' })
+  @ApiResponse({ status: 200, description: 'Document deleted successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  async delete(@CurrentUser() user: CurrentUserData, @Param('id') id: string) {
     return this.documentsService.delete(user.id, id);
   }
 
-  @Post(":id/retry")
-  @ApiOperation({ summary: "Retry processing a failed document" })
-  @ApiParam({ name: "aiId", description: "AI ID" })
-  @ApiParam({ name: "id", description: "Document ID" })
-  async retry(
-    @CurrentUser() user: CurrentUserData,
-    @Param("id") id: string
-  ) {
+  @Post(':id/retry')
+  @ApiOperation({ summary: 'Retry processing a failed document' })
+  @ApiParam({ name: 'aiId', description: 'AI ID' })
+  @ApiParam({ name: 'id', description: 'Document ID' })
+  @ApiResponse({ status: 201, description: 'Document processing retried' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  async retry(@CurrentUser() user: CurrentUserData, @Param('id') id: string) {
     return this.documentsService.retryProcessing(user.id, id);
   }
 
-  @Get(":id/progress")
-  @ApiOperation({ summary: "Get document processing progress" })
-  @ApiParam({ name: "aiId", description: "AI ID" })
-  @ApiParam({ name: "id", description: "Document ID" })
-  async getProgress(
-    @CurrentUser() user: CurrentUserData,
-    @Param("id") id: string
-  ) {
+  @Get(':id/progress')
+  @ApiOperation({ summary: 'Get document processing progress' })
+  @ApiParam({ name: 'aiId', description: 'AI ID' })
+  @ApiParam({ name: 'id', description: 'Document ID' })
+  @ApiResponse({ status: 200, description: 'Document progress returned' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  async getProgress(@CurrentUser() user: CurrentUserData, @Param('id') id: string) {
     return this.documentsService.getProgress(user.id, id);
   }
 
-  @Sse(":id/progress/stream")
-  @ApiOperation({ summary: "Stream document processing progress via SSE" })
-  @ApiParam({ name: "aiId", description: "AI ID" })
-  @ApiParam({ name: "id", description: "Document ID" })
+  @Sse(':id/progress/stream')
+  @ApiOperation({ summary: 'Stream document processing progress via SSE' })
+  @ApiParam({ name: 'aiId', description: 'AI ID' })
+  @ApiParam({ name: 'id', description: 'Document ID' })
+  @ApiResponse({ status: 200, description: 'SSE stream of document progress events' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
   streamProgress(
     @CurrentUser() user: CurrentUserData,
-    @Param("id") id: string
+    @Param('id') id: string
   ): Observable<MessageEvent> {
     return new Observable((subscriber) => {
-      this.documentsService.getProgress(user.id, id).then((doc) => {
-        subscriber.next({ data: { documentId: id, status: doc.status, progress: doc.progress, step: doc.step } } as MessageEvent);
+      this.documentsService
+        .getProgress(user.id, id)
+        .then((doc) => {
+          subscriber.next({
+            data: { documentId: id, status: doc.status, progress: doc.progress, step: doc.step },
+          } as MessageEvent);
 
-        if (doc.status === "INDEXED" || doc.status === "FAILED") {
-          subscriber.complete();
-          return;
-        }
+          if (doc.status === 'INDEXED' || doc.status === 'FAILED') {
+            subscriber.complete();
+            return;
+          }
 
-        // Subscribe to Redis pub/sub for real-time progress from worker
-        const redisSub = new Redis(this.redisUrl, { maxRetriesPerRequest: null });
-
-        redisSub.subscribe(REDIS_CHANNELS.DOCUMENT_PROGRESS).catch((err) => {
-          subscriber.error(err);
-        });
-
-        redisSub.on("message", (_channel: string, message: string) => {
-          try {
-            const event = JSON.parse(message) as DocumentProgressEvent;
+          // Listen to shared progress emitter (single Redis connection for all SSE clients)
+          const onProgress = (event: DocumentProgressEvent) => {
             if (event.documentId !== id) return;
 
             subscriber.next({ data: event } as MessageEvent);
 
-            if (event.status === "INDEXED" || event.status === "FAILED") {
-              redisSub.unsubscribe().catch(() => {});
-              redisSub.quit().catch(() => {});
+            if (event.status === 'INDEXED' || event.status === 'FAILED') {
+              this.progressEmitter.removeListener('progress', onProgress);
               subscriber.complete();
             }
-          } catch {
-            // Ignore malformed messages
-          }
-        });
+          };
 
-        const timeout = setTimeout(() => {
-          redisSub.unsubscribe().catch(() => {});
-          redisSub.quit().catch(() => {});
-          subscriber.complete();
-        }, 60_000);
+          this.progressEmitter.on('progress', onProgress);
 
-        subscriber.add(() => {
-          clearTimeout(timeout);
-          redisSub.unsubscribe().catch(() => {});
-          redisSub.quit().catch(() => {});
+          const timeout = setTimeout(() => {
+            this.progressEmitter.removeListener('progress', onProgress);
+            subscriber.complete();
+          }, 60_000);
+
+          subscriber.add(() => {
+            clearTimeout(timeout);
+            this.progressEmitter.removeListener('progress', onProgress);
+          });
+        })
+        .catch((error) => {
+          subscriber.error(error);
         });
-      }).catch((error) => {
-        subscriber.error(error);
-      });
     });
   }
 }
