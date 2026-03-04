@@ -5,6 +5,7 @@ import { Providers } from '@/components/providers';
 
 const inter = Inter({
   subsets: ['latin'],
+  display: 'swap',
   variable: '--font-sans',
 });
 

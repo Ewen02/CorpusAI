@@ -49,12 +49,9 @@ export default function AIsPage() {
     [router]
   );
 
-  const handleSearchChange = React.useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setSearchQuery(e.target.value);
-    },
-    []
-  );
+  const handleSearchChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  }, []);
 
   if (isLoading) {
     return <AIsPageSkeleton />;
@@ -66,12 +63,10 @@ export default function AIsPage() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Mes AIs</h1>
-          <p className="text-muted-foreground">
-            Gerez vos assistants IA et leurs documents
-          </p>
+          <p className="text-muted-foreground">Gerez vos assistants IA et leurs documents</p>
         </div>
-        <Button variant="glow" onClick={handleCreateAI}>
-          <PlusIcon className="h-4 w-4 mr-2" />
+        <Button variant="default" onClick={handleCreateAI}>
+          <PlusIcon className="mr-2 h-4 w-4" />
           Creer un AI
         </Button>
       </div>
@@ -79,8 +74,8 @@ export default function AIsPage() {
       {/* Filters */}
       {ais && ais.length > 0 && (
         <div className="flex flex-col gap-4 sm:flex-row">
-          <div className="relative flex-1 max-w-sm">
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="relative max-w-sm flex-1">
+            <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Rechercher..."
               value={searchQuery}
@@ -115,11 +110,7 @@ export default function AIsPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredAIs.map((ai) => (
-            <AICard
-              key={ai.id}
-              ai={ai}
-              onClick={() => handleNavigateToAI(ai.id)}
-            />
+            <AICard key={ai.id} ai={ai} onClick={() => handleNavigateToAI(ai.id)} />
           ))}
         </div>
       )}

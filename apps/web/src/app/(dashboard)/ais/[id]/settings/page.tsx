@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import { useParams, useRouter } from "next/navigation";
+import * as React from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import {
   Button,
   Input,
@@ -20,11 +20,11 @@ import {
   CardFooter,
   Skeleton,
   Badge,
-} from "@corpusai/ui";
-import { useAI, useUpdateAI, useDeleteAI } from "@/lib/queries";
-import { PageWrapper } from "@/components/page-wrapper";
+} from '@corpusai/ui';
+import { useAI, useUpdateAI, useDeleteAI } from '@/lib/queries';
+import { PageWrapper } from '@/components/page-wrapper';
 
-type AIStatus = "DRAFT" | "ACTIVE" | "PAUSED" | "ARCHIVED";
+type AIStatus = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED';
 
 export default function AISettingsPage() {
   const params = useParams();
@@ -36,35 +36,35 @@ export default function AISettingsPage() {
   const deleteAI = useDeleteAI();
 
   // Form state
-  const [name, setName] = React.useState("");
-  const [description, setDescription] = React.useState("");
-  const [systemPrompt, setSystemPrompt] = React.useState("");
-  const [welcomeMessage, setWelcomeMessage] = React.useState("");
-  const [primaryColor, setPrimaryColor] = React.useState("#3b82f6");
+  const [name, setName] = React.useState('');
+  const [description, setDescription] = React.useState('');
+  const [systemPrompt, setSystemPrompt] = React.useState('');
+  const [welcomeMessage, setWelcomeMessage] = React.useState('');
+  const [primaryColor, setPrimaryColor] = React.useState('#3b82f6');
   const [isPublic, setIsPublic] = React.useState(true);
   const [maxTokens, setMaxTokens] = React.useState(1024);
   const [temperature, setTemperature] = React.useState(0.7);
   const [scoreThreshold, setScoreThreshold] = React.useState(0.6);
-  const [status, setStatus] = React.useState<AIStatus>("DRAFT");
+  const [status, setStatus] = React.useState<AIStatus>('DRAFT');
 
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
-  const [deleteConfirmText, setDeleteConfirmText] = React.useState("");
+  const [deleteConfirmText, setDeleteConfirmText] = React.useState('');
 
   // Populate form when AI data loads
   React.useEffect(() => {
     if (ai) {
-      setName(ai.name || "");
-      setDescription(ai.description || "");
-      setSystemPrompt(ai.systemPrompt || "");
-      setWelcomeMessage(ai.welcomeMessage || "");
-      setPrimaryColor(ai.primaryColor || "#3b82f6");
+      setName(ai.name || '');
+      setDescription(ai.description || '');
+      setSystemPrompt(ai.systemPrompt || '');
+      setWelcomeMessage(ai.welcomeMessage || '');
+      setPrimaryColor(ai.primaryColor || '#3b82f6');
       setIsPublic(ai.isPublic ?? true);
       setMaxTokens(ai.maxTokens || 1024);
       setTemperature(ai.temperature || 0.7);
       setScoreThreshold(ai.scoreThreshold || 0.6);
-      setStatus((ai.status as AIStatus) || "DRAFT");
+      setStatus((ai.status as AIStatus) || 'DRAFT');
     }
   }, [ai]);
 
@@ -88,10 +88,10 @@ export default function AISettingsPage() {
           status,
         },
       });
-      setSuccess("Parametres sauvegardes avec succes");
+      setSuccess('Parametres sauvegardes avec succes');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Une erreur est survenue");
+      setError(err instanceof Error ? err.message : 'Une erreur est survenue');
     }
   };
 
@@ -100,17 +100,37 @@ export default function AISettingsPage() {
 
     try {
       await deleteAI.mutateAsync(aiId);
-      router.push("/ais");
+      router.push('/ais');
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur lors de la suppression");
+      setError(err instanceof Error ? err.message : 'Erreur lors de la suppression');
     }
   };
 
   const statusOptions: { value: AIStatus; label: string; description: string; color: string }[] = [
-    { value: "DRAFT", label: "Brouillon", description: "Non visible publiquement", color: "bg-yellow-500/20 text-yellow-400" },
-    { value: "ACTIVE", label: "Actif", description: "Accessible a tous", color: "bg-green-500/20 text-green-400" },
-    { value: "PAUSED", label: "En pause", description: "Temporairement desactive", color: "bg-orange-500/20 text-orange-400" },
-    { value: "ARCHIVED", label: "Archive", description: "Conserve mais inactif", color: "bg-muted text-muted-foreground" },
+    {
+      value: 'DRAFT',
+      label: 'Brouillon',
+      description: 'Non visible publiquement',
+      color: 'bg-yellow-500/20 text-yellow-400',
+    },
+    {
+      value: 'ACTIVE',
+      label: 'Actif',
+      description: 'Accessible a tous',
+      color: 'bg-green-500/20 text-green-400',
+    },
+    {
+      value: 'PAUSED',
+      label: 'En pause',
+      description: 'Temporairement desactive',
+      color: 'bg-orange-500/20 text-orange-400',
+    },
+    {
+      value: 'ARCHIVED',
+      label: 'Archive',
+      description: 'Conserve mais inactif',
+      color: 'bg-muted text-muted-foreground',
+    },
   ];
 
   if (isLoading) {
@@ -131,7 +151,7 @@ export default function AISettingsPage() {
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-muted-foreground">Assistant introuvable</p>
-            <Button className="mt-4" onClick={() => router.push("/ais")}>
+            <Button className="mt-4" onClick={() => router.push('/ais')}>
               Retour a la liste
             </Button>
           </CardContent>
@@ -143,7 +163,7 @@ export default function AISettingsPage() {
   return (
     <PageWrapper className="container max-w-4xl py-8">
       <div className="mb-8">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+        <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
           <button onClick={() => router.push(`/ais/${aiId}`)} className="hover:text-foreground">
             {ai.name}
           </button>
@@ -151,7 +171,7 @@ export default function AISettingsPage() {
           <span>Parametres</span>
         </div>
         <h1 className="text-3xl font-bold tracking-tight">Parametres</h1>
-        <p className="text-muted-foreground mt-2">
+        <p className="mt-2 text-muted-foreground">
           Configurez les parametres de votre assistant IA.
         </p>
       </div>
@@ -188,7 +208,7 @@ export default function AISettingsPage() {
                 <Label>URL personnalisee</Label>
                 <div className="flex items-center gap-2 text-sm">
                   <span className="text-muted-foreground">corpusai.app/chat/</span>
-                  <code className="bg-muted px-2 py-1 rounded">{ai.slug}</code>
+                  <code className="rounded bg-muted px-2 py-1">{ai.slug}</code>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Le slug ne peut pas etre modifie apres la creation.
@@ -204,9 +224,7 @@ export default function AISettingsPage() {
                   maxLength={500}
                   rows={3}
                 />
-                <p className="text-xs text-muted-foreground">
-                  {description.length}/500 caracteres
-                </p>
+                <p className="text-xs text-muted-foreground">{description.length}/500 caracteres</p>
               </div>
             </CardContent>
           </Card>
@@ -225,13 +243,13 @@ export default function AISettingsPage() {
                     key={option.value}
                     type="button"
                     onClick={() => setStatus(option.value)}
-                    className={`p-4 rounded-lg border text-left transition-all duration-200 ${
+                    className={`rounded-lg border p-4 text-left transition-all duration-200 ${
                       status === option.value
-                        ? "border-primary bg-primary/5 shadow-glow-sm"
-                        : "border-border hover:border-primary/20 hover:bg-white/[0.02]"
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/20 hover:bg-white/[0.02]'
                     }`}
                   >
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="mb-1 flex items-center gap-2">
                       <Badge className={option.color}>{option.label}</Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">{option.description}</p>
@@ -244,9 +262,7 @@ export default function AISettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Acces</CardTitle>
-              <CardDescription>
-                Definissez qui peut acceder a votre assistant.
-              </CardDescription>
+              <CardDescription>Definissez qui peut acceder a votre assistant.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
@@ -256,11 +272,7 @@ export default function AISettingsPage() {
                     Tout le monde peut utiliser cet assistant.
                   </p>
                 </div>
-                <Switch
-                  id="public"
-                  checked={isPublic}
-                  onCheckedChange={setIsPublic}
-                />
+                <Switch id="public" checked={isPublic} onCheckedChange={setIsPublic} />
               </div>
             </CardContent>
           </Card>
@@ -308,9 +320,7 @@ export default function AISettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Parametres avances</CardTitle>
-              <CardDescription>
-                Ajustez le comportement de generation de l&apos;IA.
-              </CardDescription>
+              <CardDescription>Ajustez le comportement de generation de l&apos;IA.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
@@ -336,9 +346,7 @@ export default function AISettingsPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="temperature">Temperature</Label>
-                  <span className="text-sm text-muted-foreground">
-                    {temperature.toFixed(1)}
-                  </span>
+                  <span className="text-sm text-muted-foreground">{temperature.toFixed(1)}</span>
                 </div>
                 <input
                   type="range"
@@ -358,9 +366,7 @@ export default function AISettingsPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="scoreThreshold">Seuil de pertinence RAG</Label>
-                  <span className="text-sm text-muted-foreground">
-                    {scoreThreshold.toFixed(1)}
-                  </span>
+                  <span className="text-sm text-muted-foreground">{scoreThreshold.toFixed(1)}</span>
                 </div>
                 <input
                   type="range"
@@ -373,8 +379,8 @@ export default function AISettingsPage() {
                   className="w-full accent-primary"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Score minimum pour inclure un document dans le contexte.
-                  0.3 = permissif, 0.9 = tres strict.
+                  Score minimum pour inclure un document dans le contexte. 0.3 = permissif, 0.9 =
+                  tres strict.
                 </p>
               </div>
             </CardContent>
@@ -386,9 +392,7 @@ export default function AISettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Personnalisation</CardTitle>
-              <CardDescription>
-                Personnalisez l&apos;apparence de votre assistant.
-              </CardDescription>
+              <CardDescription>Personnalisez l&apos;apparence de votre assistant.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -399,7 +403,7 @@ export default function AISettingsPage() {
                     id="primaryColor"
                     value={primaryColor}
                     onChange={(e) => setPrimaryColor(e.target.value)}
-                    className="h-10 w-20 rounded border border-border cursor-pointer"
+                    className="h-10 w-20 cursor-pointer rounded border border-border"
                   />
                   <Input
                     value={primaryColor}
@@ -411,18 +415,18 @@ export default function AISettingsPage() {
               </div>
 
               {/* Preview */}
-              <div className="mt-6 p-4 rounded-lg border border-white/[0.06] bg-card/30 backdrop-blur-xl">
-                <p className="text-sm font-medium mb-3">Apercu</p>
+              <div className="mt-6 rounded-lg border border-border bg-card p-4">
+                <p className="mb-3 text-sm font-medium">Apercu</p>
                 <div className="flex items-start gap-3">
                   <div
-                    className="h-8 w-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium text-white"
                     style={{ backgroundColor: primaryColor }}
                   >
-                    {name ? name.charAt(0).toUpperCase() : "A"}
+                    {name ? name.charAt(0).toUpperCase() : 'A'}
                   </div>
                   <div className="flex-1">
-                    <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-2 text-sm max-w-[80%]">
-                      {welcomeMessage || "Bonjour ! Comment puis-je vous aider ?"}
+                    <div className="max-w-[80%] rounded-2xl rounded-bl-md bg-muted px-4 py-2 text-sm">
+                      {welcomeMessage || 'Bonjour ! Comment puis-je vous aider ?'}
                     </div>
                   </div>
                 </div>
@@ -436,23 +440,18 @@ export default function AISettingsPage() {
           <Card className="border-destructive/20 bg-destructive/5 backdrop-blur">
             <CardHeader>
               <CardTitle className="text-destructive">Zone de danger</CardTitle>
-              <CardDescription>
-                Actions irreversibles. Procedez avec precaution.
-              </CardDescription>
+              <CardDescription>Actions irreversibles. Procedez avec precaution.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="p-4 rounded-lg border border-destructive/30 bg-destructive/5">
-                <h4 className="font-medium text-destructive mb-2">Supprimer cet assistant</h4>
-                <p className="text-sm text-muted-foreground mb-4">
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+                <h4 className="mb-2 font-medium text-destructive">Supprimer cet assistant</h4>
+                <p className="mb-4 text-sm text-muted-foreground">
                   Cette action supprimera definitivement l&apos;assistant, tous ses documents,
                   conversations et donnees associees. Cette action est irreversible.
                 </p>
 
                 {!showDeleteConfirm ? (
-                  <Button
-                    variant="destructive"
-                    onClick={() => setShowDeleteConfirm(true)}
-                  >
+                  <Button variant="destructive" onClick={() => setShowDeleteConfirm(true)}>
                     Supprimer l&apos;assistant
                   </Button>
                 ) : (
@@ -471,13 +470,13 @@ export default function AISettingsPage() {
                         onClick={handleDelete}
                         disabled={deleteConfirmText !== ai.name || deleteAI.isPending}
                       >
-                        {deleteAI.isPending ? "Suppression..." : "Confirmer la suppression"}
+                        {deleteAI.isPending ? 'Suppression...' : 'Confirmer la suppression'}
                       </Button>
                       <Button
                         variant="outline"
                         onClick={() => {
                           setShowDeleteConfirm(false);
-                          setDeleteConfirmText("");
+                          setDeleteConfirmText('');
                         }}
                       >
                         Annuler
@@ -493,15 +492,13 @@ export default function AISettingsPage() {
 
       {/* Messages */}
       {error && (
-        <div className="mt-6 p-4 rounded-lg bg-destructive/10 text-destructive text-sm">
+        <div className="mt-6 rounded-lg bg-destructive/10 p-4 text-sm text-destructive">
           {error}
         </div>
       )}
 
       {success && (
-        <div className="mt-6 p-4 rounded-lg bg-green-500/10 text-green-500 text-sm">
-          {success}
-        </div>
+        <div className="mt-6 rounded-lg bg-green-500/10 p-4 text-sm text-green-500">{success}</div>
       )}
 
       {/* Save Button */}
@@ -509,8 +506,8 @@ export default function AISettingsPage() {
         <Button variant="outline" onClick={() => router.push(`/ais/${aiId}`)}>
           Retour
         </Button>
-        <Button variant="glow" onClick={handleSave} disabled={updateAI.isPending}>
-          {updateAI.isPending ? "Sauvegarde..." : "Sauvegarder les modifications"}
+        <Button variant="default" onClick={handleSave} disabled={updateAI.isPending}>
+          {updateAI.isPending ? 'Sauvegarde...' : 'Sauvegarder les modifications'}
         </Button>
       </div>
     </PageWrapper>

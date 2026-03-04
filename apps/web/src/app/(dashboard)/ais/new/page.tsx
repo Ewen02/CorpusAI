@@ -1,21 +1,10 @@
 'use client';
 
 import * as React from 'react';
-import {
-  Button,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from '@corpusai/ui';
+import { Button, Tabs, TabsList, TabsTrigger, TabsContent } from '@corpusai/ui';
 import { apiClient } from '@/lib/api-client';
 import { useNavigation } from '@/lib/hooks';
-import {
-  AIFormFields,
-  DEFAULT_AI_FORM_VALUES,
-  ErrorAlert,
-  type AIFormValues,
-} from '@/components';
+import { AIFormFields, DEFAULT_AI_FORM_VALUES, ErrorAlert, type AIFormValues } from '@/components';
 import { PageWrapper } from '@/components/page-wrapper';
 
 export default function CreateAIPage() {
@@ -83,7 +72,7 @@ export default function CreateAIPage() {
     <PageWrapper className="container max-w-4xl py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">Creer un assistant IA</h1>
-        <p className="text-muted-foreground mt-2">
+        <p className="mt-2 text-muted-foreground">
           Configurez votre assistant et commencez a lui ajouter des documents.
         </p>
       </div>
@@ -120,7 +109,7 @@ export default function CreateAIPage() {
           >
             Annuler
           </Button>
-          <Button variant="glow" type="submit" disabled={isLoading || !formValues.name || !slug}>
+          <Button variant="default" type="submit" disabled={isLoading || !formValues.name || !slug}>
             {isLoading ? 'Creation en cours...' : "Creer l'assistant"}
           </Button>
         </div>
