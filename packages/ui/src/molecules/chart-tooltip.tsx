@@ -24,12 +24,7 @@ export function ChartTooltip({
   const formattedLabel = formatLabel ? formatLabel(label) : String(label);
 
   return (
-    <div
-      className={cn(
-        'rounded-lg border border-white/[0.06] bg-card/80 backdrop-blur-xl p-3 shadow-xl',
-        className
-      )}
-    >
+    <div className={cn('rounded-lg border border-border bg-card p-3 shadow-md', className)}>
       <p className="text-sm font-medium">{formattedLabel}</p>
       <p className="text-sm text-muted-foreground">
         {value} {metric}

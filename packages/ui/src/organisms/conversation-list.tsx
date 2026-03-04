@@ -85,42 +85,38 @@ function ConversationItem({
   return (
     <div
       className={cn(
-        'group relative flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200',
+        'group relative flex cursor-pointer items-start gap-3 rounded-lg p-3 transition-all duration-200',
         isSelected
-          ? 'bg-primary/10 border border-primary/20 shadow-sm'
-          : 'border border-transparent hover:bg-white/[0.04] hover:border-white/[0.06]'
+          ? 'border border-primary/20 bg-primary/10 shadow-sm'
+          : 'border border-transparent hover:border-border hover:bg-muted/50'
       )}
       onClick={onClick}
       onMouseEnter={() => setShowDelete(true)}
       onMouseLeave={() => setShowDelete(false)}
     >
-      <Avatar className={cn(
-        'h-9 w-9 shrink-0 ring-2',
-        isSelected ? 'ring-primary/30' : 'ring-white/[0.06]'
-      )}>
+      <Avatar
+        className={cn('h-9 w-9 shrink-0 ring-2', isSelected ? 'ring-primary/30' : 'ring-border')}
+      >
         <AvatarImage src={aiAvatar} />
-        <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+        <AvatarFallback className="bg-primary text-xs text-primary-foreground">
           {aiName.charAt(0).toUpperCase()}
         </AvatarFallback>
       </Avatar>
 
-      <div className="flex-1 min-w-0">
+      <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <h3 className={cn(
-            'text-sm font-medium truncate',
-            isSelected && 'text-primary'
-          )}>{title}</h3>
-          <span className="text-[11px] text-muted-foreground/60 shrink-0">
+          <h3 className={cn('truncate text-sm font-medium', isSelected && 'text-primary')}>
+            {title}
+          </h3>
+          <span className="shrink-0 text-[11px] text-muted-foreground/60">
             {formatRelativeTime(conversation.updatedAt)}
           </span>
         </div>
 
-        <p className="text-xs text-muted-foreground/70 mt-0.5 line-clamp-2">
-          {preview}
-        </p>
+        <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground/70">{preview}</p>
 
-        <div className="flex items-center gap-2 mt-1.5">
-          <span className="text-[11px] text-muted-foreground/50 flex items-center gap-1">
+        <div className="mt-1.5 flex items-center gap-2">
+          <span className="flex items-center gap-1 text-[11px] text-muted-foreground/50">
             <MessageIcon className="h-3 w-3" />
             {conversation.messageCount}
           </span>
@@ -131,7 +127,7 @@ function ConversationItem({
         <Button
           variant="ghost"
           size="icon"
-          className="absolute right-2 top-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive"
+          className="absolute right-2 top-2 h-6 w-6 opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
           onClick={(e) => {
             e.stopPropagation();
             onDelete();
@@ -165,13 +161,18 @@ export function ConversationList({
   }
 
   return (
-    <div className={cn('flex flex-col h-full', className)}>
+    <div className={cn('flex h-full flex-col', className)}>
       {/* Header */}
-      <div className="p-4 border-b border-white/[0.06]">
+      <div className="border-b border-border p-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold">Conversations</h2>
           {onNewConversation && (
-            <Button variant="ghost" size="sm" onClick={onNewConversation} className="h-8 gap-1.5 text-xs hover:bg-primary/10 hover:text-primary">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onNewConversation}
+              className="h-8 gap-1.5 text-xs hover:bg-primary/10 hover:text-primary"
+            >
               <PlusIcon className="h-3.5 w-3.5" />
               Nouvelle
             </Button>
@@ -182,16 +183,12 @@ export function ConversationList({
       {/* List */}
       <div className="flex-1 overflow-y-auto p-2">
         {conversations.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center p-4">
-            <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3 ring-1 ring-primary/20">
+          <div className="flex h-full flex-col items-center justify-center p-4 text-center">
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20">
               <MessageIcon className="h-5 w-5 text-primary/60" />
             </div>
-            <p className="text-sm text-muted-foreground mb-1">
-              Aucune conversation
-            </p>
-            <p className="text-xs text-muted-foreground/50 mb-4">
-              Posez votre première question
-            </p>
+            <p className="mb-1 text-sm text-muted-foreground">Aucune conversation</p>
+            <p className="mb-4 text-xs text-muted-foreground/50">Posez votre première question</p>
             {onNewConversation && (
               <Button
                 variant="outline"
@@ -287,17 +284,17 @@ function MessageIcon({ className }: { className?: string }) {
 
 export function ConversationListSkeleton() {
   return (
-    <div className="flex flex-col h-full">
-      <div className="p-4 border-b border-white/[0.06]">
+    <div className="flex h-full flex-col">
+      <div className="border-b border-border p-4">
         <div className="flex items-center justify-between">
           <Skeleton className="h-5 w-24" />
           <Skeleton className="h-8 w-20 rounded-lg" />
         </div>
       </div>
-      <div className="flex-1 p-2 space-y-1">
+      <div className="flex-1 space-y-1 p-2">
         {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="flex items-start gap-3 p-3 rounded-lg">
-            <Skeleton className="h-9 w-9 rounded-full shrink-0" />
+          <div key={i} className="flex items-start gap-3 rounded-lg p-3">
+            <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
             <div className="flex-1 space-y-2">
               <Skeleton className="h-4 w-3/4" />
               <Skeleton className="h-3 w-full" />

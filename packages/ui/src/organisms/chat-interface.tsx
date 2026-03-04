@@ -69,23 +69,15 @@ function MessageBubble({
   const isUser = message.role === 'user';
 
   return (
-    <div
-      className={cn(
-        'flex gap-3 w-full',
-        isUser ? 'flex-row-reverse' : 'flex-row'
-      )}
-    >
-      <Avatar className={cn(
-        'h-8 w-8 shrink-0 ring-2',
-        isUser ? 'ring-white/[0.06]' : 'ring-primary/20'
-      )}>
+    <div className={cn('flex w-full gap-3', isUser ? 'flex-row-reverse' : 'flex-row')}>
+      <Avatar
+        className={cn('h-8 w-8 shrink-0 ring-2', isUser ? 'ring-white/[0.06]' : 'ring-primary/20')}
+      >
         <AvatarImage src={isUser ? userAvatar : aiAvatar} />
         <AvatarFallback
           className={cn(
             'text-xs font-medium',
-            isUser
-              ? 'bg-white/[0.08] text-foreground'
-              : 'bg-primary text-primary-foreground'
+            isUser ? 'bg-white/[0.08] text-foreground' : 'bg-primary text-primary-foreground'
           )}
           style={!isUser && primaryColor ? { backgroundColor: primaryColor } : undefined}
         >
@@ -93,18 +85,13 @@ function MessageBubble({
         </AvatarFallback>
       </Avatar>
 
-      <div
-        className={cn(
-          'flex flex-col gap-1 max-w-[80%]',
-          isUser ? 'items-end' : 'items-start'
-        )}
-      >
+      <div className={cn('flex max-w-[80%] flex-col gap-1', isUser ? 'items-end' : 'items-start')}>
         <div
           className={cn(
             'rounded-2xl px-4 py-3 text-sm',
             isUser
-              ? 'bg-primary/90 text-primary-foreground rounded-br-md shadow-md shadow-primary/20'
-              : 'bg-card/60 backdrop-blur-sm border border-white/[0.06] text-foreground rounded-bl-md shadow-lg'
+              ? 'rounded-br-md bg-primary/90 text-primary-foreground shadow-md shadow-primary/20'
+              : 'rounded-bl-md border border-border bg-card text-foreground shadow-sm'
           )}
           style={isUser && primaryColor ? { backgroundColor: primaryColor } : undefined}
         >
@@ -121,30 +108,36 @@ function MessageBubble({
         </div>
 
         {/* Confidence badge for assistant messages */}
-        {!isUser && message.confidence && !message.isStreaming && message.sources && message.sources.length > 0 && (
-          <div className="flex items-center gap-1.5 mt-1">
-            <span
-              className={cn(
-                'text-xs px-2.5 py-0.5 rounded-full border backdrop-blur-sm',
-                message.confidence === 'HIGH' && 'bg-green-500/10 text-green-400 border-green-500/20',
-                message.confidence === 'MEDIUM' && 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
-                message.confidence === 'LOW' && 'bg-red-500/10 text-red-400 border-red-500/20'
-              )}
-            >
-              {message.confidence === 'HIGH' && 'Confiance elevee'}
-              {message.confidence === 'MEDIUM' && 'Confiance moyenne'}
-              {message.confidence === 'LOW' && 'Confiance faible'}
-            </span>
-          </div>
-        )}
+        {!isUser &&
+          message.confidence &&
+          !message.isStreaming &&
+          message.sources &&
+          message.sources.length > 0 && (
+            <div className="mt-1 flex items-center gap-1.5">
+              <span
+                className={cn(
+                  'rounded-full border px-2.5 py-0.5 text-xs backdrop-blur-sm',
+                  message.confidence === 'HIGH' &&
+                    'border-green-500/20 bg-green-500/10 text-green-400',
+                  message.confidence === 'MEDIUM' &&
+                    'border-yellow-500/20 bg-yellow-500/10 text-yellow-400',
+                  message.confidence === 'LOW' && 'border-red-500/20 bg-red-500/10 text-red-400'
+                )}
+              >
+                {message.confidence === 'HIGH' && 'Confiance elevee'}
+                {message.confidence === 'MEDIUM' && 'Confiance moyenne'}
+                {message.confidence === 'LOW' && 'Confiance faible'}
+              </span>
+            </div>
+          )}
 
         {message.sources && message.sources.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-1">
+          <div className="mt-1 flex flex-wrap gap-1.5">
             {message.sources.map((source, index) => (
               <button
                 key={`${source.documentId}-${index}`}
                 onClick={() => onSourceClick?.(source)}
-                className="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 hover:border-primary/30 transition-all duration-200"
+                className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs text-primary transition-all duration-200 hover:border-primary/30 hover:bg-primary/20"
               >
                 {source.documentName}
                 {source.pageNumber && ` p.${source.pageNumber}`}
@@ -164,21 +157,27 @@ function MessageBubble({
   );
 }
 
-function TypingIndicator({ aiName = 'Assistant', primaryColor }: { aiName?: string; primaryColor?: string }) {
+function TypingIndicator({
+  aiName = 'Assistant',
+  primaryColor,
+}: {
+  aiName?: string;
+  primaryColor?: string;
+}) {
   return (
-    <div className="flex gap-3 w-full">
+    <div className="flex w-full gap-3">
       <Avatar className="h-8 w-8 shrink-0 ring-2 ring-primary/20">
         <AvatarFallback
-          className="bg-primary text-primary-foreground text-xs"
+          className="bg-primary text-xs text-primary-foreground"
           style={primaryColor ? { backgroundColor: primaryColor } : undefined}
         >
           {aiName.charAt(0).toUpperCase()}
         </AvatarFallback>
       </Avatar>
-      <div className="flex items-center gap-1.5 bg-card/60 backdrop-blur-sm border border-white/[0.06] rounded-2xl rounded-bl-md px-4 py-3 shadow-lg">
-        <span className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce [animation-delay:-0.3s]" />
-        <span className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce [animation-delay:-0.15s]" />
-        <span className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce" />
+      <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-md border border-border bg-card px-4 py-3 shadow-sm">
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60 [animation-delay:-0.3s]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60 [animation-delay:-0.15s]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60" />
       </div>
     </div>
   );
@@ -194,9 +193,9 @@ function WelcomeMessage({
   primaryColor?: string;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center h-full py-12">
+    <div className="flex h-full flex-col items-center justify-center py-12">
       <div
-        className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 ring-1 ring-primary/20"
+        className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/20"
         style={primaryColor ? { backgroundColor: `${primaryColor}15` } : undefined}
       >
         <span
@@ -206,10 +205,8 @@ function WelcomeMessage({
           {aiName?.charAt(0)?.toUpperCase() || 'A'}
         </span>
       </div>
-      <h3 className="text-lg font-semibold mb-2">{aiName || 'Assistant'}</h3>
-      <p className="text-sm text-muted-foreground text-center max-w-sm">
-        {message}
-      </p>
+      <h3 className="mb-2 text-lg font-semibold">{aiName || 'Assistant'}</h3>
+      <p className="max-w-sm text-center text-sm text-muted-foreground">{message}</p>
       <div className="mt-6 flex items-center gap-2 text-xs text-muted-foreground/50">
         <span className="h-1 w-1 rounded-full bg-primary/30" />
         <span>Propulsé par CorpusAI</span>
@@ -277,9 +274,9 @@ export function ChatInterface({
   };
 
   return (
-    <div className={cn('flex flex-col h-full', className)}>
+    <div className={cn('flex h-full flex-col', className)}>
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+      <div className="flex-1 space-y-6 overflow-y-auto p-4">
         {messages.length === 0 && welcomeMessage && (
           <WelcomeMessage message={welcomeMessage} aiName={aiName} primaryColor={primaryColor} />
         )}
@@ -304,9 +301,9 @@ export function ChatInterface({
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-white/[0.06] p-4 bg-card/30 backdrop-blur-sm">
-        <form onSubmit={handleSubmit} className="flex gap-2 items-end">
-          <div className="flex-1 relative">
+      <div className="border-t border-border bg-card p-4">
+        <form onSubmit={handleSubmit} className="flex items-end gap-2">
+          <div className="relative flex-1">
             <textarea
               ref={inputRef}
               value={input}
@@ -315,7 +312,7 @@ export function ChatInterface({
               placeholder={placeholder}
               disabled={isLoading}
               rows={1}
-              className="w-full resize-none rounded-xl border border-white/[0.06] bg-card/50 backdrop-blur-sm px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all duration-200 disabled:opacity-50"
+              className="w-full resize-none rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground transition-all duration-200 placeholder:text-muted-foreground/50 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
               autoComplete="off"
             />
           </div>
@@ -323,14 +320,14 @@ export function ChatInterface({
             type="submit"
             size="icon"
             disabled={!input.trim() || isLoading}
-            className="h-[46px] w-[46px] rounded-xl shrink-0"
+            className="h-[46px] w-[46px] shrink-0 rounded-xl"
             style={primaryColor ? { backgroundColor: primaryColor } : undefined}
           >
             <SendIcon className="h-4 w-4" />
             <span className="sr-only">Envoyer</span>
           </Button>
         </form>
-        <p className="text-[11px] text-muted-foreground/40 text-center mt-2">
+        <p className="mt-2 text-center text-[11px] text-muted-foreground/40">
           Shift + Entrée pour un saut de ligne
         </p>
       </div>
@@ -366,18 +363,18 @@ function SendIcon({ className }: { className?: string }) {
 
 export function ChatInterfaceSkeleton() {
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 p-4 space-y-6">
+    <div className="flex h-full flex-col">
+      <div className="flex-1 space-y-6 p-4">
         {[1, 2, 3].map((i) => (
           <div key={i} className={cn('flex gap-3', i % 2 === 0 && 'flex-row-reverse')}>
-            <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+            <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
             <Skeleton className={cn('h-16 rounded-2xl', i % 2 === 0 ? 'w-1/3' : 'w-2/3')} />
           </div>
         ))}
       </div>
-      <div className="border-t border-white/[0.06] p-4 bg-card/30">
+      <div className="border-t border-border bg-card p-4">
         <div className="flex gap-2">
-          <Skeleton className="flex-1 h-[46px] rounded-xl" />
+          <Skeleton className="h-[46px] flex-1 rounded-xl" />
           <Skeleton className="h-[46px] w-[46px] rounded-xl" />
         </div>
       </div>

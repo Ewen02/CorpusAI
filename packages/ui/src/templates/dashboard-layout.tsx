@@ -87,13 +87,11 @@ function SidebarHeader({
     <div className="flex items-center justify-between p-4">
       <div className="flex items-center gap-2">
         {logo || (
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm shadow-glow-sm">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
             C
           </div>
         )}
-        {!isCollapsed && (
-          <span className="font-semibold text-foreground">CorpusAI</span>
-        )}
+        {!isCollapsed && <span className="font-semibold text-foreground">CorpusAI</span>}
       </div>
       {!isCollapsed && user.plan === 'FREE' && onUpgrade && (
         <Button variant="outline" size="sm" onClick={onUpgrade}>
@@ -125,7 +123,7 @@ function SidebarNav({
   return (
     <div className="px-3 py-2">
       {title && !isCollapsed && (
-        <h3 className="mb-2 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+        <h3 className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
           {title}
         </h3>
       )}
@@ -139,7 +137,7 @@ function SidebarNav({
               className={cn(
                 'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150',
                 isActive
-                  ? 'bg-primary/10 text-primary border-l-2 border-primary'
+                  ? 'border-l-2 border-primary bg-primary/10 text-primary'
                   : 'text-muted-foreground hover:bg-white/[0.04] hover:text-foreground',
                 isCollapsed && 'justify-center px-2'
               )}
@@ -149,7 +147,7 @@ function SidebarNav({
                 <>
                   <span className="flex-1 text-left">{item.label}</span>
                   {item.badge && (
-                    <span className="ml-auto text-xs bg-muted px-2 py-0.5 rounded-full">
+                    <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-xs">
                       {item.badge}
                     </span>
                   )}
@@ -191,7 +189,7 @@ function SidebarAIList({
 
   return (
     <div className="px-3 py-2">
-      <h3 className="mb-2 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+      <h3 className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
         Mes AIs
       </h3>
       <nav className="space-y-1">
@@ -208,15 +206,21 @@ function SidebarAIList({
                   : 'text-muted-foreground hover:bg-white/[0.04] hover:text-foreground'
               )}
             >
-              <span className={cn('h-2 w-2 rounded-full shrink-0', statusColors[item.status], item.status === 'active' && 'ring-2 ring-green-500/20')} />
-              <span className="flex-1 text-left truncate">{item.name}</span>
+              <span
+                className={cn(
+                  'h-2 w-2 shrink-0 rounded-full',
+                  statusColors[item.status],
+                  item.status === 'active' && 'ring-2 ring-green-500/20'
+                )}
+              />
+              <span className="flex-1 truncate text-left">{item.name}</span>
             </button>
           );
         })}
         {onCreateAI && (
           <button
             onClick={onCreateAI}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-white/[0.04] hover:text-foreground transition-all duration-150"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-all duration-150 hover:bg-white/[0.04] hover:text-foreground"
           >
             <PlusIcon className="h-4 w-4" />
             <span>Créer un AI</span>
@@ -227,13 +231,7 @@ function SidebarAIList({
   );
 }
 
-function SidebarUser({
-  user,
-  onSignOut,
-}: {
-  user: UserData;
-  onSignOut?: () => void;
-}) {
+function SidebarUser({ user, onSignOut }: { user: UserData; onSignOut?: () => void }) {
   const { isCollapsed } = useSidebar();
   const [isOpen, setIsOpen] = React.useState(false);
 
@@ -245,24 +243,24 @@ function SidebarUser({
   };
 
   return (
-    <div className="p-3 border-t border-white/[0.06]">
+    <div className="border-t border-border p-3">
       <div
         className={cn(
-          'flex items-center gap-3 rounded-lg p-2 cursor-pointer hover:bg-white/[0.04] transition-all duration-150',
+          'flex cursor-pointer items-center gap-3 rounded-lg p-2 transition-all duration-150 hover:bg-white/[0.04]',
           isCollapsed && 'justify-center'
         )}
         onClick={() => setIsOpen(!isOpen)}
       >
         <Avatar className="h-8 w-8">
           <AvatarImage src={user.avatar} />
-          <AvatarFallback className="bg-primary/20 text-primary text-xs">
+          <AvatarFallback className="bg-primary/20 text-xs text-primary">
             {user.name.charAt(0).toUpperCase()}
           </AvatarFallback>
         </Avatar>
         {!isCollapsed && (
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{user.name}</p>
-            <p className="text-xs text-muted-foreground truncate">{planLabels[user.plan]}</p>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">{user.name}</p>
+            <p className="truncate text-xs text-muted-foreground">{planLabels[user.plan]}</p>
           </div>
         )}
       </div>
@@ -270,7 +268,7 @@ function SidebarUser({
         <div className="mt-2 space-y-1">
           <button
             onClick={onSignOut}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-white/[0.04] hover:text-foreground transition-all duration-150"
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-all duration-150 hover:bg-white/[0.04] hover:text-foreground"
           >
             <LogOutIcon className="h-4 w-4" />
             <span>Déconnexion</span>
@@ -300,7 +298,7 @@ function Sidebar({
       {/* Mobile overlay */}
       {isMobileOpen && (
         <div
-          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 z-40 bg-background/90 lg:hidden"
           onClick={() => setIsMobileOpen(false)}
         />
       )}
@@ -308,7 +306,7 @@ function Sidebar({
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-0 z-50 h-full bg-card/80 backdrop-blur-xl border-r border-white/[0.06] flex flex-col transition-all duration-300',
+          'fixed left-0 top-0 z-50 flex h-full flex-col border-r border-border bg-card transition-all duration-300',
           isCollapsed ? 'w-16' : 'w-72',
           isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
@@ -345,9 +343,11 @@ function Sidebar({
         {/* Collapse toggle - desktop only */}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="hidden lg:flex absolute -right-3 top-20 h-6 w-6 items-center justify-center rounded-full border border-border bg-card hover:bg-accent transition-colors"
+          className="absolute -right-3 top-20 hidden h-6 w-6 items-center justify-center rounded-full border border-border bg-card transition-colors hover:bg-accent lg:flex"
         >
-          <ChevronIcon className={cn('h-4 w-4 transition-transform', isCollapsed && 'rotate-180')} />
+          <ChevronIcon
+            className={cn('h-4 w-4 transition-transform', isCollapsed && 'rotate-180')}
+          />
         </button>
       </aside>
     </>
@@ -356,10 +356,10 @@ function Sidebar({
 
 function Header({ onMenuClick }: { onMenuClick: () => void }) {
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 lg:px-6">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 lg:px-6">
       <button
         onClick={onMenuClick}
-        className="lg:hidden p-2 rounded-lg hover:bg-accent transition-colors"
+        className="rounded-lg p-2 transition-colors hover:bg-accent lg:hidden"
       >
         <MenuIcon className="h-5 w-5" />
       </button>
@@ -401,9 +401,7 @@ export function DashboardLayout({
   }, [isCollapsed]);
 
   return (
-    <SidebarContext.Provider
-      value={{ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }}
-    >
+    <SidebarContext.Provider value={{ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }}>
       <div className="min-h-screen bg-background">
         <Sidebar
           navItems={navItems}
@@ -418,12 +416,7 @@ export function DashboardLayout({
           logo={logo}
         />
 
-        <div
-          className={cn(
-            'transition-all duration-300',
-            isCollapsed ? 'lg:pl-16' : 'lg:pl-72'
-          )}
-        >
+        <div className={cn('transition-all duration-300', isCollapsed ? 'lg:pl-16' : 'lg:pl-72')}>
           <Header onMenuClick={() => setIsMobileOpen(true)} />
           <main className="p-4 lg:p-6">{children}</main>
         </div>
@@ -515,15 +508,15 @@ function MenuIcon({ className }: { className?: string }) {
 
 export function DashboardLayoutSkeleton() {
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="flex min-h-screen bg-background">
       {/* Sidebar skeleton */}
-      <aside className="hidden lg:flex w-72 border-r border-border flex-col">
-        <div className="p-4 flex items-center gap-2">
+      <aside className="hidden w-72 flex-col border-r border-border lg:flex">
+        <div className="flex items-center gap-2 p-4">
           <Skeleton className="h-8 w-8 rounded-lg" />
           <Skeleton className="h-5 w-24" />
         </div>
         <Separator />
-        <div className="flex-1 p-3 space-y-2">
+        <div className="flex-1 space-y-2 p-3">
           {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-10 w-full rounded-lg" />
           ))}
@@ -534,7 +527,7 @@ export function DashboardLayoutSkeleton() {
       <div className="flex-1">
         <header className="h-14 border-b border-border" />
         <main className="p-6">
-          <Skeleton className="h-8 w-48 mb-6" />
+          <Skeleton className="mb-6 h-8 w-48" />
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {[1, 2, 3, 4].map((i) => (
               <Skeleton key={i} className="h-32 rounded-lg" />
