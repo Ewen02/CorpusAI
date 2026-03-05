@@ -18,9 +18,13 @@
     "db:push": "pnpm --filter @corpusai/database db:push",
     "db:migrate": "pnpm --filter @corpusai/database db:migrate",
     "db:migrate:prod": "pnpm --filter @corpusai/database db:migrate:prod",
+    "test:e2e": "playwright test",
     "prepare": "husky"
   },
   "devDependencies": {
+    "@corpusai/eslint-config": "workspace:^",
+    "@playwright/test": "^1.58.2",
+    "eslint": "^9.18.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.3.2",
     "prettier": "^3.4.2",
@@ -30,6 +34,7 @@
   },
   "lint-staged": {
     "*.{ts,tsx}": [
+      "eslint --fix",
       "prettier --write"
     ]
   },

@@ -2,11 +2,7 @@
 
 ## P0 — Requis pour lancement
 
-- [ ] **Rate limiting**
-  - Guard NestJS par endpoint et par plan
-  - Compteur questions/jour par AI (utiliser @corpusai/subscription)
-  - Reponse 429 avec headers Retry-After
-  - Indicateur cote frontend
+Tout est fait. Voir section "Fait" ci-dessous.
 
 ## P1 — Important
 
@@ -35,8 +31,6 @@
 - [ ] Multi-langue prompts dans ai-rules (EN)
 - [ ] Integration Stripe (checkout, webhooks, gestion abonnements)
 - [ ] Analytics reelles (ecrire dans DailyStats a chaque interaction)
-- [ ] Forgot password page
-- [ ] Changement mot de passe fonctionnel (settings/security)
 
 ---
 
@@ -52,3 +46,6 @@
 - [x] Dashboard createur avec stats reelles + graphiques Recharts
 - [x] Chat streaming SSE complet avec citations sources et niveaux confiance
 - [x] Setup Claude Code optimal (CLAUDE.md split, slash commands, settings.json)
+- [x] **Rate limiting par plan** — AuthGuard bloque CANCELED/PAST_DUE, GET /users/me/usage, Retry-After 429, usage bar dashboard
+- [x] **Forgot/reset password** — pages forgot-password et reset-password avec Better Auth
+- [x] **Changement mot de passe** — authClient.changePassword() dans settings/security
