@@ -1,5 +1,6 @@
 import Redis from 'ioredis';
 import { REDIS_CHANNELS, type DocumentProgressEvent } from '@corpusai/queue';
+import { logger } from '../lib/logger';
 
 export class ProgressService {
   private redis: Redis;
@@ -13,9 +14,7 @@ export class ProgressService {
       await this.redis.publish(REDIS_CHANNELS.DOCUMENT_PROGRESS, JSON.stringify(event));
     } catch (error) {
       // Don't crash document processing if progress notification fails
-      console.warn(
-        `[ProgressService] Failed to publish progress event: ${error instanceof Error ? error.message : error}`
-      );
+      logger.warn({ err: error, documentId: event.documentId }, 'Failed to publish progress event');
     }
   }
 

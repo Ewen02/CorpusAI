@@ -2,6 +2,7 @@ import * as fs from 'node:fs/promises';
 import { prisma, DocumentStatus, ProcessingStep } from '@corpusai/database';
 import { DocumentParserService, type ProcessingStage } from '@corpusai/corpus';
 import type { DocumentProcessingJobData, DocumentProgressEvent } from '@corpusai/queue';
+import { logger } from '../lib/logger';
 import { getProgressService } from '../services/progress.service';
 import { createPipelineForAI } from '../services/rag-factory';
 
@@ -167,12 +168,10 @@ export async function processDocument(data: DocumentProcessingJobData): Promise<
 
     await publishProgress(documentId, DocumentStatus.INDEXED, 100, null);
 
-    console.log(
-      `Document ${documentId} indexed: ${result.chunksCreated} chunks, ${wordCount} words`
-    );
+    logger.info({ documentId, chunks: result.chunksCreated, wordCount }, 'Document indexed');
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`Failed to process document ${documentId}: ${errorMessage}`);
+    logger.error({ documentId, err: error }, 'Failed to process document');
 
     await prisma.document.update({
       where: { id: documentId },

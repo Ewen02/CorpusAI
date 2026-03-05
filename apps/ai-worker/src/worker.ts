@@ -1,5 +1,6 @@
 import { Worker } from 'bullmq';
 import { QUEUE_NAMES, type DocumentProcessingJobData } from '@corpusai/queue';
+import { logger } from './lib/logger';
 import { processDocument } from './processors/document-processor';
 
 export function createWorker(redisUrl: string): Worker<DocumentProcessingJobData> {
@@ -8,11 +9,12 @@ export function createWorker(redisUrl: string): Worker<DocumentProcessingJobData
   const worker = new Worker<DocumentProcessingJobData>(
     QUEUE_NAMES.DOCUMENT_PROCESSING,
     async (job) => {
-      console.log(
-        `[Job ${job.id}] Processing document ${job.data.documentId} (attempt ${job.attemptsMade + 1})`
+      logger.info(
+        { jobId: job.id, documentId: job.data.documentId, attempt: job.attemptsMade + 1 },
+        'Processing document'
       );
       await processDocument(job.data);
-      console.log(`[Job ${job.id}] Completed document ${job.data.documentId}`);
+      logger.info({ jobId: job.id, documentId: job.data.documentId }, 'Completed document');
     },
     {
       connection: {
@@ -27,11 +29,14 @@ export function createWorker(redisUrl: string): Worker<DocumentProcessingJobData
   );
 
   worker.on('failed', (job, err) => {
-    console.error(`[Job ${job?.id}] Failed document ${job?.data.documentId}: ${err.message}`);
+    logger.error(
+      { jobId: job?.id, documentId: job?.data.documentId, err },
+      'Failed document processing'
+    );
   });
 
   worker.on('error', (err) => {
-    console.error(`Worker error: ${err.message}`);
+    logger.error({ err }, 'Worker error');
   });
 
   return worker;
