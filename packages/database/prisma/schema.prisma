@@ -17,6 +17,7 @@ model User {
   name          String?
   image         String?
   emailVerified Boolean   @default(false)
+  role          UserRole  @default(USER)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -31,6 +32,7 @@ model User {
   ais        AI[]
   sessions   Session[]
   accounts   Account[]
+  apiKeys    ApiKey[]
   dailyStats DailyStats[]
 
   @@index([email])
@@ -319,6 +321,31 @@ enum ConfidenceLevel {
   HIGH
   MEDIUM
   LOW
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+// ============================================
+// API KEYS
+// ============================================
+
+model ApiKey {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  keyHash   String   @unique
+  prefix    String   // First 8 chars for display (e.g., "cai_abc1...")
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([keyHash])
 }
 
 // ============================================
