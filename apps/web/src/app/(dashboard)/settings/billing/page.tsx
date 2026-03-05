@@ -12,7 +12,12 @@ import {
   Skeleton,
   Separator,
 } from '@corpusai/ui';
-import { useDashboardStats } from '@/lib/queries';
+import {
+  useDashboardStats,
+  useCreateCheckout,
+  useCustomerPortal,
+  useInvoices,
+} from '@/lib/queries';
 import { CheckIcon, XIcon, ReceiptIcon } from '@/lib/icons';
 import { PLANS, PLAN_DISPLAY_NAMES } from '@/lib/constants';
 import {
@@ -24,14 +29,15 @@ import { PageWrapper } from '@/components/page-wrapper';
 
 export default function SettingsBillingPage() {
   const { data: stats, isLoading } = useDashboardStats();
+  const { data: invoices } = useInvoices();
+  const createCheckout = useCreateCheckout();
+  const customerPortal = useCustomerPortal();
 
   const currentPlan = (stats?.subscriptionPlan || 'FREE') as SubscriptionPlanType;
 
   const handleUpgrade = (planId: SubscriptionPlanType) => {
-    // TODO: Integrate Stripe checkout
-    alert(
-      `L'integration Stripe sera ajoutee prochainement pour passer au plan ${PLAN_DISPLAY_NAMES[planId]}`
-    );
+    if (planId === 'FREE') return;
+    createCheckout.mutate({ plan: planId, interval: 'monthly' });
   };
 
   if (isLoading) {
@@ -188,6 +194,27 @@ export default function SettingsBillingPage() {
         </CardContent>
       </Card>
 
+      {/* Manage Subscription */}
+      {currentPlan !== 'FREE' && (
+        <Card variant="glass">
+          <CardHeader>
+            <CardTitle>Gerer votre abonnement</CardTitle>
+            <CardDescription>
+              Modifier, annuler ou mettre a jour votre moyen de paiement.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="outline"
+              onClick={() => customerPortal.mutate()}
+              disabled={customerPortal.isPending}
+            >
+              {customerPortal.isPending ? 'Redirection...' : 'Ouvrir le portail de facturation'}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Payment History */}
       <Card variant="glass">
         <CardHeader>
@@ -195,11 +222,49 @@ export default function SettingsBillingPage() {
           <CardDescription>Vos factures et paiements precedents.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="py-8 text-center text-muted-foreground">
-            <ReceiptIcon className="mx-auto mb-4 h-12 w-12 opacity-50" />
-            <p>Aucune facture disponible</p>
-            <p className="text-sm">Vos factures apparaitront ici apres votre premier paiement.</p>
-          </div>
+          {invoices && invoices.length > 0 ? (
+            <div className="space-y-3">
+              {invoices.map((invoice) => (
+                <div
+                  key={invoice.id}
+                  className="flex items-center justify-between rounded-lg bg-muted/30 p-3"
+                >
+                  <div>
+                    <p className="text-sm font-medium">
+                      {invoice.date
+                        ? new Date(invoice.date).toLocaleDateString('fr-FR', {
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric',
+                          })
+                        : 'Date inconnue'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {(invoice.amount / 100).toFixed(2)} {invoice.currency.toUpperCase()}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={invoice.status === 'paid' ? 'secondary' : 'destructive'}>
+                      {invoice.status === 'paid' ? 'Paye' : invoice.status}
+                    </Badge>
+                    {invoice.pdfUrl && (
+                      <Button variant="ghost" size="sm" asChild>
+                        <a href={invoice.pdfUrl} target="_blank" rel="noopener noreferrer">
+                          PDF
+                        </a>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-8 text-center text-muted-foreground">
+              <ReceiptIcon className="mx-auto mb-4 h-12 w-12 opacity-50" />
+              <p>Aucune facture disponible</p>
+              <p className="text-sm">Vos factures apparaitront ici apres votre premier paiement.</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </PageWrapper>

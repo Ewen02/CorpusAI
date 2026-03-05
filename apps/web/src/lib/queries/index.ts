@@ -1,5 +1,5 @@
 // Types
-export * from "./types";
+export * from './types';
 
 // AI hooks
 export {
@@ -10,7 +10,7 @@ export {
   useCreateAI,
   useUpdateAI,
   useDeleteAI,
-} from "./use-ai";
+} from './use-ai';
 
 // Conversation hooks
 export {
@@ -19,15 +19,10 @@ export {
   useConversation,
   useStartConversation,
   useDeleteConversation,
-} from "./use-conversations";
+} from './use-conversations';
 
 // Message hooks
-export {
-  messageKeys,
-  useMessages,
-  useSendMessage,
-  useSendMessageStream,
-} from "./use-messages";
+export { messageKeys, useMessages, useSendMessage, useSendMessageStream } from './use-messages';
 
 // Document hooks
 export {
@@ -38,14 +33,18 @@ export {
   useCreateTextDocument,
   useDeleteDocument,
   useRetryDocument,
-} from "./use-documents";
+} from './use-documents';
 
 // Dashboard hooks
 export {
   dashboardKeys,
   useDashboardStats,
+  usageKeys,
+  useUsage,
   type DashboardStats,
-} from "./use-dashboard";
+  type UsageData,
+  type UsageLimitItem,
+} from './use-dashboard';
 
 // Analytics hooks
 export {
@@ -55,4 +54,36 @@ export {
   type AnalyticsPeriod,
   type DailyDataPoint,
   type Trend,
-} from "./use-analytics";
+} from './use-analytics';
+
+// Admin hooks
+export {
+  adminKeys,
+  useAdminDashboard,
+  useAdminUsers,
+  useAdminAIs,
+  useUpdateUserRole,
+  useUpdateUserPlan,
+  type AdminDashboard,
+  type AdminUser,
+  type AdminAI,
+} from './use-admin';
+
+// API Key hooks
+export {
+  apiKeyKeys,
+  useApiKeys,
+  useCreateApiKey,
+  useDeleteApiKey,
+  type ApiKeyInfo,
+  type NewApiKey,
+} from './use-api-keys';
+
+// Billing hooks
+export {
+  billingKeys,
+  useInvoices,
+  useCreateCheckout,
+  useCustomerPortal,
+  type Invoice,
+} from './use-billing';

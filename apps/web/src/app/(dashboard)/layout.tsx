@@ -2,28 +2,57 @@
 
 import * as React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { DashboardLayout, DashboardLayoutSkeleton, type NavItem, type AINavItem, type UserData } from '@corpusai/ui';
+import {
+  DashboardLayout,
+  DashboardLayoutSkeleton,
+  type NavItem,
+  type AINavItem,
+  type UserData,
+} from '@corpusai/ui';
 import { authClient } from '@/lib/auth-client';
 import { useAIs } from '@/lib/queries';
-import { HomeIcon, BotIcon, ChartIcon, SettingsIcon, BookIcon } from '@/lib/icons';
+import { HomeIcon, BotIcon, ChartIcon, SettingsIcon, BookIcon, ShieldIcon } from '@/lib/icons';
 
 // Navigation items
 const mainNavItems: NavItem[] = [
-  { id: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: <HomeIcon className="h-4 w-4" /> },
+  {
+    id: 'dashboard',
+    label: 'Dashboard',
+    href: '/dashboard',
+    icon: <HomeIcon className="h-4 w-4" />,
+  },
   { id: 'ais', label: 'Mes AIs', href: '/ais', icon: <BotIcon className="h-4 w-4" /> },
-  { id: 'analytics', label: 'Analytics', href: '/analytics', icon: <ChartIcon className="h-4 w-4" /> },
+  {
+    id: 'analytics',
+    label: 'Analytics',
+    href: '/analytics',
+    icon: <ChartIcon className="h-4 w-4" />,
+  },
 ];
+
+const adminNavItem: NavItem = {
+  id: 'admin',
+  label: 'Admin',
+  href: '/admin',
+  icon: <ShieldIcon className="h-4 w-4" />,
+};
 
 const bottomNavItems: NavItem[] = [
-  { id: 'settings', label: 'Settings', href: '/settings', icon: <SettingsIcon className="h-4 w-4" /> },
-  { id: 'docs', label: 'Documentation', href: 'https://docs.corpusai.com', icon: <BookIcon className="h-4 w-4" /> },
+  {
+    id: 'settings',
+    label: 'Settings',
+    href: '/settings',
+    icon: <SettingsIcon className="h-4 w-4" />,
+  },
+  {
+    id: 'docs',
+    label: 'Documentation',
+    href: 'https://docs.corpusai.com',
+    icon: <BookIcon className="h-4 w-4" />,
+  },
 ];
 
-export default function DashboardLayoutWrapper({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DashboardLayoutWrapper({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { data: session, isPending } = authClient.useSession();
@@ -81,9 +110,13 @@ export default function DashboardLayoutWrapper({
     return <DashboardLayoutSkeleton />;
   }
 
+  // Add admin nav item if user is admin
+  const isAdmin = (session?.user as Record<string, unknown> | undefined)?.role === 'ADMIN';
+  const navItems = isAdmin ? [...mainNavItems, adminNavItem] : mainNavItems;
+
   return (
     <DashboardLayout
-      navItems={mainNavItems}
+      navItems={navItems}
       aiItems={aiItems}
       bottomNavItems={bottomNavItems}
       user={user}

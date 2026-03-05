@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@corpusai/ui';
 import { useNavigation } from '@/lib/hooks';
 import { ROUTES } from '@/lib/constants';
-import { UserIcon, CreditCardIcon, ShieldIcon, BellIcon } from '@/lib/icons';
+import { UserIcon, CreditCardIcon, ShieldIcon, BellIcon, KeyIcon } from '@/lib/icons';
 
 interface SettingsNavItem {
   label: string;
@@ -34,13 +34,14 @@ const settingsNav: SettingsNavItem[] = [
     href: ROUTES.settings.notifications,
     icon: <BellIcon className="h-4 w-4" />,
   },
+  {
+    label: 'Cles API',
+    href: ROUTES.settings.apiKeys,
+    icon: <KeyIcon className="h-4 w-4" />,
+  },
 ];
 
-export default function SettingsLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { navigateTo } = useNavigation();
 
@@ -48,14 +49,12 @@ export default function SettingsLayout({
     <div className="container max-w-6xl py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">Parametres</h1>
-        <p className="text-muted-foreground mt-2">
-          Gerez votre compte et vos preferences.
-        </p>
+        <p className="mt-2 text-muted-foreground">Gerez votre compte et vos preferences.</p>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-8">
+      <div className="flex flex-col gap-8 md:flex-row">
         {/* Sidebar Navigation */}
-        <nav className="w-full md:w-56 shrink-0">
+        <nav className="w-full shrink-0 md:w-56">
           <ul className="space-y-1">
             {settingsNav.map((item) => {
               const isActive = pathname === item.href;
@@ -64,10 +63,10 @@ export default function SettingsLayout({
                   <button
                     onClick={() => navigateTo(item.href)}
                     className={cn(
-                      'w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors',
+                      'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
                       isActive
-                        ? 'bg-accent text-accent-foreground font-medium'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                        ? 'bg-accent font-medium text-accent-foreground'
+                        : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
                     )}
                   >
                     {item.icon}
@@ -80,7 +79,7 @@ export default function SettingsLayout({
         </nav>
 
         {/* Content */}
-        <div className="flex-1 min-w-0">{children}</div>
+        <div className="min-w-0 flex-1">{children}</div>
       </div>
     </div>
   );

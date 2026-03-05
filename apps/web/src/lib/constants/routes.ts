@@ -28,6 +28,7 @@ export const ROUTES = {
     billing: '/settings/billing',
     security: '/settings/security',
     notifications: '/settings/notifications',
+    apiKeys: '/settings/api-keys',
   },
 
   // External

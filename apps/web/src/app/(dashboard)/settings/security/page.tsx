@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import * as React from "react";
+import * as React from 'react';
 import {
   Button,
   Input,
@@ -13,13 +13,13 @@ import {
   Badge,
   Skeleton,
   Separator,
-} from "@corpusai/ui";
-import { authClient } from "@/lib/auth-client";
-import { apiClient } from "@/lib/api-client";
-import { useFormState } from "@/lib/hooks";
-import { getProviderInfo } from "@/lib/constants";
-import { DeviceIcon } from "@/lib/icons";
-import { PageWrapper } from "@/components/page-wrapper";
+} from '@corpusai/ui';
+import { authClient } from '@/lib/auth-client';
+import { apiClient } from '@/lib/api-client';
+import { useFormState } from '@/lib/hooks';
+import { getProviderInfo } from '@/lib/constants';
+import { DeviceIcon, ShieldIcon } from '@/lib/icons';
+import { PageWrapper } from '@/components/page-wrapper';
 
 interface AccountInfo {
   providerId: string;
@@ -30,19 +30,19 @@ export default function SettingsSecurityPage() {
   const { data: session } = authClient.useSession();
   const [accounts, setAccounts] = React.useState<AccountInfo[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [currentPassword, setCurrentPassword] = React.useState("");
-  const [newPassword, setNewPassword] = React.useState("");
-  const [confirmPassword, setConfirmPassword] = React.useState("");
+  const [currentPassword, setCurrentPassword] = React.useState('');
+  const [newPassword, setNewPassword] = React.useState('');
+  const [confirmPassword, setConfirmPassword] = React.useState('');
 
   const formState = useFormState();
 
   React.useEffect(() => {
     const fetchAccounts = async () => {
       try {
-        const data = await apiClient.get<AccountInfo[]>("/users/me/accounts");
+        const data = await apiClient.get<AccountInfo[]>('/users/me/accounts');
         setAccounts(data);
       } catch (err) {
-        console.error("Error fetching accounts:", err);
+        console.error('Error fetching accounts:', err);
       } finally {
         setIsLoading(false);
       }
@@ -56,34 +56,41 @@ export default function SettingsSecurityPage() {
   }, [session]);
 
   // Check if user has password auth
-  const hasPasswordAuth = accounts.some((a) => a.providerId === "credential");
-  const oauthAccounts = accounts.filter((a) => a.providerId !== "credential");
+  const hasPasswordAuth = accounts.some((a) => a.providerId === 'credential');
+  const oauthAccounts = accounts.filter((a) => a.providerId !== 'credential');
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     formState.clearMessages();
 
     if (newPassword !== confirmPassword) {
-      formState.setError("Les mots de passe ne correspondent pas");
+      formState.setError('Les mots de passe ne correspondent pas');
       return;
     }
 
     if (newPassword.length < 8) {
-      formState.setError("Le mot de passe doit contenir au moins 8 caractères");
+      formState.setError('Le mot de passe doit contenir au moins 8 caractères');
       return;
     }
 
     formState.setLoading(true);
 
     try {
-      // TODO: Implement password change via Better Auth
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      formState.setSuccess("Mot de passe modifié avec succès");
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-    } catch {
-      formState.setError("Erreur lors du changement de mot de passe");
+      const { error: authError } = await authClient.changePassword({
+        currentPassword,
+        newPassword,
+      });
+      if (authError) {
+        throw new Error(authError.message || 'Erreur lors du changement de mot de passe');
+      }
+      formState.setSuccess('Mot de passe modifié avec succès');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      formState.setError(
+        err instanceof Error ? err.message : 'Erreur lors du changement de mot de passe'
+      );
     } finally {
       formState.setLoading(false);
     }
@@ -111,15 +118,11 @@ export default function SettingsSecurityPage() {
       <Card variant="glass">
         <CardHeader>
           <CardTitle>Méthode de connexion</CardTitle>
-          <CardDescription>
-            Comment vous vous connectez à votre compte.
-          </CardDescription>
+          <CardDescription>Comment vous vous connectez à votre compte.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {accounts.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Aucune méthode de connexion configurée.
-            </p>
+            <p className="text-sm text-muted-foreground">Aucune méthode de connexion configurée.</p>
           ) : (
             accounts.map((account, idx) => {
               const provider = getProviderInfo(account.providerId);
@@ -132,11 +135,11 @@ export default function SettingsSecurityPage() {
                       <div>
                         <p className="font-medium">{provider.name}</p>
                         <p className="text-sm text-muted-foreground">
-                          Connecté le{" "}
-                          {new Date(account.createdAt).toLocaleDateString("fr-FR", {
-                            day: "numeric",
-                            month: "long",
-                            year: "numeric",
+                          Connecté le{' '}
+                          {new Date(account.createdAt).toLocaleDateString('fr-FR', {
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric',
                           })}
                         </p>
                       </div>
@@ -149,10 +152,11 @@ export default function SettingsSecurityPage() {
           )}
 
           {oauthAccounts.length > 0 && !hasPasswordAuth && (
-            <div className="mt-4 p-3 rounded-lg bg-muted/50 text-sm text-muted-foreground">
+            <div className="mt-4 rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
               <p>
-                Vous êtes connecté via {oauthAccounts.map((a) => getProviderInfo(a.providerId).name).join(", ")}.
-                La gestion du mot de passe n&apos;est pas disponible pour les comptes OAuth.
+                Vous êtes connecté via{' '}
+                {oauthAccounts.map((a) => getProviderInfo(a.providerId).name).join(', ')}. La
+                gestion du mot de passe n&apos;est pas disponible pour les comptes OAuth.
               </p>
             </div>
           )}
@@ -169,7 +173,7 @@ export default function SettingsSecurityPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handlePasswordChange} className="space-y-4 max-w-md">
+            <form onSubmit={handlePasswordChange} className="max-w-md space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="currentPassword">Mot de passe actuel</Label>
                 <Input
@@ -191,9 +195,7 @@ export default function SettingsSecurityPage() {
                   required
                   minLength={8}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Minimum 8 caractères
-                </p>
+                <p className="text-xs text-muted-foreground">Minimum 8 caractères</p>
               </div>
 
               <div className="space-y-2">
@@ -208,18 +210,18 @@ export default function SettingsSecurityPage() {
               </div>
 
               {formState.error && (
-                <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+                <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
                   {formState.error}
                 </div>
               )}
               {formState.success && (
-                <div className="p-3 rounded-lg bg-green-500/10 text-green-500 text-sm">
+                <div className="rounded-lg bg-green-500/10 p-3 text-sm text-green-500">
                   {formState.success}
                 </div>
               )}
 
               <Button type="submit" disabled={formState.isLoading}>
-                {formState.isLoading ? "Modification..." : "Modifier le mot de passe"}
+                {formState.isLoading ? 'Modification...' : 'Modifier le mot de passe'}
               </Button>
             </form>
           </CardContent>
@@ -230,12 +232,10 @@ export default function SettingsSecurityPage() {
       <Card variant="glass">
         <CardHeader>
           <CardTitle>Sessions actives</CardTitle>
-          <CardDescription>
-            Gérez les appareils connectés à votre compte.
-          </CardDescription>
+          <CardDescription>Gérez les appareils connectés à votre compte.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+          <div className="flex items-center justify-between rounded-lg bg-muted/50 p-4">
             <div className="flex items-center gap-3">
               <DeviceIcon className="h-8 w-8 text-muted-foreground" />
               <div>
@@ -245,9 +245,7 @@ export default function SettingsSecurityPage() {
                     Cet appareil
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Dernière activité : maintenant
-                </p>
+                <p className="text-sm text-muted-foreground">Dernière activité : maintenant</p>
               </div>
             </div>
           </div>
@@ -263,14 +261,144 @@ export default function SettingsSecurityPage() {
       </Card>
 
       {/* Two-Factor Auth */}
-      <Card variant="glass">
-        <CardHeader>
-          <CardTitle>Authentification à deux facteurs</CardTitle>
-          <CardDescription>
-            Ajoutez une couche de sécurité supplémentaire.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <TwoFactorSection />
+    </PageWrapper>
+  );
+}
+
+function TwoFactorSection() {
+  const [totpUri, setTotpUri] = React.useState<string | null>(null);
+  const [backupCodes, setBackupCodes] = React.useState<string[] | null>(null);
+  const [code, setCode] = React.useState('');
+  const [is2FAEnabled, setIs2FAEnabled] = React.useState(false);
+  const [isEnabling, setIsEnabling] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [success, setSuccess] = React.useState<string | null>(null);
+
+  const handleEnable2FA = async () => {
+    setError(null);
+    setIsEnabling(true);
+    try {
+      const { data, error: err } = await authClient.twoFactor.enable({
+        password: '', // Better Auth handles this via session
+      });
+      if (err) throw new Error(err.message || "Erreur lors de l'activation 2FA");
+      if (data?.totpURI) {
+        setTotpUri(data.totpURI);
+        if (data.backupCodes) {
+          setBackupCodes(data.backupCodes);
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur');
+    } finally {
+      setIsEnabling(false);
+    }
+  };
+
+  const handleVerify = async () => {
+    setError(null);
+    try {
+      const { error: err } = await authClient.twoFactor.verifyTotp({ code });
+      if (err) throw new Error(err.message || 'Code invalide');
+      setIs2FAEnabled(true);
+      setTotpUri(null);
+      setCode('');
+      setSuccess('Authentification 2FA activée avec succès !');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Code invalide');
+    }
+  };
+
+  const handleDisable2FA = async () => {
+    setError(null);
+    try {
+      const { error: err } = await authClient.twoFactor.disable({
+        password: '',
+      });
+      if (err) throw new Error(err.message || 'Erreur');
+      setIs2FAEnabled(false);
+      setSuccess('2FA désactivée');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur');
+    }
+  };
+
+  return (
+    <Card variant="glass">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <ShieldIcon className="h-5 w-5" />
+          Authentification à deux facteurs
+        </CardTitle>
+        <CardDescription>
+          Ajoutez une couche de sécurité supplémentaire avec une app TOTP.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {error && (
+          <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
+        )}
+        {success && (
+          <div className="rounded-lg bg-green-500/10 p-3 text-sm text-green-500">{success}</div>
+        )}
+
+        {is2FAEnabled ? (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">Activé</Badge>
+              <p className="text-sm text-muted-foreground">Votre compte est protégé par la 2FA.</p>
+            </div>
+            <Button variant="outline" className="text-destructive" onClick={handleDisable2FA}>
+              Désactiver
+            </Button>
+          </div>
+        ) : totpUri ? (
+          <div className="max-w-md space-y-4">
+            <div>
+              <p className="mb-2 text-sm font-medium">
+                1. Scannez ce QR code avec votre app d&apos;authentification (Google Authenticator,
+                Authy, etc.)
+              </p>
+              <div className="inline-block rounded-lg bg-white p-4">
+                {/* QR code placeholder — use totpUri to generate */}
+                <p className="break-all font-mono text-xs text-black">{totpUri}</p>
+              </div>
+            </div>
+
+            {backupCodes && (
+              <div>
+                <p className="mb-2 text-sm font-medium">
+                  2. Sauvegardez ces codes de secours en lieu sûr :
+                </p>
+                <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted/50 p-3">
+                  {backupCodes.map((bc, i) => (
+                    <code key={i} className="font-mono text-xs">
+                      {bc}
+                    </code>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="totp-code">3. Entrez le code de vérification</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="totp-code"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="123456"
+                  maxLength={6}
+                  className="max-w-[200px]"
+                />
+                <Button onClick={handleVerify} disabled={code.length !== 6}>
+                  Vérifier
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : (
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium">Authentification 2FA</p>
@@ -278,12 +406,12 @@ export default function SettingsSecurityPage() {
                 Protégez votre compte avec une vérification supplémentaire.
               </p>
             </div>
-            <Button variant="outline" disabled>
-              Bientôt disponible
+            <Button variant="outline" onClick={handleEnable2FA} disabled={isEnabling}>
+              {isEnabling ? 'Activation...' : 'Activer la 2FA'}
             </Button>
           </div>
-        </CardContent>
-      </Card>
-    </PageWrapper>
+        )}
+      </CardContent>
+    </Card>
   );
 }
