@@ -1,5 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { prisma } from '@corpusai/database';
+import {
+  getFeatureLimits,
+  getRemainingUsage,
+  type SubscriptionPlanType,
+} from '@corpusai/subscription';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
@@ -183,5 +188,70 @@ export class UsersService {
         questions: calcTrend('questions'),
       },
     };
+  }
+
+  async getUsage(userId: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        subscriptionPlan: true,
+        subscriptionStatus: true,
+        subscriptionEnd: true,
+        _count: { select: { ais: true } },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const plan = user.subscriptionPlan as SubscriptionPlanType;
+    const limits = getFeatureLimits(plan);
+
+    // Count today's questions across all AIs
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const questionsToday = await prisma.message.count({
+      where: {
+        role: 'USER',
+        createdAt: { gte: todayStart },
+        conversation: { ai: { userId } },
+      },
+    });
+
+    return {
+      plan,
+      status: user.subscriptionStatus,
+      expiresAt: user.subscriptionEnd,
+      limits: {
+        ais: { used: user._count.ais, max: limits.maxAIs },
+        questionsPerDay: { used: questionsToday, max: limits.maxQuestionsPerDay },
+      },
+      remaining: {
+        ais: getRemainingUsage(plan, 'ais', user._count.ais),
+        questionsPerDay: getRemainingUsage(plan, 'questions', questionsToday),
+      },
+    };
+  }
+
+  async deleteAccount(userId: string): Promise<void> {
+    const logger = new Logger('UsersService');
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Cascade delete handles most relations, but log it
+    logger.warn(`Deleting account for user ${user.email} (${user.id})`);
+
+    await prisma.user.delete({ where: { id: userId } });
+
+    logger.log(`Account deleted: ${user.email}`);
   }
 }

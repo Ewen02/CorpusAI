@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Delete, Body, Query, UseGuards, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { AuthGuard, CurrentUser, type CurrentUserData } from '../auth';
@@ -44,6 +44,14 @@ export class UsersController {
     return this.usersService.getAccounts(user.id);
   }
 
+  @Get('me/usage')
+  @ApiOperation({ summary: 'Get current usage and remaining quotas for the subscription plan' })
+  @ApiResponse({ status: 200, description: 'Usage data returned' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getUsage(@CurrentUser() user: CurrentUserData) {
+    return this.usersService.getUsage(user.id);
+  }
+
   @Get('me/analytics')
   @ApiOperation({ summary: 'Get analytics data with trends' })
   @ApiQuery({ name: 'period', required: false, enum: ['7d', '30d', '90d'] })
@@ -54,5 +62,14 @@ export class UsersController {
     @Query('period') period?: '7d' | '30d' | '90d'
   ) {
     return this.usersService.getAnalytics(user.id, period || '30d');
+  }
+
+  @Delete('me')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Delete current user account and all data' })
+  @ApiResponse({ status: 204, description: 'Account deleted successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async deleteAccount(@CurrentUser() user: CurrentUserData) {
+    await this.usersService.deleteAccount(user.id);
   }
 }

@@ -8,6 +8,6 @@ import { RagController } from './rag.controller';
   imports: [ConfigModule],
   controllers: [RagController],
   providers: [RagPipelineFactory, RagService],
-  exports: [RagService],
+  exports: [RagPipelineFactory, RagService],
 })
 export class RagModule {}

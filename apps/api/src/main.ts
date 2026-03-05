@@ -1,12 +1,14 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { Logger as PinoLogger } from 'nestjs-pino';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
+  app.useLogger(app.get(PinoLogger));
 
   // Security headers
   app.use(helmet());
@@ -45,9 +47,10 @@ async function bootstrap() {
   const port = process.env.PORT || 3001;
   await app.listen(port);
 
-  console.log(`CorpusAI API running on http://localhost:${port}`);
+  const logger = new Logger('Bootstrap');
+  logger.log(`CorpusAI API running on http://localhost:${port}`);
   if (process.env.NODE_ENV !== 'production') {
-    console.log(`Swagger docs at http://localhost:${port}/docs`);
+    logger.log(`Swagger docs at http://localhost:${port}/docs`);
   }
 }
 

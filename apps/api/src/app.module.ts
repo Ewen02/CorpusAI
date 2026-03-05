@@ -1,7 +1,8 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import Joi from 'joi';
+import { LoggerModule } from 'nestjs-pino';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -12,7 +13,11 @@ import { DocumentsModule } from './modules/documents';
 import { ConversationsModule } from './modules/conversations';
 import { RagModule } from './modules/rag';
 import { HealthModule } from './modules/health/health.module';
+import { BillingModule } from './modules/billing/billing.module';
+import { AdminModule } from './modules/admin';
+import { PublicApiModule } from './modules/public-api';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
+import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middleware';
 
 @Module({
   imports: [
@@ -26,8 +31,24 @@ import { CorrelationIdMiddleware } from './common/middleware/correlation-id.midd
         OPENAI_API_KEY: Joi.string().required(),
         QDRANT_URL: Joi.string().uri().required(),
         REDIS_URL: Joi.string().optional().allow(''),
+        STRIPE_SECRET_KEY: Joi.string().optional().allow(''),
+        STRIPE_WEBHOOK_SECRET: Joi.string().optional().allow(''),
         NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
         PORT: Joi.number().default(3001),
+      }),
+    }),
+    LoggerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        pinoHttp: {
+          level: config.get('NODE_ENV') === 'production' ? 'info' : 'debug',
+          customProps: (req: { headers?: Record<string, string | string[] | undefined> }) => ({
+            correlationId: req.headers?.[CORRELATION_ID_HEADER],
+          }),
+          ...(config.get('NODE_ENV') !== 'production'
+            ? { transport: { target: 'pino-pretty', options: { colorize: true } } }
+            : {}),
+        },
       }),
     }),
     ThrottlerModule.forRoot([
@@ -54,6 +75,9 @@ import { CorrelationIdMiddleware } from './common/middleware/correlation-id.midd
     ConversationsModule,
     RagModule,
     HealthModule,
+    BillingModule,
+    AdminModule,
+    PublicApiModule,
   ],
   controllers: [AppController],
   providers: [

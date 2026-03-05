@@ -18,6 +18,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const correlationId = request.headers[CORRELATION_ID_HEADER] as string;
     const isDev = process.env.NODE_ENV !== 'production';
 
+    // Add Retry-After header for rate-limited responses
+    if (status === HttpStatus.TOO_MANY_REQUESTS) {
+      response.setHeader('Retry-After', '1');
+    }
+
     response.status(status).json({
       statusCode: status,
       message,

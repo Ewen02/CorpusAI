@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
+import { twoFactor } from 'better-auth/plugins';
 import { prisma } from '@corpusai/database';
 import { Logger } from '@nestjs/common';
 
@@ -47,8 +48,18 @@ export const auth = betterAuth({
         required: false,
         defaultValue: 'ACTIVE',
       },
+      role: {
+        type: 'string',
+        required: false,
+        defaultValue: 'USER',
+      },
     },
   },
+  plugins: [
+    twoFactor({
+      issuer: 'CorpusAI',
+    }),
+  ],
   trustedOrigins: [process.env.FRONTEND_URL!],
   hooks: {
     // Better Auth's MiddlewareInputContext type is opaque — cast required to access request info
