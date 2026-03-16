@@ -1,42 +1,36 @@
 # CorpusAI — Taches restantes
 
-## P0 — Requis pour lancement
+## Tout ce qui est fait
 
-Tout est fait. Voir section "Fait" ci-dessous.
+Sprints 0-4 livres. Voir section "Fait" en bas pour le detail complet.
 
-## P1 — Important
+## Reste a faire
 
-- [ ] **Tests API**
-  - Tests d'integration NestJS (supertest)
-  - Couverture : auth guards, ownership checks, CRUD, RAG query
-  - Mock Prisma + Qdrant pour isolation
+### Fonctionnel
+- [ ] **Multi-langue prompts** — Support EN dans ai-rules (actuellement FR uniquement)
+- [ ] **Onboarding wizard** — Templates AI pre-configures, guide pas-a-pas
+- [ ] **Webhooks API publique** — Notifications evenementielles pour integrateurs
+- [ ] **SDK JavaScript** — Client npm pour l'API publique
+- [ ] **Import/export bulk** — Import ZIP multi-documents, export corpus
 
-- [ ] **Structured logging**
-  - Remplacer console.log residuels par Pino ou Winston
-  - Integrer Sentry pour error tracking
-  - Correlation IDs pour tracer les requetes
+### Qualite / Ops
+- [ ] **Sentry integration** — Error tracking + alerting production
+- [ ] **APM / monitoring** — Metriques temps reel (latence, throughput)
+- [ ] **Dead-letter queue polish** — Alerting sur jobs echoues apres 3 retries
+- [ ] **Stats cleanup cron** — Purge des DailyStats au-dela de la retention du plan
+- [ ] **Docker production images** — Build multi-stage optimise pour deploy
 
-## P2 — Qualite
-
-- [ ] **Tests E2E** — Playwright pour flows critiques
-- [ ] **Tests frontend** — Vitest + Testing Library
-- [ ] **ESLint config partagee** — tooling/eslint-config
-- [ ] **CI/CD** — GitHub Actions (lint, typecheck, test, build, deploy preview)
-
-## P3 — Nice to have
-
-- [ ] Admin panel (routes, gestion users, monitoring)
-- [ ] Onboarding ameliore (wizard guide, templates AI)
-- [ ] API publique documentee
-- [ ] Multi-langue prompts dans ai-rules (EN)
-- [ ] Integration Stripe (checkout, webhooks, gestion abonnements)
-- [ ] Analytics reelles (ecrire dans DailyStats a chaque interaction)
+### Tests a renforcer
+- [ ] **Augmenter couverture API** — Modules billing, admin, public-api non testes
+- [ ] **Tests E2E complets** — Les specs Playwright sont des stubs, a etoffer avec vraies assertions
+- [ ] **Tests frontend** — Seuls 2 composants testes (ConversationList, utils), ajouter ChatInterface, hooks
 
 ---
 
 ## Fait (reference)
 
-- [x] **Background workers** — BullMQ + Redis + @corpusai/queue package + ai-worker production worker (concurrency 3, retry 3x, exponential backoff)
+### Sprint 0 — P0 Core
+- [x] Background workers — BullMQ + Redis + @corpusai/queue + ai-worker (concurrency 3, retry 3x)
 - [x] Refactoring ai-rules comme source unique de verite (prompts, confidence)
 - [x] Securite : SSRF protection, AuthGuard RAG, ownership SSE, abort streaming
 - [x] Debug logging conditionnel, maxContextChars, scoreThreshold unifie
@@ -45,7 +39,25 @@ Tout est fait. Voir section "Fait" ci-dessous.
 - [x] Widget embeddable /embed/[slug] avec params (theme, color, height)
 - [x] Dashboard createur avec stats reelles + graphiques Recharts
 - [x] Chat streaming SSE complet avec citations sources et niveaux confiance
-- [x] Setup Claude Code optimal (CLAUDE.md split, slash commands, settings.json)
-- [x] **Rate limiting par plan** — AuthGuard bloque CANCELED/PAST_DUE, GET /users/me/usage, Retry-After 429, usage bar dashboard
-- [x] **Forgot/reset password** — pages forgot-password et reset-password avec Better Auth
-- [x] **Changement mot de passe** — authClient.changePassword() dans settings/security
+
+### Sprint 1 — P0 Auth & Security
+- [x] Rate limiting par plan — AuthGuard bloque CANCELED/PAST_DUE, usage bar dashboard
+- [x] Forgot/reset password — pages avec Better Auth
+- [x] Changement mot de passe — settings/security
+
+### Sprint 2 — P1 Robustesse
+- [x] Structured logging Pino — API (nestjs-pino) + ai-worker (pino instance)
+- [x] Tests API — 71 tests Vitest (services, guards, ownership)
+- [x] Analytics verification — incrementDailyStats sur tous les paths
+
+### Sprint 3 — P2 Qualite & DX
+- [x] ESLint config partagee — tooling/eslint-config (base, next, nestjs, library)
+- [x] Tests frontend — Vitest + Testing Library (web + ui)
+- [x] Tests E2E — Playwright installe, specs auth + widget (stubs)
+- [x] CI/CD — Jobs paralleles, cache Turborepo, coverage
+
+### Sprint 4 — P3 Features
+- [x] Integration Stripe — Module billing (checkout, webhooks, portal), page billing
+- [x] Admin panel — Dashboard, gestion users/AIs, AdminGuard
+- [x] UX — 2FA (TOTP), suppression compte, onboarding banner
+- [x] API publique — API keys (cai_ prefix), endpoints /v1/query et /v1/ais
