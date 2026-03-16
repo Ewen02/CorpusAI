@@ -12,6 +12,7 @@ import {
   Card,
   CardContent,
   TooltipProvider,
+  ShareModal,
   type Conversation,
 } from '@corpusai/ui';
 import { useAI, useConversations, useDocuments } from '@/lib/queries';
@@ -51,13 +52,8 @@ export default function AIDetailPage() {
   } = useChatState({ aiSlug: aiData?.slug || '' });
 
   // Document upload management
-  const {
-    uploadedFiles,
-    uploadFiles,
-    removeFile,
-    deleteIndexedDocument,
-    retryFailedDocument,
-  } = useDocumentUpload({ aiId });
+  const { uploadedFiles, uploadFiles, removeFile, deleteIndexedDocument, retryFailedDocument } =
+    useDocumentUpload({ aiId });
 
   // Transform conversations data to UI format
   const conversations: Conversation[] = React.useMemo(() => {
@@ -82,11 +78,16 @@ export default function AIDetailPage() {
 
     const docList = indexedDocs
       .slice(0, 5)
-      .map((d: { filename: string }) => `• ${d.filename.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ')}`)
+      .map(
+        (d: { filename: string }) => `• ${d.filename.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ')}`
+      )
       .join('\n');
 
     return `Salut ! Je suis documenté sur ces sujets :\n${docList}${indexedDocs.length > 5 ? `\n• ...et ${indexedDocs.length - 5} autres` : ''}\n\nPose-moi une question, même en dehors de ces sujets !`;
   }, [aiData?.welcomeMessage, documents]);
+
+  // Share modal state
+  const [shareOpen, setShareOpen] = React.useState(false);
 
   // Handlers
   const handleConversationSelect = React.useCallback(
@@ -99,6 +100,10 @@ export default function AIDetailPage() {
   const handleSettings = React.useCallback(() => {
     goToAISettings(aiId);
   }, [aiId, goToAISettings]);
+
+  const handleShare = React.useCallback(() => {
+    setShareOpen(true);
+  }, []);
 
   // Loading state
   if (isLoadingAI) {
@@ -132,7 +137,17 @@ export default function AIDetailPage() {
   return (
     <TooltipProvider>
       <PageWrapper className="container py-8">
-        <AIHeader ai={aiData} onSettings={handleSettings} />
+        <AIHeader ai={aiData} onSettings={handleSettings} onShare={handleShare} />
+
+        <ShareModal
+          open={shareOpen}
+          onOpenChange={setShareOpen}
+          ai={{
+            slug: aiData.slug,
+            name: aiData.name,
+            primaryColor: aiData.primaryColor ?? undefined,
+          }}
+        />
 
         <Tabs defaultValue="chat" className="space-y-6">
           <TabsList>
