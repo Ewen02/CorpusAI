@@ -1,25 +1,25 @@
 // Utilities
-export { cn } from "./lib/utils";
+export { cn } from './lib/utils';
 
 // Atoms
-export { Button, buttonVariants } from "./atoms/button";
-export type { ButtonProps } from "./atoms/button";
+export { Button, buttonVariants } from './atoms/button';
+export type { ButtonProps } from './atoms/button';
 
-export { Input } from "./atoms/input";
-export type { InputProps } from "./atoms/input";
+export { Input } from './atoms/input';
+export type { InputProps } from './atoms/input';
 
-export { Label } from "./atoms/label";
+export { Label } from './atoms/label';
 
-export { Badge, badgeVariants } from "./atoms/badge";
-export type { BadgeProps } from "./atoms/badge";
+export { Badge, badgeVariants } from './atoms/badge';
+export type { BadgeProps } from './atoms/badge';
 
-export { Skeleton } from "./atoms/skeleton";
+export { Skeleton } from './atoms/skeleton';
 
-export { Avatar, AvatarImage, AvatarFallback } from "./atoms/avatar";
+export { Avatar, AvatarImage, AvatarFallback } from './atoms/avatar';
 
-export { Separator } from "./atoms/separator";
+export { Separator } from './atoms/separator';
 
-export { Tabs, TabsList, TabsTrigger, TabsContent } from "./atoms/tabs";
+export { Tabs, TabsList, TabsTrigger, TabsContent } from './atoms/tabs';
 
 export {
   Select,
@@ -30,12 +30,28 @@ export {
   SelectLabel,
   SelectItem,
   SelectSeparator,
-} from "./atoms/select";
+} from './atoms/select';
 
-export { Switch } from "./atoms/switch";
+export { Switch } from './atoms/switch';
 
-export { Textarea } from "./atoms/textarea";
-export type { TextareaProps } from "./atoms/textarea";
+export { Textarea } from './atoms/textarea';
+export type { TextareaProps } from './atoms/textarea';
+
+export {
+  Dialog,
+  DialogPortal,
+  DialogOverlay,
+  DialogClose,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+} from './atoms/dialog';
+
+export { CopyButton } from './atoms/copy-button';
+export type { CopyButtonProps } from './atoms/copy-button';
 
 export {
   DocumentIcon,
@@ -51,7 +67,7 @@ export {
   CheckIcon,
   XIcon,
   LoaderIcon,
-} from "./atoms/icons";
+} from './atoms/icons';
 
 // Molecules
 export {
@@ -62,93 +78,70 @@ export {
   CardTitle,
   CardDescription,
   CardContent,
-} from "./molecules/card";
-export type { CardProps } from "./molecules/card";
+} from './molecules/card';
+export type { CardProps } from './molecules/card';
 
-export {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-  TooltipProvider,
-} from "./molecules/tooltip";
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './molecules/tooltip';
 
-export { TrendBadge } from "./molecules/trend-badge";
-export type { TrendBadgeProps } from "./molecules/trend-badge";
+export { TrendBadge } from './molecules/trend-badge';
+export type { TrendBadgeProps } from './molecules/trend-badge';
 
-export { StatCard } from "./molecules/stat-card";
-export type { StatCardProps } from "./molecules/stat-card";
+export { StatCard } from './molecules/stat-card';
+export type { StatCardProps } from './molecules/stat-card';
 
-export { ChartTooltip } from "./molecules/chart-tooltip";
-export type { ChartTooltipProps } from "./molecules/chart-tooltip";
+export { ChartTooltip } from './molecules/chart-tooltip';
+export type { ChartTooltipProps } from './molecules/chart-tooltip';
 
-export { MarkdownRenderer } from "./molecules/markdown-renderer";
+export { MarkdownRenderer } from './molecules/markdown-renderer';
 
 // Organisms
-export {
-  ChatInterface,
-  ChatInterfaceSkeleton,
-} from "./organisms/chat-interface";
+export { ChatInterface, ChatInterfaceSkeleton } from './organisms/chat-interface';
 export type {
   ChatInterfaceProps,
   ChatMessage,
   ChatSource,
   ConfidenceLevel,
-} from "./organisms/chat-interface";
+} from './organisms/chat-interface';
 
-export {
-  DocumentUploader,
-  DocumentUploaderSkeleton,
-} from "./organisms/document-uploader";
+export { DocumentUploader, DocumentUploaderSkeleton } from './organisms/document-uploader';
 export type {
   DocumentUploaderProps,
   UploadedFile,
   DocumentUploadStatus,
-} from "./organisms/document-uploader";
+} from './organisms/document-uploader';
 
-export {
-  ConversationList,
-  ConversationListSkeleton,
-} from "./organisms/conversation-list";
-export type {
-  ConversationListProps,
-  Conversation,
-} from "./organisms/conversation-list";
+export { ConversationList, ConversationListSkeleton } from './organisms/conversation-list';
+export type { ConversationListProps, Conversation } from './organisms/conversation-list';
 
 export {
   SourceCitation,
   SourceCitationSkeleton,
   InlineCitation,
-} from "./organisms/source-citation";
+} from './organisms/source-citation';
 export type {
   SourceCitationProps,
   SourceCitationCardProps,
   InlineCitationProps,
   Source,
-} from "./organisms/source-citation";
+} from './organisms/source-citation';
+
+export { ShareModal } from './organisms/share-modal';
+export type { ShareModalProps, ShareModalAI } from './organisms/share-modal';
 
 // Templates
-export {
-  DashboardLayout,
-  DashboardLayoutSkeleton,
-} from "./templates/dashboard-layout";
+export { DashboardLayout, DashboardLayoutSkeleton } from './templates/dashboard-layout';
 export type {
   DashboardLayoutProps,
   NavItem,
   AINavItem,
   UserData,
-} from "./templates/dashboard-layout";
+} from './templates/dashboard-layout';
 
-export {
-  AuthLayout,
-  AuthForm,
-  AuthDivider,
-  AuthLink,
-  SocialButton,
-} from "./templates/auth-layout";
+export { AuthLayout, AuthForm, AuthDivider, AuthLink, SocialButton } from './templates/auth-layout';
 export type {
   AuthLayoutProps,
   AuthFormProps,
   AuthDividerProps,
   AuthLinkProps,
   SocialButtonProps,
-} from "./templates/auth-layout";
+} from './templates/auth-layout';
