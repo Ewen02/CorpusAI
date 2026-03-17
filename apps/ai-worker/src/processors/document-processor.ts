@@ -173,12 +173,22 @@ export async function processDocument(data: DocumentProcessingJobData): Promise<
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     logger.error({ documentId, err: error }, 'Failed to process document');
 
+    // Cleanup orphaned vectors in Qdrant (best-effort)
+    try {
+      const pipeline = createPipelineForAI(aiId);
+      await pipeline.deleteDocuments([documentId]);
+      logger.info({ documentId, aiId }, 'Cleaned up orphaned vectors after failure');
+    } catch (cleanupError) {
+      logger.warn({ documentId, aiId, err: cleanupError }, 'Failed to cleanup orphaned vectors');
+    }
+
     await prisma.document.update({
       where: { id: documentId },
       data: {
         status: DocumentStatus.FAILED,
         errorMessage,
         processingCompletedAt: new Date(),
+        chunkCount: 0,
       },
     });
 
