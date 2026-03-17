@@ -7,7 +7,7 @@ import { ChatInterface, ChatInterfaceSkeleton, Skeleton } from '@corpusai/ui';
 import type { ChatMessage } from '@corpusai/ui';
 import { apiClient, type StreamDoneData } from '@/lib/api-client';
 import type { AIPublicInfo, StartConversationResponse } from '@corpusai/types';
-import { mapSourcesToChat } from '@/lib/utils/chat-session';
+import { getOrCreateSessionId, mapSourcesToChat } from '@/lib/utils/chat-session';
 
 // ============================================
 // Types

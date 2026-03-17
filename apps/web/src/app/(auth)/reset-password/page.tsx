@@ -6,6 +6,14 @@ import { AuthLayout, AuthForm, Button, Input, Label } from '@corpusai/ui';
 import { authClient } from '@/lib/auth-client';
 
 export default function ResetPasswordPage() {
+  return (
+    <React.Suspense>
+      <ResetPasswordContent />
+    </React.Suspense>
+  );
+}
+
+function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token') ?? '';
