@@ -1,4 +1,10 @@
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  UnauthorizedException,
+  Logger,
+} from '@nestjs/common';
 import { createHash } from 'crypto';
 import { prisma } from '@corpusai/database';
 import type { Request } from 'express';
@@ -13,6 +19,8 @@ function hashKey(key: string): string {
 
 @Injectable()
 export class ApiKeyGuard implements CanActivate {
+  private readonly logger = new Logger(ApiKeyGuard.name);
+
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<ApiKeyRequest>();
 
@@ -49,7 +57,12 @@ export class ApiKeyGuard implements CanActivate {
     // Update last used (fire and forget)
     prisma.apiKey
       .update({ where: { id: apiKey.id }, data: { lastUsedAt: new Date() } })
-      .catch(() => {});
+      .catch((err) =>
+        this.logger.warn(
+          { apiKeyId: apiKey.id, err: String(err) },
+          'Failed to update API key lastUsedAt'
+        )
+      );
 
     request.apiKeyUserId = apiKey.userId;
 

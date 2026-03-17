@@ -1,9 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { prisma } from '@corpusai/database';
 
+const DASHBOARD_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 @Injectable()
 export class AdminService {
+  private dashboardCache: { data: unknown; expiresAt: number } | null = null;
+
   async getDashboard() {
+    if (this.dashboardCache && Date.now() < this.dashboardCache.expiresAt) {
+      return this.dashboardCache.data;
+    }
+
     const [userCount, aiCount, documentCount, conversationCount, messageCount] = await Promise.all([
       prisma.user.count(),
       prisma.aI.count(),
@@ -32,7 +40,7 @@ export class AdminService {
       where: { createdAt: { gte: sevenDaysAgo } },
     });
 
-    return {
+    const result = {
       totals: {
         users: userCount,
         ais: aiCount,
@@ -50,6 +58,9 @@ export class AdminService {
       })),
       recentSignups,
     };
+
+    this.dashboardCache = { data: result, expiresAt: Date.now() + DASHBOARD_CACHE_TTL };
+    return result;
   }
 
   async getUsers(page = 1, limit = 20, search?: string) {

@@ -1,18 +1,9 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Delete,
-  Body,
-  Param,
-  Query,
-  UseGuards,
-  HttpCode,
-} from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, UseGuards, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiSecurity } from '@nestjs/swagger';
 import { AuthGuard, CurrentUser, type CurrentUserData } from '../auth';
 import { ApiKeyGuard, type ApiKeyRequest } from '../auth/api-key.guard';
 import { PublicApiService } from './public-api.service';
+import { QueryPublicApiDto } from './dto/query.dto';
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 
 // Decorator to extract userId from API key request
@@ -60,12 +51,8 @@ export class PublicApiController {
 
   @Post('query')
   @ApiOperation({ summary: 'Query an AI assistant' })
-  async query(
-    @ApiKeyUser() userId: string,
-    @Body('slug') slug: string,
-    @Body('question') question: string
-  ) {
-    return this.publicApiService.query(userId, slug, question);
+  async query(@ApiKeyUser() userId: string, @Body() dto: QueryPublicApiDto) {
+    return this.publicApiService.query(userId, dto.slug, dto.question);
   }
 
   @Get('ais')

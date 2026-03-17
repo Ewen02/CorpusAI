@@ -68,7 +68,7 @@ export class RagPipelineFactory implements OnModuleDestroy {
       this.embeddingService = new CachedEmbeddingService({
         baseService: baseEmbeddingService,
         cache: this.createRedisCache(),
-        ttlSeconds: 604800, // 7 jours
+        ttlSeconds: parseInt(this.configService.get<string>('EMBEDDING_CACHE_TTL') || '604800', 10),
         keyPrefix: 'emb:',
       });
     } else {
@@ -184,10 +184,13 @@ export class RagPipelineFactory implements OnModuleDestroy {
    */
   createVectorStoreForAI(aiId: string): QdrantVectorStore {
     this.validateAiId(aiId);
-    const qdrantUrl = this.configService.get<string>('QDRANT_URL') || 'http://localhost:6333';
+    const qdrantUrl = this.configService.get<string>('QDRANT_URL');
+    if (!qdrantUrl && process.env.NODE_ENV === 'production') {
+      throw new Error('QDRANT_URL is required in production');
+    }
 
     return new QdrantVectorStore({
-      url: qdrantUrl,
+      url: qdrantUrl || 'http://localhost:6333',
       collectionName: `ai_${aiId}`,
       vectorSize: this.embeddingService.dimensions,
     });

@@ -1,15 +1,9 @@
-import {
-  Injectable,
-  Logger,
-  NotFoundException,
-  ConflictException,
-  ForbiddenException,
-} from "@nestjs/common";
-import { prisma, AIStatus } from "@corpusai/database";
-import { getFeatureLimits, canCreateAI } from "@corpusai/subscription";
-import { CreateAIDto } from "./dto/create-ai.dto";
-import { UpdateAIDto } from "./dto/update-ai.dto";
-import { RagService } from "../rag/rag.service";
+import { Injectable, Logger, NotFoundException, ConflictException } from '@nestjs/common';
+import { prisma, AIStatus } from '@corpusai/database';
+import { assertCanCreateAI } from '../../shared/subscription-checks';
+import { CreateAIDto } from './dto/create-ai.dto';
+import { UpdateAIDto } from './dto/update-ai.dto';
+import { RagService } from '../rag/rag.service';
 
 export interface PaginationOptions {
   skip?: number;
@@ -27,7 +21,7 @@ export class AIsService {
 
     return prisma.aI.findMany({
       where: { userId },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
       skip,
       take,
       select: {
@@ -60,7 +54,7 @@ export class AIsService {
             chunkCount: true,
             createdAt: true,
           },
-          orderBy: { createdAt: "desc" },
+          orderBy: { createdAt: 'desc' },
           take: 10,
         },
         _count: {
@@ -73,7 +67,7 @@ export class AIsService {
     });
 
     if (!ai) {
-      throw new NotFoundException("AI not found");
+      throw new NotFoundException('AI not found');
     }
 
     return ai;
@@ -97,7 +91,7 @@ export class AIsService {
     });
 
     if (!ai || ai.status !== AIStatus.ACTIVE) {
-      throw new NotFoundException("AI not found or not active");
+      throw new NotFoundException('AI not found or not active');
     }
 
     return ai;
@@ -114,15 +108,10 @@ export class AIsService {
     });
 
     if (!user) {
-      throw new NotFoundException("User not found");
+      throw new NotFoundException('User not found');
     }
 
-    const limits = getFeatureLimits(user.subscriptionPlan);
-    if (!canCreateAI(user.subscriptionPlan, user._count.ais)) {
-      throw new ForbiddenException(
-        `You have reached the maximum number of AIs (${limits.maxAIs}) for your plan`
-      );
-    }
+    assertCanCreateAI(user.subscriptionPlan, user._count.ais);
 
     // Check slug uniqueness
     const existingSlug = await prisma.aI.findUnique({
@@ -130,7 +119,7 @@ export class AIsService {
     });
 
     if (existingSlug) {
-      throw new ConflictException("This slug is already taken");
+      throw new ConflictException('This slug is already taken');
     }
 
     return prisma.aI.create({
@@ -141,7 +130,7 @@ export class AIsService {
         description: dto.description,
         systemPrompt: dto.systemPrompt,
         welcomeMessage: dto.welcomeMessage,
-        primaryColor: dto.primaryColor || "#3b82f6",
+        primaryColor: dto.primaryColor || '#3b82f6',
         accessType: dto.accessType,
         price: dto.price,
         maxTokens: dto.maxTokens || 1024,
@@ -158,7 +147,7 @@ export class AIsService {
     });
 
     if (!ai) {
-      throw new NotFoundException("AI not found");
+      throw new NotFoundException('AI not found');
     }
 
     return prisma.aI.update({
@@ -186,7 +175,7 @@ export class AIsService {
     });
 
     if (!ai) {
-      throw new NotFoundException("AI not found");
+      throw new NotFoundException('AI not found');
     }
 
     // Clean up Qdrant collection before deleting DB records
@@ -220,7 +209,7 @@ export class AIsService {
     });
 
     if (!ai) {
-      throw new NotFoundException("AI not found");
+      throw new NotFoundException('AI not found');
     }
 
     return {

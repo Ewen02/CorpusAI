@@ -1,13 +1,6 @@
-import {
-  Injectable,
-  Inject,
-  NotFoundException,
-  ForbiddenException,
-  BadRequestException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { prisma, DocumentStatus } from '@corpusai/database';
-import { getFeatureLimits, canUploadDocument, canAddDocument } from '@corpusai/subscription';
+import { assertCanAddDocument, assertCanUploadDocument } from '../../shared/subscription-checks';
 import { SUPPORTED_DOCUMENT_TYPES, type SupportedDocumentType } from '@corpusai/types';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
@@ -99,20 +92,10 @@ export class DocumentsService {
       throw new NotFoundException('AI not found');
     }
 
-    const limits = getFeatureLimits(ai.user.subscriptionPlan);
-
-    if (!canAddDocument(ai.user.subscriptionPlan, ai._count.documents)) {
-      throw new ForbiddenException(
-        `You have reached the maximum number of documents (${limits.maxDocumentsPerAI}) per AI for your plan`
-      );
-    }
+    assertCanAddDocument(ai.user.subscriptionPlan, ai._count.documents);
 
     const sizeMB = dto.size / (1024 * 1024);
-    if (!canUploadDocument(ai.user.subscriptionPlan, sizeMB)) {
-      throw new ForbiddenException(
-        `File size exceeds the limit (${limits.maxDocumentSizeMB}MB) for your plan`
-      );
-    }
+    assertCanUploadDocument(ai.user.subscriptionPlan, sizeMB);
 
     const isSupported = SUPPORTED_DOCUMENT_TYPES.includes(dto.mimeType as SupportedDocumentType);
     if (!isSupported) {
@@ -176,20 +159,10 @@ export class DocumentsService {
       throw new NotFoundException('AI not found');
     }
 
-    const limits = getFeatureLimits(ai.user.subscriptionPlan);
-
-    if (!canAddDocument(ai.user.subscriptionPlan, ai._count.documents)) {
-      throw new ForbiddenException(
-        `You have reached the maximum number of documents (${limits.maxDocumentsPerAI}) per AI for your plan`
-      );
-    }
+    assertCanAddDocument(ai.user.subscriptionPlan, ai._count.documents);
 
     const sizeMB = Buffer.byteLength(dto.content, 'utf8') / (1024 * 1024);
-    if (!canUploadDocument(ai.user.subscriptionPlan, sizeMB)) {
-      throw new ForbiddenException(
-        `Content size exceeds the limit (${limits.maxDocumentSizeMB}MB) for your plan`
-      );
-    }
+    assertCanUploadDocument(ai.user.subscriptionPlan, sizeMB);
 
     const document = await prisma.$transaction(async (tx) => {
       const newDocument = await tx.document.create({
@@ -245,20 +218,10 @@ export class DocumentsService {
       throw new NotFoundException('AI not found');
     }
 
-    const limits = getFeatureLimits(ai.user.subscriptionPlan);
-
-    if (!canAddDocument(ai.user.subscriptionPlan, ai._count.documents)) {
-      throw new ForbiddenException(
-        `You have reached the maximum number of documents (${limits.maxDocumentsPerAI}) per AI for your plan`
-      );
-    }
+    assertCanAddDocument(ai.user.subscriptionPlan, ai._count.documents);
 
     const sizeMB = file.size / (1024 * 1024);
-    if (!canUploadDocument(ai.user.subscriptionPlan, sizeMB)) {
-      throw new ForbiddenException(
-        `File size exceeds the limit (${limits.maxDocumentSizeMB}MB) for your plan`
-      );
-    }
+    assertCanUploadDocument(ai.user.subscriptionPlan, sizeMB);
 
     const isSupported = SUPPORTED_DOCUMENT_TYPES.includes(file.mimetype as SupportedDocumentType);
     if (!isSupported) {

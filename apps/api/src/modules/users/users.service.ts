@@ -9,6 +9,7 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
   async getProfile(userId: string) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -236,8 +237,6 @@ export class UsersService {
   }
 
   async deleteAccount(userId: string): Promise<void> {
-    const logger = new Logger('UsersService');
-
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, email: true },
@@ -248,10 +247,10 @@ export class UsersService {
     }
 
     // Cascade delete handles most relations, but log it
-    logger.warn(`Deleting account for user ${user.email} (${user.id})`);
+    this.logger.warn(`Deleting account for user ${user.email} (${user.id})`);
 
     await prisma.user.delete({ where: { id: userId } });
 
-    logger.log(`Account deleted: ${user.email}`);
+    this.logger.log(`Account deleted: ${user.email}`);
   }
 }

@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { prisma, MessageRole, AIStatus, ConfidenceLevel } from '@corpusai/database';
-import { canAskQuestion } from '@corpusai/subscription';
+import { canAskQuestion, type SubscriptionPlanType } from '@corpusai/subscription';
 import { determineConfidence } from '@corpusai/ai-rules';
-import type { Source, RAGResponse } from '@corpusai/corpus';
+import type { RAGResponse } from '@corpusai/corpus';
 import { RagService } from '../rag';
 import { incrementDailyStats } from '../../shared/daily-stats';
 
@@ -11,6 +11,23 @@ export class ConversationsService {
   private readonly logger = new Logger(ConversationsService.name);
 
   constructor(private ragService: RagService) {}
+
+  private async checkDailyRateLimit(aiId: string, plan: SubscriptionPlanType): Promise<void> {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const todayQuestions = await prisma.message.count({
+      where: {
+        conversation: { aiId },
+        role: MessageRole.USER,
+        createdAt: { gte: todayStart },
+      },
+    });
+
+    if (!canAskQuestion(plan, todayQuestions)) {
+      throw new ForbiddenException('Daily question limit reached for this AI');
+    }
+  }
 
   /**
    * Fetches the last N messages from a conversation for multi-turn context.
@@ -133,7 +150,7 @@ export class ConversationsService {
     return conversation;
   }
 
-  async getMessages(conversationId: string) {
+  async getMessages(conversationId: string, take = 100, cursor?: string) {
     const conversation = await prisma.conversation.findUnique({
       where: { id: conversationId },
       select: { id: true },
@@ -146,6 +163,8 @@ export class ConversationsService {
     return prisma.message.findMany({
       where: { conversationId },
       orderBy: { createdAt: 'asc' },
+      take,
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
       select: {
         id: true,
         role: true,
@@ -241,22 +260,7 @@ export class ConversationsService {
     }
 
     // Check rate limits
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-
-    const todayQuestions = await prisma.message.count({
-      where: {
-        conversation: {
-          aiId: conversation.aiId,
-        },
-        role: MessageRole.USER,
-        createdAt: { gte: todayStart },
-      },
-    });
-
-    if (!canAskQuestion(conversation.ai.user.subscriptionPlan, todayQuestions)) {
-      throw new ForbiddenException('Daily question limit reached for this AI');
-    }
+    await this.checkDailyRateLimit(conversation.aiId, conversation.ai.user.subscriptionPlan);
 
     // Save user message
     const userMessage = await prisma.message.create({
@@ -404,18 +408,9 @@ export class ConversationsService {
     }
 
     // Check rate limits
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-
-    const todayQuestions = await prisma.message.count({
-      where: {
-        conversation: { aiId: conversation.aiId },
-        role: MessageRole.USER,
-        createdAt: { gte: todayStart },
-      },
-    });
-
-    if (!canAskQuestion(conversation.ai.user.subscriptionPlan, todayQuestions)) {
+    try {
+      await this.checkDailyRateLimit(conversation.aiId, conversation.ai.user.subscriptionPlan);
+    } catch {
       yield { type: 'error', data: { message: 'Daily question limit reached for this AI' } };
       return;
     }
@@ -449,18 +444,14 @@ export class ConversationsService {
         }
       );
 
-      let fullAnswer = '';
-      let ragResponse: RAGResponse | undefined;
-
       // Yield tokens as they come
       let result: IteratorResult<string, RAGResponse>;
       while (!(result = await generator.next()).done) {
         const token = result.value;
-        fullAnswer += token;
         yield { type: 'token', data: { token } };
       }
 
-      ragResponse = result.value;
+      const ragResponse = result.value;
       const latencyMs = Date.now() - startTime;
 
       // Calculate confidence and format sources
