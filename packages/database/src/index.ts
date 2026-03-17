@@ -1,5 +1,5 @@
 // Re-export Prisma client
-export { prisma, type PrismaClient } from "./client";
+export { prisma, type PrismaClient } from './client';
 
 // Re-export all Prisma types
 export type {
@@ -13,7 +13,7 @@ export type {
   EndUser,
   Conversation,
   Message,
-} from "@prisma/client";
+} from '@prisma/client';
 
 // Re-export enums
 export {
@@ -25,4 +25,5 @@ export {
   ProcessingStep,
   MessageRole,
   ConfidenceLevel,
-} from "@prisma/client";
+  UserRole,
+} from '@prisma/client';
