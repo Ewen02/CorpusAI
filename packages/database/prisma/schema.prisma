@@ -28,6 +28,9 @@ model User {
   subscriptionEnd    DateTime?
   stripeCustomerId   String?            @unique
 
+  // Soft delete
+  deletedAt DateTime?
+
   // Relations
   ais        AI[]
   sessions   Session[]
@@ -124,6 +127,9 @@ model AI {
   conversationCount Int @default(0)
   questionCount    Int @default(0)
 
+  // Soft delete
+  deletedAt DateTime?
+
   // Relations
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   documents     Document[]
@@ -174,8 +180,8 @@ model Document {
   ai     AI      @relation(fields: [aiId], references: [id], onDelete: Cascade)
   chunks Chunk[]
 
+  @@index([aiId, status])
   @@index([aiId])
-  @@index([status])
 }
 
 model Chunk {
