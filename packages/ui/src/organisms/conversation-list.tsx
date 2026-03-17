@@ -75,8 +75,6 @@ function ConversationItem({
   aiName = 'Assistant',
   aiAvatar,
 }: ConversationItemProps) {
-  const [showDelete, setShowDelete] = React.useState(false);
-
   const title = conversation.title || 'Nouvelle conversation';
   const preview = conversation.lastMessage
     ? truncateText(conversation.lastMessage, 60)
@@ -91,8 +89,6 @@ function ConversationItem({
           : 'border border-transparent hover:border-border hover:bg-muted/50'
       )}
       onClick={onClick}
-      onMouseEnter={() => setShowDelete(true)}
-      onMouseLeave={() => setShowDelete(false)}
     >
       <Avatar
         className={cn('h-9 w-9 shrink-0 ring-2', isSelected ? 'ring-primary/30' : 'ring-border')}
@@ -123,18 +119,18 @@ function ConversationItem({
         </div>
       </div>
 
-      {onDelete && showDelete && (
+      {onDelete && (
         <Button
           variant="ghost"
           size="icon"
-          className="absolute right-2 top-2 h-6 w-6 opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+          className="absolute right-2 top-2 h-6 w-6 opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
           onClick={(e) => {
             e.stopPropagation();
             onDelete();
           }}
+          aria-label="Supprimer la conversation"
         >
           <TrashIcon className="h-3 w-3" />
-          <span className="sr-only">Supprimer</span>
         </Button>
       )}
     </div>

@@ -58,7 +58,7 @@ interface MessageBubbleProps {
   onSourceClick?: (source: ChatSource) => void;
 }
 
-function MessageBubble({
+const MessageBubble = React.memo(function MessageBubble({
   message,
   aiName = 'Assistant',
   aiAvatar,
@@ -98,7 +98,13 @@ function MessageBubble({
           {message.isStreaming ? (
             <div className="inline-flex items-start gap-1">
               <MarkdownRenderer content={message.content} />
-              <span className="animate-pulse text-primary">▊</span>
+              <span
+                className="animate-pulse text-primary"
+                aria-label="Reponse en cours"
+                role="status"
+              >
+                ▊
+              </span>
             </div>
           ) : isUser ? (
             <span className="whitespace-pre-wrap">{message.content}</span>
@@ -155,9 +161,9 @@ function MessageBubble({
       </div>
     </div>
   );
-}
+});
 
-function TypingIndicator({
+const TypingIndicator = React.memo(function TypingIndicator({
   aiName = 'Assistant',
   primaryColor,
 }: {
@@ -181,9 +187,9 @@ function TypingIndicator({
       </div>
     </div>
   );
-}
+});
 
-function WelcomeMessage({
+const WelcomeMessage = React.memo(function WelcomeMessage({
   message,
   aiName,
   primaryColor,
@@ -213,6 +219,28 @@ function WelcomeMessage({
         <span className="h-1 w-1 rounded-full bg-primary/30" />
       </div>
     </div>
+  );
+});
+
+// ============================================
+// Icons
+// ============================================
+
+function SendIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="m22 2-7 20-4-9-9-4Z" />
+      <path d="M22 2 11 13" />
+    </svg>
   );
 }
 
@@ -332,28 +360,6 @@ export function ChatInterface({
         </p>
       </div>
     </div>
-  );
-}
-
-// ============================================
-// Icons
-// ============================================
-
-function SendIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="m22 2-7 20-4-9-9-4Z" />
-      <path d="M22 2 11 13" />
-    </svg>
   );
 }
 
