@@ -4,8 +4,8 @@
  */
 
 // Constants
-export { SUPPORTED_DOCUMENT_TYPES } from "./constants";
-export type { SupportedDocumentType } from "./constants";
+export { SUPPORTED_DOCUMENT_TYPES, DEFAULT_SCORE_THRESHOLD } from './constants';
+export type { SupportedDocumentType } from './constants';
 
 // Enums
 export {
@@ -16,7 +16,7 @@ export {
   DocumentStatus,
   MessageRole,
   ConfidenceLevel,
-} from "./enums";
+} from './enums';
 
 // Entity types
 export type {
@@ -30,7 +30,7 @@ export type {
   MessageSource,
   EndUser,
   SourceReference,
-} from "./entities";
+} from './entities';
 
 // API types
 export type {
@@ -58,4 +58,4 @@ export type {
   StreamDoneEvent,
   StreamErrorEvent,
   StreamEvent,
-} from "./api";
+} from './api';
