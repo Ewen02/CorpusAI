@@ -4,9 +4,10 @@ import * as React from 'react';
 import Image from 'next/image';
 import { useParams, useSearchParams } from 'next/navigation';
 import { ChatInterface, ChatInterfaceSkeleton, Skeleton } from '@corpusai/ui';
-import type { ChatMessage, ChatSource } from '@corpusai/ui';
-import { apiClient, type MessageSource, type StreamDoneData } from '@/lib/api-client';
+import type { ChatMessage } from '@corpusai/ui';
+import { apiClient, type StreamDoneData } from '@/lib/api-client';
 import type { AIPublicInfo, StartConversationResponse } from '@corpusai/types';
+import { mapSourcesToChat } from '@/lib/utils/chat-session';
 
 // ============================================
 // Types
@@ -42,39 +43,6 @@ function useEmbedConfig(): EmbedConfig {
       primaryColor: primaryColor || undefined,
     };
   }, [searchParams]);
-}
-
-// ============================================
-// Helpers
-// ============================================
-
-function generateSessionId(): string {
-  return `session_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-}
-
-function getOrCreateSessionId(): string {
-  if (typeof window === 'undefined') return generateSessionId();
-
-  try {
-    let sessionId = sessionStorage.getItem('corpusai_session_id');
-    if (!sessionId) {
-      sessionId = generateSessionId();
-      sessionStorage.setItem('corpusai_session_id', sessionId);
-    }
-    return sessionId;
-  } catch {
-    // SecurityError in private browsing or restricted environments
-    return generateSessionId();
-  }
-}
-
-function mapSourcesToChat(sources: MessageSource[]): ChatSource[] {
-  return sources.map((source) => ({
-    documentId: source.chunkId || '',
-    documentName: source.documentSource || 'Document',
-    excerpt: source.excerpt || '',
-    relevanceScore: source.score || 0,
-  }));
 }
 
 // ============================================
@@ -336,7 +304,6 @@ function EmbedHeader({
           width={32}
           height={32}
           className="h-8 w-8 rounded-full object-cover"
-          unoptimized
         />
       ) : (
         <div

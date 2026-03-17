@@ -23,6 +23,7 @@ import { PageWrapper } from '@/components/page-wrapper';
 export default function AIsPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = React.useState('');
+  const deferredSearch = React.useDeferredValue(searchQuery);
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
 
   const { data: ais, isLoading } = useAIs();
@@ -31,12 +32,12 @@ export default function AIsPage() {
     if (!ais) return [];
     return ais.filter((ai) => {
       const matchesSearch =
-        ai.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        ai.slug.toLowerCase().includes(searchQuery.toLowerCase());
+        ai.name.toLowerCase().includes(deferredSearch.toLowerCase()) ||
+        ai.slug.toLowerCase().includes(deferredSearch.toLowerCase());
       const matchesStatus = statusFilter === 'all' || ai.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
-  }, [ais, searchQuery, statusFilter]);
+  }, [ais, deferredSearch, statusFilter]);
 
   const handleCreateAI = React.useCallback(() => {
     router.push('/ais/new');

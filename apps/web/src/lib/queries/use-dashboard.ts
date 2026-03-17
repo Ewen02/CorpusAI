@@ -18,6 +18,7 @@ export function useDashboardStats() {
   return useQuery({
     queryKey: dashboardKeys.stats(),
     queryFn: () => apiClient.get<DashboardStats>('/users/me/stats'),
+    staleTime: 2 * 60 * 1000, // 2 min
   });
 }
 
