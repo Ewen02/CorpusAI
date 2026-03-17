@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import '../globals.css';
 
 export const metadata: Metadata = {
   title: 'CorpusAI Widget',
@@ -12,9 +11,5 @@ export const metadata: Metadata = {
  * No sidebar, no navigation - just the chat interface.
  */
 export default function EmbedLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="fr" className="dark">
-      <body className="bg-background text-foreground antialiased">{children}</body>
-    </html>
-  );
+  return <>{children}</>;
 }
