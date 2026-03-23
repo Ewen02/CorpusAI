@@ -12,6 +12,7 @@ export {
   SubscriptionPlan,
   SubscriptionStatus,
   AIStatus,
+  AICategory,
   AccessType,
   DocumentStatus,
   MessageRole,

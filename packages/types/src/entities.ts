@@ -5,13 +5,14 @@
 
 import type {
   AIStatus,
+  AICategory,
   AccessType,
   DocumentStatus,
   MessageRole,
   ConfidenceLevel,
   SubscriptionPlan,
   SubscriptionStatus,
-} from "./enums";
+} from './enums';
 
 // ============================================
 // USER
@@ -52,12 +53,15 @@ export interface AI {
   description?: string | null;
   systemPrompt?: string | null;
   status: AIStatus;
+  isPublic: boolean;
+  category: AICategory;
   welcomeMessage?: string | null;
   primaryColor: string;
   logo?: string | null;
   maxTokens: number;
   temperature: number;
   scoreThreshold: number;
+  language: string;
   accessType: AccessType;
   price?: number | null;
   documentCount: number;
@@ -65,8 +69,6 @@ export interface AI {
   questionCount: number;
   createdAt: string;
   updatedAt: string;
-  /** @deprecated Use accessType instead. Computed field for backward compatibility. */
-  isPublic?: boolean;
 }
 
 /**
@@ -82,11 +84,9 @@ export interface AIPublicInfo {
   primaryColor: string;
   logo?: string | null;
   status: AIStatus;
-  accessType: AccessType;
+  isPublic: boolean;
   /** Alias for logo (frontend compatibility) */
   avatar?: string | null;
-  /** Computed: accessType === 'FREE' */
-  isPublic?: boolean;
 }
 
 // ============================================
