@@ -12,6 +12,8 @@ function mapStageToStep(stage: ProcessingStage): ProcessingStep {
   switch (stage) {
     case 'chunking':
       return ProcessingStep.CHUNKING;
+    case 'enriching':
+      return ProcessingStep.EMBEDDING;
     case 'embedding':
       return ProcessingStep.EMBEDDING;
     case 'storing':
@@ -127,6 +129,13 @@ export async function processDocument(data: DocumentProcessingJobData): Promise<
     // Index via RAG pipeline
     const pipeline = createPipelineForAI(aiId);
 
+    // Context enrichment applies only to rich document formats (PDF, DOCX)
+    const ENRICHABLE_MIME_TYPES = new Set([
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ]);
+    const enableContextEnrichment = ENRICHABLE_MIME_TYPES.has(mimeType);
+
     const result = await pipeline.index(
       [
         {
@@ -141,6 +150,13 @@ export async function processDocument(data: DocumentProcessingJobData): Promise<
           const overallProgress = 10 + Math.round(ragProgress * 0.9);
           const step = mapStageToStep(stage);
           await publishProgress(documentId, DocumentStatus.PROCESSING, overallProgress, step);
+        },
+        enableContextEnrichment,
+        contextEnrichmentConfig: {
+          apiKey: process.env.LLM_API_KEY ?? process.env.OPENAI_API_KEY,
+          baseURL: process.env.LLM_BASE_URL,
+          concurrency: 3,
+          maxDocumentTokens: 500,
         },
       }
     );

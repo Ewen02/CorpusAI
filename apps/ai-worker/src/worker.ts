@@ -1,6 +1,7 @@
 import { Worker } from 'bullmq';
 import { QUEUE_NAMES, type DocumentProcessingJobData } from '@corpusai/queue';
 import { logger } from './lib/logger';
+import { Sentry } from './lib/sentry';
 import { processDocument } from './processors/document-processor';
 
 export function createWorker(redisUrl: string): Worker<DocumentProcessingJobData> {
@@ -33,6 +34,20 @@ export function createWorker(redisUrl: string): Worker<DocumentProcessingJobData
       { jobId: job?.id, documentId: job?.data.documentId, err },
       'Failed document processing'
     );
+    // Capture only after all retries are exhausted
+    const maxAttempts = job?.opts?.attempts ?? 3;
+    if (job && job.attemptsMade >= maxAttempts) {
+      Sentry.withScope((scope) => {
+        scope.setTag('jobId', job.id ?? 'unknown');
+        scope.setContext('job', {
+          documentId: job.data.documentId,
+          aiId: job.data.aiId,
+          filename: job.data.filename,
+          attempts: job.attemptsMade,
+        });
+        Sentry.captureException(err);
+      });
+    }
   });
 
   worker.on('error', (err) => {

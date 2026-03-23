@@ -2,18 +2,20 @@ import Redis from 'ioredis';
 import {
   OpenAIEmbeddingService,
   QdrantVectorStore,
-  TokenChunker,
+  ParentChildChunker,
   RAGPipelineImpl,
   HybridReranker,
+  CohereReranker,
   CachedEmbeddingService,
   type EmbeddingService,
   type CacheService,
   type Reranker,
+  type AsyncReranker,
 } from '@corpusai/corpus';
 
 let embeddingService: EmbeddingService;
-let chunker: TokenChunker;
-let reranker: Reranker;
+let chunker: ParentChildChunker;
+let reranker: Reranker | AsyncReranker;
 let redisClient: Redis | null = null;
 let initialized = false;
 
@@ -64,8 +66,22 @@ function init(): void {
     embeddingService = baseEmbeddings;
   }
 
-  chunker = new TokenChunker({ chunkSizeTokens: 400, overlapTokens: 50 });
-  reranker = new HybridReranker();
+  chunker = new ParentChildChunker({
+    childSizeTokens: 128,
+    parentSizeTokens: 512,
+    childOverlapTokens: 32,
+  });
+
+  const cohereApiKey = process.env.COHERE_API_KEY;
+  if (cohereApiKey) {
+    reranker = new CohereReranker({ apiKey: cohereApiKey });
+    console.log('Cohere cross-encoder reranker enabled (rerank-multilingual-v3.0)');
+  } else {
+    reranker = new HybridReranker();
+    console.log(
+      'Hybrid reranker enabled (60% semantic + 40% BM25) — set COHERE_API_KEY for cross-encoder'
+    );
+  }
   initialized = true;
 }
 

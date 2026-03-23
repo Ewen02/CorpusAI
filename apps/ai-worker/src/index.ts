@@ -1,10 +1,14 @@
 import 'dotenv/config';
+import { initSentry } from './lib/sentry';
+// Sentry must be initialized before any other imports
+initSentry();
+
 import { logger } from './lib/logger';
 import { createWorker } from './worker';
 import { disposeRagFactory } from './services/rag-factory';
 import { disposeProgressService } from './services/progress.service';
 
-const requiredEnvVars = ['REDIS_URL', 'DATABASE_URL', 'OPENAI_API_KEY'];
+const requiredEnvVars = ['REDIS_URL', 'DATABASE_URL', 'OPENAI_API_KEY', 'QDRANT_URL'];
 for (const envVar of requiredEnvVars) {
   if (!process.env[envVar]) {
     logger.fatal({ envVar }, 'Missing required environment variable');
