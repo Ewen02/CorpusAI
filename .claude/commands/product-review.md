@@ -1,6 +1,6 @@
-Run an interactive product review for the CorpusAI project.
+Audit produit automatique de CorpusAI — analyse les fonctionnalites implementees, la maturite, la roadmap et les gaps.
 
-If `$ARGUMENTS` is provided, focus the review on that aspect. Valid focus areas: `personas`, `roadmap`, `gaps`, `metrics`, `tech-debt`. If no argument, run the full review.
+If `$ARGUMENTS` is provided, focus the audit on that aspect. Valid focus areas: `roadmap`, `gaps`, `features`, `tech-debt`, `maturity`. If no argument, run the full audit.
 
 ---
 
@@ -11,144 +11,138 @@ Gather project state by reading these files and running these commands **in para
 **Agent 1 — Project docs & schema:**
 - Read `.claude/PROJECT_PLAN.md` (vision, roadmap, etat actuel)
 - Read `.claude/TODO.md` (taches restantes)
-- Read `packages/database/prisma/schema.prisma` (data model)
-- Read `packages/subscription/src/` (plans, limites, features par plan)
+- Read `packages/database/prisma/schema.prisma` (data model complet)
+- Read `packages/corpus/src/rag/` (pipeline RAG, chunking, reranking)
 
 **Agent 2 — Code surface (API + Web):**
 - List all API modules: `ls apps/api/src/modules/`
+- Read key controllers/services to understand what endpoints actually exist (not just module names)
 - List all web pages: find all `page.tsx` files in `apps/web/src/app/`
-- List all React Query hooks: `ls apps/web/src/lib/queries/`
-- List all UI components: `ls packages/ui/src/`
+- List all React Query hooks: find files in `apps/web/src/lib/queries/`
+- List all UI components: find files in `packages/ui/src/` recursively
 
 **Agent 3 — Activity & quality:**
 - `git log --oneline -30` (recent activity)
 - `git log --oneline --since="2 weeks ago" --format="%h %s"` (recent focus)
-- Check test coverage: count test files in `apps/api/`, `apps/web/`, `packages/ui/`, `packages/corpus/`
-- Check for TODO/FIXME/HACK comments in source code
+- Count test files in `apps/api/`, `apps/web/`, `packages/ui/`, `packages/corpus/`
+- Search for TODO/FIXME/HACK comments in source code
+- Check if CI/CD pipeline exists (`.github/workflows/`)
 
 From this scan, build an internal map of:
 - All implemented features (modules, pages, endpoints)
 - Data model entities and their relationships
-- Subscription plans and their limits
 - Test coverage level
 - Recent development focus areas
+- What's declared in PROJECT_PLAN vs what actually exists in code
 
 ---
 
-## Phase 2 — Questions interactives
+## Phase 2 — Analyse croisee
 
-Use `AskUserQuestion` to ask the user the following questions. Adapt the questions based on Phase 1 findings. Ask all questions in a **single** AskUserQuestion call with multiple questions.
+Croiser les donnees du scan pour produire l'analyse. **Pas de questions au user** — tout doit etre derive du code.
 
-### Questions obligatoires :
+### 2.1 Maturite produit
 
-1. **Objectif court terme** — "Quel est ton objectif principal a court terme ?"
-   Options: Lancement beta prive, Demo investisseur/incubateur, Premiers users payants, Proof of concept technique, Autre (preciser)
+Evaluer chaque critere sur cette grille en se basant **uniquement sur le code scanne** :
 
-2. **Timeline** — "Quel est ton horizon de temps pour cet objectif ?"
-   Options: 2 semaines, 1 mois, 3 mois, Pas de deadline fixe
-
-3. **Personas prioritaires** — "Qui sont tes premiers utilisateurs cibles ?"
-   Options (multi-select): Formateurs/organismes de formation, Coachs/consultants independants, Createurs de contenu/cours en ligne, Entreprises (base de connaissances interne), Autre (preciser)
-
-4. **Retours existants** — "As-tu deja des retours utilisateurs ou des pain points identifies ?"
-   Free text
-
-5. **Contraintes** — "Y a-t-il des contraintes business a prendre en compte ?"
-   Options (multi-select): Budget limite (infra/API costs), Conformite RGPD/donnees sensibles, Besoin de multi-langue, Integration specifique requise, Aucune contrainte particuliere
-
-### Questions conditionnelles (selon focus `$ARGUMENTS`) :
-
-- Si `personas` : "Decris un use case concret pour ton persona principal — quel type de documents, quelles questions typiques ?"
-- Si `roadmap` : "Y a-t-il des features que tes premiers users ont explicitement demandees ?"
-- Si `metrics` : "Quels KPIs veux-tu suivre pour valider le product-market fit ?"
-- Si `tech-debt` : "Y a-t-il des parties du code qui te causent des problemes regulierement ?"
-
----
-
-## Phase 3 — Analyse et synthese
-
-Croiser les donnees du scan (Phase 1) avec les reponses du user (Phase 2) pour produire l'analyse suivante.
-
-### 3.1 Maturite produit
-
-Evaluer sur cette grille :
 | Critere | MVP | Beta | Production |
 |---------|-----|------|------------|
 | Auth complete | email+OAuth | + 2FA + password reset | + SSO enterprise |
 | CRUD core | create/read/update/delete | + bulk ops, search | + import/export |
 | Pipeline RAG | basique fonctionnel | + reranking, hybrid search | + evaluation, A/B |
-| Paiement | non | Stripe checkout | + invoicing, usage-based |
 | Tests | < 30% | > 60% | > 80% + E2E |
 | Monitoring | logs basiques | structured logging | + APM, alerting |
 | Admin | aucun | dashboard basique | + moderation, analytics |
 | API publique | aucune | endpoints documentes | + SDK, webhooks |
-| Multi-tenant | isolation basique | + rate limiting par plan | + usage metering |
+| Widget / Embed | basique | + personnalisation avancee | + SDK JS, analytics embed |
+| Background jobs | queue basique | + retry, progress tracking | + dead-letter, monitoring |
 
-### 3.2 Mapping Personas → Features
+Pour chaque critere, indiquer le niveau atteint et justifier avec des fichiers/modules concrets.
 
-Pour chaque persona identifie en Phase 2, lister :
-- Les features existantes qui le servent directement
-- Les gaps critiques (ce qui manque pour qu'il puisse utiliser le produit)
-- Les nice-to-have (améliorations qui augmentent la valeur)
+### 2.2 Inventaire fonctionnel
 
-### 3.3 Roadmap recommandee
+Lister exhaustivement :
+- Chaque feature implementee, son statut reel (OK / Partiel / Stub)
+- Les ecarts entre PROJECT_PLAN.md et le code (features declarees "100%" mais incompletes, ou features non documentees)
+- Les pages/endpoints qui existent mais ne sont pas dans le plan
 
-Basee sur :
-- La timeline du user
-- Les personas prioritaires
-- Les gaps critiques identifies
-- L'effort estime par feature (S/M/L/XL)
+### 2.3 Analyse de la roadmap
 
-Organiser en sprints de 1-2 semaines, ordonnés par impact.
+Comparer la roadmap du PROJECT_PLAN.md avec l'etat du code :
+- Quelles taches P0/P1/P2/P3 sont reellement terminees ?
+- Quelles taches sont en cours ou partielles ?
+- Y a-t-il des taches manquantes dans la roadmap qui devraient y etre ?
+- Proposer une roadmap mise a jour et priorisee, organisee en sprints de 2 semaines
 
-### 3.4 Risques et dette
+### 2.4 Gaps critiques
 
-Identifier :
-- Risques techniques (scaling, deps obsoletes, securite)
-- Risques produit (features manquantes pour le persona cible)
-- Dette technique accumulee (code quality, tests, docs)
+Identifier les manques qui bloquent un lancement :
+- Features absentes pour un usage reel (ex: pages stub, flows incomplets)
+- Securite (CORS, validation, injection, auth bypass potentiel)
+- Resilience (error handling, retry, graceful degradation)
+- UX (flows incomplets, pages stub, features non connectees)
+
+### 2.5 Risques et dette technique
+
+- Risques techniques (scaling, deps, securite)
+- Dette technique accumulee (code quality, tests, monitoring)
+- Dependances critiques (services externes, single points of failure)
 
 ---
 
-## Phase 4 — Rapport structure
+## Phase 3 — Rapport structure
 
 Presenter le rapport dans ce format exact :
 
 ```markdown
-# Point Produit CorpusAI — YYYY-MM-DD
+# Audit Produit CorpusAI — YYYY-MM-DD
 
 ## Maturite globale : [MVP | Beta avancee | Production-ready]
 
-Score : X/9 criteres au niveau Beta ou superieur
+Score : X/8 criteres au niveau Beta ou superieur
 
 ---
 
-## Ce qui est livre
+## Inventaire fonctionnel
 
-| Feature | Statut | Persona impacte | Notes |
-|---------|--------|-----------------|-------|
-| ... | OK / Partiel / Manquant | ... | ... |
-
----
-
-## Personas
-
-| Persona | Priorite | Features existantes | Gaps critiques | Score couverture |
-|---------|----------|--------------------|----|------|
-| ... | P0/P1/P2 | ... | ... | X% |
+| Feature | Statut | Niveau | Notes |
+|---------|--------|--------|-------|
+| ... | OK / Partiel / Stub / Manquant | MVP/Beta/Prod | justification concrete |
 
 ---
 
-## Horizon produit
+## Maturite detaillee
 
-### Sprint suivant (2 semaines) — Focus: [theme]
-| Tache | Effort | Impact | Persona |
-|-------|--------|--------|---------|
-| ... | S/M/L | Critique/Haut/Moyen | ... |
+| Critere | Niveau atteint | Justification |
+|---------|---------------|---------------|
+| Auth | MVP / Beta / Prod | fichiers/modules concrets |
+| ... | ... | ... |
 
-### Moyen terme (1-2 mois)
-| Tache | Effort | Impact | Persona |
-|-------|--------|--------|---------|
+---
+
+## Ecarts Plan vs Code
+
+| Element | Declare dans le plan | Realite dans le code |
+|---------|---------------------|---------------------|
+| ... | "100%" | Partiel — il manque X |
+
+---
+
+## Roadmap recommandee
+
+### Sprint 1 (2 semaines) — Focus: [theme]
+| Tache | Effort | Impact | Justification |
+|-------|--------|--------|---------------|
+| ... | S/M/L | Critique/Haut/Moyen | pourquoi maintenant |
+
+### Sprint 2 (2 semaines) — Focus: [theme]
+| Tache | Effort | Impact | Justification |
+|-------|--------|--------|---------------|
+| ... | ... | ... | ... |
+
+### Moyen terme (1-3 mois)
+| Tache | Effort | Impact | Justification |
+|-------|--------|--------|---------------|
 | ... | ... | ... | ... |
 
 ### Long terme (3+ mois)
@@ -161,9 +155,14 @@ Score : X/9 criteres au niveau Beta ou superieur
 2. ...
 3. ...
 
+## Gaps critiques pour le lancement
+| Gap | Severite | Ce qui manque concretement |
+|-----|----------|---------------------------|
+| ... | Bloquant/Haut/Moyen | ... |
+
 ## Risques
-| Risque | Severite | Mitigation |
-|--------|----------|------------|
+| Risque | Severite | Mitigation proposee |
+|--------|----------|---------------------|
 | ... | Critique/Haut/Moyen | ... |
 
 ## Recommandations strategiques
@@ -176,9 +175,11 @@ Score : X/9 criteres au niveau Beta ou superieur
 
 ## Regles
 
-- Toujours baser l'analyse sur le code reel (scan Phase 1), pas sur des hypotheses
+- **Zero questions au user** — tout est derive du scan du code
+- Toujours baser l'analyse sur le code reel, pas sur ce que dit le PROJECT_PLAN.md
+- Verifier les ecarts entre le plan et la realite du code
 - Ne pas inventer des features qui n'existent pas dans le code
-- Etre honnete sur les gaps — le but est d'aider, pas de flatter
-- Adapter le langage au profil du user (technique si dev, business si fondateur)
+- Etre honnete et direct sur les gaps — le but est d'aider, pas de flatter
 - Si `$ARGUMENTS` est fourni, le rapport complet est genere mais la section correspondante est detaillee en profondeur
 - Le rapport doit etre actionnable : chaque recommandation doit etre concrete et faisable
+- Citer les fichiers/modules concrets pour chaque constat

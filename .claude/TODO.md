@@ -17,11 +17,10 @@ Sprints 0-4 livres. Voir section "Fait" en bas pour le detail complet.
 - [ ] **Sentry integration** — Error tracking + alerting production
 - [ ] **APM / monitoring** — Metriques temps reel (latence, throughput)
 - [ ] **Dead-letter queue polish** — Alerting sur jobs echoues apres 3 retries
-- [ ] **Stats cleanup cron** — Purge des DailyStats au-dela de la retention du plan
 - [ ] **Docker production images** — Build multi-stage optimise pour deploy
 
 ### Tests a renforcer
-- [ ] **Augmenter couverture API** — Modules billing, admin, public-api non testes
+- [ ] **Augmenter couverture API** — Modules admin, public-api non testes
 - [ ] **Tests E2E complets** — Les specs Playwright sont des stubs, a etoffer avec vraies assertions
 - [ ] **Tests frontend** — Seuls 2 composants testes (ConversationList, utils), ajouter ChatInterface, hooks
 
@@ -41,7 +40,6 @@ Sprints 0-4 livres. Voir section "Fait" en bas pour le detail complet.
 - [x] Chat streaming SSE complet avec citations sources et niveaux confiance
 
 ### Sprint 1 — P0 Auth & Security
-- [x] Rate limiting par plan — AuthGuard bloque CANCELED/PAST_DUE, usage bar dashboard
 - [x] Forgot/reset password — pages avec Better Auth
 - [x] Changement mot de passe — settings/security
 
@@ -57,7 +55,6 @@ Sprints 0-4 livres. Voir section "Fait" en bas pour le detail complet.
 - [x] CI/CD — Jobs paralleles, cache Turborepo, coverage
 
 ### Sprint 4 — P3 Features
-- [x] Integration Stripe — Module billing (checkout, webhooks, portal), page billing
 - [x] Admin panel — Dashboard, gestion users/AIs, AdminGuard
 - [x] UX — 2FA (TOTP), suppression compte, onboarding banner
 - [x] API publique — API keys (cai_ prefix), endpoints /v1/query et /v1/ais

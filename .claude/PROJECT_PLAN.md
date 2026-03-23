@@ -44,7 +44,6 @@ EndUser (1) ──── (N) Conversation
 | Embeddings | OpenAI text-embedding-3-small (1536 dims) |
 | LLM | OpenAI GPT-4o-mini / GPT-4o |
 | Auth | Better Auth (email + OAuth Google/GitHub) |
-| Paiements | Stripe (hors scope actuel) |
 
 ---
 
@@ -62,7 +61,6 @@ EndUser (1) ──── (N) Conversation
 | Analytics | 90% | Dashboard global + par AI, graphiques Recharts |
 | Securite | 90% | SSRF, AuthGuard, ownership checks, abort streaming |
 | Background workers | 90% | BullMQ + Redis + @corpusai/queue + ai-worker production (manque dead-letter queue polish) |
-| Rate limiting | 50% | Logique dans @corpusai/subscription, pas enforced |
 | Tests | 20% | Seulement @corpusai/corpus (127 tests) |
 
 ---
@@ -74,29 +72,30 @@ EndUser (1) ──── (N) Conversation
 | Tache | Description |
 |-------|-------------|
 | ~~**Background workers**~~ | ~~Implemente : BullMQ + Redis + @corpusai/queue + ai-worker~~ |
-| **Rate limiting** | Enforcement dans l'API (par endpoint, par plan, compteur questions/jour) |
+| **Sentry integration** | Error tracking + alerting production |
 
 ### P1 — Important
 
 | Tache | Description |
 |-------|-------------|
-| **Tests API** | Tests d'integration NestJS (endpoints, guards, services) |
-| **Structured logging** | Remplacer console.log residuel par Pino/Winston, integrer Sentry |
+| **Tests API** | Augmenter couverture (admin, public-api non testes) |
+| **Tests E2E** | Etoffer les specs Playwright (sign-up > create AI > upload > chat) |
+| **Tests frontend** | Ajouter ChatInterface, hooks (seuls 2 composants testes) |
 
 ### P2 — Qualite
 
 | Tache | Description |
 |-------|-------------|
-| **Tests E2E** | Playwright pour les flows critiques (sign-up > create AI > upload > chat) |
-| **Tests frontend** | Vitest + Testing Library pour composants et hooks |
-| **ESLint partage** | Config commune dans tooling/eslint-config |
-| **CI/CD** | GitHub Actions : lint, typecheck, test, build, deploy preview |
+| **Dead-letter queue** | Alerting sur jobs echoues apres 3 retries |
+| **APM / monitoring** | Metriques temps reel (latence, throughput) |
+| **Docker production** | Build multi-stage optimise pour deploy |
 
 ### P3 — Nice to have
 
 | Tache | Description |
 |-------|-------------|
-| **Admin panel** | Routes admin, gestion users, monitoring usage |
 | **Onboarding ameliore** | Wizard guide, templates AI pre-configures |
-| **API publique** | Endpoints documentes pour integration tierce |
 | **Multi-langue prompts** | Support EN dans ai-rules (actuellement FR uniquement) |
+| **Webhooks API publique** | Notifications evenementielles pour integrateurs |
+| **SDK JavaScript** | Client npm pour l'API publique |
+| **Import/export bulk** | Import ZIP multi-documents, export corpus |

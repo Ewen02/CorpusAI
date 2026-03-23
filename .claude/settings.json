@@ -24,8 +24,41 @@
       "Bash(turbo:*)",
       "Bash(docker:*)",
       "Bash(wc:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(pnpm typecheck:*)",
+      "Bash(pnpm run:*)",
+      "Bash(pnpm exec:*)",
+      "Bash(mv:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)"
     ],
     "deny": []
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path' | { read -r f; npx prettier --write \"$f\"; } 2>/dev/null || true",
+            "statusMessage": "Formatting with Prettier..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path' | grep -qE '(\\.env$|\\.env\\.local$|pnpm-lock\\.yaml$)' && echo '{\"continue\": false, \"stopReason\": \"Blocked: editing .env, .env.local, or pnpm-lock.yaml is not allowed\"}' || exit 0"
+          }
+        ]
+      }
+    ]
   }
 }

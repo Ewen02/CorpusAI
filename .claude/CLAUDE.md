@@ -146,3 +146,23 @@ They are loaded automatically when working on files in that directory.
 | `packages/ui/` | Atomic Design rules, cva() pattern, component inventory |
 | `packages/corpus/` | RAG pipeline, chunking, embeddings, reranking, tests |
 | `packages/database/` | Prisma schema, models, enums, commands |
+
+---
+
+## Claude Code Workflow
+
+### Slash Commands disponibles
+| Commande | Usage |
+|----------|-------|
+| `/commit` | Commit atomique avec typecheck + lint pre-vérification |
+| `/push` | Push les commits locaux après confirmation |
+| `/build` | Build et rapport d'erreurs TypeScript |
+| `/test [package]` | Lancer les tests (corpus / api / web / all) |
+| `/audit [domain]` | Audit qualité code (frontend / backend / database / rag / security…) |
+| `/optimize` | Audit refactoring et perf avec propositions concrètes |
+| `/product-review` | Audit produit complet (maturité, roadmap, gaps) |
+| `/db-schema <changes>` | Modifier le schéma Prisma + db:push |
+| `/new-module <name>` | Nouveau module NestJS complet (controller + service + DTOs) |
+| `/new-component <name>` | Nouveau composant UI (Atomic Design + cva) |
+| `/new-page <route>` | Nouvelle page dashboard Next.js |
+| `/add-query-hook <desc>` | Nouveau hook React Query (useQuery ou useMutation) |
