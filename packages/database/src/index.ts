@@ -1,5 +1,5 @@
 // Re-export Prisma client
-export { prisma, type PrismaClient } from './client';
+export { prisma, type PrismaClient, type TransactionClient } from './client';
 
 // Re-export all Prisma types
 export type {
@@ -20,6 +20,7 @@ export {
   SubscriptionPlan,
   SubscriptionStatus,
   AIStatus,
+  AICategory,
   AccessType,
   DocumentStatus,
   ProcessingStep,

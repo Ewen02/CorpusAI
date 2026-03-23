@@ -21,12 +21,19 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  // Public profile
+  username String? @unique
+  bio      String?
+
   // Subscription
   subscriptionPlan   SubscriptionPlan   @default(FREE)
   subscriptionStatus SubscriptionStatus @default(ACTIVE)
   subscriptionStart  DateTime?
   subscriptionEnd    DateTime?
   stripeCustomerId   String?            @unique
+
+  // Preferences
+  notificationPreferences Json?
 
   // Soft delete
   deletedAt DateTime?
@@ -39,6 +46,7 @@ model User {
   dailyStats DailyStats[]
 
   @@index([email])
+  @@index([username])
   @@index([stripeCustomerId])
 }
 
@@ -107,7 +115,9 @@ model AI {
 
   // Configuration
   systemPrompt String?
-  status       AIStatus @default(DRAFT)
+  status       AIStatus    @default(DRAFT)
+  category     AICategory  @default(OTHER)
+  language     String      @default("fr")
 
   // Settings (JSON for flexibility)
   welcomeMessage String?
@@ -115,7 +125,7 @@ model AI {
   logo           String?
   maxTokens      Int     @default(1024)
   temperature    Float   @default(0.7)
-  scoreThreshold Float   @default(0.6)
+  scoreThreshold Float   @default(0.4)
 
   // Access & Monetization
   accessType AccessType @default(FREE)
@@ -123,9 +133,9 @@ model AI {
   isPublic   Boolean    @default(false)
 
   // Stats
-  documentCount    Int @default(0)
+  documentCount     Int @default(0)
   conversationCount Int @default(0)
-  questionCount    Int @default(0)
+  questionCount     Int @default(0)
 
   // Soft delete
   deletedAt DateTime?
@@ -140,6 +150,8 @@ model AI {
   @@index([userId])
   @@index([slug])
   @@index([status])
+  @@index([isPublic, status])
+  @@index([isPublic, status, conversationCount])
 }
 
 // ============================================
@@ -332,6 +344,16 @@ enum ConfidenceLevel {
 enum UserRole {
   USER
   ADMIN
+}
+
+enum AICategory {
+  SUPPORT
+  EDUCATION
+  LEGAL
+  FINANCE
+  HEALTH
+  TECH
+  OTHER
 }
 
 // ============================================
