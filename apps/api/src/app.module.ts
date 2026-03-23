@@ -16,6 +16,7 @@ import { HealthModule } from './modules/health/health.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { AdminModule } from './modules/admin';
 import { PublicApiModule } from './modules/public-api';
+import { ExploreModule } from './modules/explore';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middleware';
 
@@ -33,6 +34,7 @@ import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middle
         REDIS_URL: Joi.string().optional().allow(''),
         STRIPE_SECRET_KEY: Joi.string().optional().allow(''),
         STRIPE_WEBHOOK_SECRET: Joi.string().optional().allow(''),
+        SENTRY_DSN: Joi.string().optional().allow(''),
         NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
         PORT: Joi.number().default(3001),
       }),
@@ -42,6 +44,7 @@ import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middle
       useFactory: (config: ConfigService) => ({
         pinoHttp: {
           level: config.get('NODE_ENV') === 'production' ? 'info' : 'debug',
+          autoLogging: config.get('NODE_ENV') === 'production',
           customProps: (req: { headers?: Record<string, string | string[] | undefined> }) => ({
             correlationId: req.headers?.[CORRELATION_ID_HEADER],
           }),
@@ -78,6 +81,7 @@ import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middle
     BillingModule,
     AdminModule,
     PublicApiModule,
+    ExploreModule,
   ],
   controllers: [AppController],
   providers: [

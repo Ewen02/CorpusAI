@@ -1,3 +1,7 @@
+import { initSentry } from './lib/sentry';
+// Sentry must be initialized before any other imports
+initSentry();
+
 import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';

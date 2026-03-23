@@ -1,5 +1,5 @@
 import { Injectable, Inject, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
-import { prisma, DocumentStatus } from '@corpusai/database';
+import { prisma, DocumentStatus, type TransactionClient } from '@corpusai/database';
 import { assertCanAddDocument, assertCanUploadDocument } from '../../shared/subscription-checks';
 import { SUPPORTED_DOCUMENT_TYPES, type SupportedDocumentType } from '@corpusai/types';
 import * as fs from 'node:fs/promises';
@@ -104,7 +104,7 @@ export class DocumentsService {
       );
     }
 
-    const document = await prisma.$transaction(async (tx) => {
+    const document = await prisma.$transaction(async (tx: TransactionClient) => {
       const newDocument = await tx.document.create({
         data: {
           aiId,
@@ -164,7 +164,7 @@ export class DocumentsService {
     const sizeMB = Buffer.byteLength(dto.content, 'utf8') / (1024 * 1024);
     assertCanUploadDocument(ai.user.subscriptionPlan, sizeMB);
 
-    const document = await prisma.$transaction(async (tx) => {
+    const document = await prisma.$transaction(async (tx: TransactionClient) => {
       const newDocument = await tx.document.create({
         data: {
           aiId,
@@ -230,7 +230,7 @@ export class DocumentsService {
       );
     }
 
-    const document = await prisma.$transaction(async (tx) => {
+    const document = await prisma.$transaction(async (tx: TransactionClient) => {
       const newDocument = await tx.document.create({
         data: {
           aiId,

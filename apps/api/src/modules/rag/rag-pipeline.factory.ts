@@ -4,15 +4,17 @@ import Redis from 'ioredis';
 import {
   OpenAIEmbeddingService,
   QdrantVectorStore,
-  TokenChunker,
+  ParentChildChunker,
   RAGPipelineImpl,
   HybridReranker,
+  CohereReranker,
   CachedEmbeddingService,
   type LLMConfig,
   type EmbeddingService,
   type CacheService,
   type CacheMetrics,
   type Reranker,
+  type AsyncReranker,
 } from '@corpusai/corpus';
 
 /**
@@ -20,7 +22,7 @@ import {
  * Chaque AI a sa propre collection Qdrant (isolation des données).
  *
  * Fonctionnalités:
- * - TokenChunker: chunking basé sur les tokens (tiktoken)
+ * - ParentChildChunker: child chunks pour retrieval précis, parent pour contexte LLM
  * - HybridReranker: reranking BM25 + sémantique
  * - CachedEmbeddingService: cache Redis des embeddings (optionnel)
  */
@@ -28,8 +30,8 @@ import {
 export class RagPipelineFactory implements OnModuleDestroy {
   private readonly logger = new Logger(RagPipelineFactory.name);
   private embeddingService: EmbeddingService;
-  private chunker: TokenChunker;
-  private reranker: Reranker;
+  private chunker: ParentChildChunker;
+  private reranker: Reranker | AsyncReranker;
   private redis?: Redis;
   private readonly llmApiKey: string;
   private readonly llmBaseURL?: string;
@@ -76,17 +78,25 @@ export class RagPipelineFactory implements OnModuleDestroy {
       this.embeddingService = baseEmbeddingService;
     }
 
-    // TokenChunker: chunking basé sur les tokens (tiktoken cl100k_base)
-    // - 400 tokens par chunk (optimal pour embeddings)
-    // - 50 tokens d'overlap pour conserver le contexte
-    this.chunker = new TokenChunker({
-      chunkSizeTokens: 400,
-      overlapTokens: 50,
+    // ParentChildChunker: child chunks (150t) pour la précision de retrieval,
+    // parent chunks (512t) pour la richesse du contexte LLM
+    this.chunker = new ParentChildChunker({
+      childSizeTokens: 150,
+      parentSizeTokens: 512,
+      childOverlapTokens: 50,
     });
 
-    // Reranker hybride (BM25 + sémantique)
-    this.reranker = new HybridReranker();
-    this.logger.log('Hybrid reranker enabled (60% semantic + 40% BM25)');
+    // Reranker : Cohere cross-encoder si COHERE_API_KEY disponible, hybride sinon
+    const cohereApiKey = this.configService.get<string>('COHERE_API_KEY');
+    if (cohereApiKey) {
+      this.reranker = new CohereReranker({ apiKey: cohereApiKey });
+      this.logger.log('Cohere cross-encoder reranker enabled (rerank-multilingual-v3.0)');
+    } else {
+      this.reranker = new HybridReranker();
+      this.logger.log(
+        'Hybrid reranker enabled (60% semantic + 40% BM25) — set COHERE_API_KEY for cross-encoder'
+      );
+    }
   }
 
   /**

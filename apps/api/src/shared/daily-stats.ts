@@ -3,15 +3,11 @@
  * Called inside Prisma transactions alongside counter updates.
  */
 
-import type { PrismaClient } from '@corpusai/database';
+import type { TransactionClient } from '@corpusai/database';
 
 type StatsField = 'documentCount' | 'conversationCount' | 'questionCount';
 
-// Prisma interactive transaction client (same API minus $transaction/$connect etc.)
-type TxClient = Omit<
-  PrismaClient,
-  '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
->;
+type TxClient = TransactionClient;
 
 /**
  * Increments a DailyStats field for both per-AI and global (aiId=null) stats.
@@ -42,24 +38,35 @@ async function upsertStats(
   field: StatsField,
   increment: number
 ): Promise<void> {
-  const existing = await tx.dailyStats.findFirst({
+  // updateMany is safe with nullable aiId and requires no unique field.
+  // It atomically increments if the row exists.
+  const updated = await tx.dailyStats.updateMany({
     where: { userId, aiId, date },
-    select: { id: true },
+    data: { [field]: { increment } },
   });
 
-  if (existing) {
-    await tx.dailyStats.update({
-      where: { id: existing.id },
-      data: { [field]: { increment } },
-    });
-  } else {
-    await tx.dailyStats.create({
-      data: {
-        userId,
-        aiId,
-        date,
-        [field]: increment,
-      },
-    });
+  if (updated.count === 0) {
+    // Row doesn't exist yet — create it, catching P2002 for concurrent inserts
+    // on the same (userId, aiId, date) from parallel requests.
+    try {
+      await tx.dailyStats.create({
+        data: { userId, aiId, date, [field]: increment },
+      });
+    } catch (error: unknown) {
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        (error as { code: string }).code === 'P2002'
+      ) {
+        // Another request created the row concurrently — retry the update.
+        await tx.dailyStats.updateMany({
+          where: { userId, aiId, date },
+          data: { [field]: { increment } },
+        });
+      } else {
+        throw error;
+      }
+    }
   }
 }

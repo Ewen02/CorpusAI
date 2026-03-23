@@ -1,6 +1,8 @@
 import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import type { Scope } from '@sentry/nestjs';
 import { CORRELATION_ID_HEADER } from '../middleware/correlation-id.middleware';
+import { Sentry } from '../../lib/sentry';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -17,6 +19,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     const correlationId = request.headers[CORRELATION_ID_HEADER] as string;
     const isDev = process.env.NODE_ENV !== 'production';
+
+    // Capture unexpected errors (5xx) in Sentry, skip expected HTTP exceptions
+    if (!(exception instanceof HttpException) || status >= 500) {
+      Sentry.withScope((scope: Scope) => {
+        if (correlationId) scope.setTag('correlationId', correlationId);
+        scope.setTag('path', request.url);
+        scope.setTag('method', request.method);
+        Sentry.captureException(exception);
+      });
+    }
 
     // Add Retry-After header for rate-limited responses
     if (status === HttpStatus.TOO_MANY_REQUESTS) {

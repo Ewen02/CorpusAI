@@ -48,11 +48,11 @@ export class AdminService {
         conversations: conversationCount,
         messages: messageCount,
       },
-      usersByPlan: usersByPlan.map((g) => ({
+      usersByPlan: usersByPlan.map((g: { subscriptionPlan: string; _count: number }) => ({
         plan: g.subscriptionPlan,
         count: g._count,
       })),
-      documentsByStatus: documentsByStatus.map((g) => ({
+      documentsByStatus: documentsByStatus.map((g: { status: string; _count: number }) => ({
         status: g.status,
         count: g._count,
       })),

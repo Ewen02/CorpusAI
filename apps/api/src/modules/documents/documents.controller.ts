@@ -215,7 +215,7 @@ export class DocumentsController {
           const timeout = setTimeout(() => {
             this.progressEmitter.removeListener('progress', onProgress);
             subscriber.complete();
-          }, 60_000);
+          }, 10 * 60_000);
 
           subscriber.add(() => {
             clearTimeout(timeout);

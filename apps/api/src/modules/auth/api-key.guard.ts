@@ -57,7 +57,7 @@ export class ApiKeyGuard implements CanActivate {
     // Update last used (fire and forget)
     prisma.apiKey
       .update({ where: { id: apiKey.id }, data: { lastUsedAt: new Date() } })
-      .catch((err) =>
+      .catch((err: unknown) =>
         this.logger.warn(
           { apiKeyId: apiKey.id, err: String(err) },
           'Failed to update API key lastUsedAt'

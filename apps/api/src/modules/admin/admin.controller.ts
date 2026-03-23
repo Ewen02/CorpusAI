@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   Patch,
   Param,
   Query,
@@ -8,14 +9,19 @@ import {
   UseGuards,
   ParseIntPipe,
   DefaultValuePipe,
+  NotFoundException,
 } from '@nestjs/common';
 import { AdminGuard } from '../auth/admin.guard';
 import { AdminService } from './admin.service';
+import { EvalReportsService } from './eval-reports.service';
 
 @Controller('admin')
 @UseGuards(AdminGuard)
 export class AdminController {
-  constructor(private adminService: AdminService) {}
+  constructor(
+    private adminService: AdminService,
+    private evalReportsService: EvalReportsService
+  ) {}
 
   @Get('dashboard')
   getDashboard() {
@@ -56,5 +62,27 @@ export class AdminController {
   @Get('health')
   getSystemHealth() {
     return this.adminService.getSystemHealth();
+  }
+
+  @Get('eval/datasets')
+  listEvalDatasets() {
+    return this.evalReportsService.listDatasets();
+  }
+
+  @Post('eval/run')
+  runEval(@Body('slug') slug: string, @Body('dataset') dataset: string) {
+    return this.evalReportsService.runEval(slug, dataset);
+  }
+
+  @Get('eval/reports')
+  listEvalReports(@Query('slug') slug?: string) {
+    return this.evalReportsService.listReports(slug);
+  }
+
+  @Get('eval/reports/:runId')
+  async getEvalReport(@Param('runId') runId: string) {
+    const report = await this.evalReportsService.getReport(runId);
+    if (!report) throw new NotFoundException('Report not found');
+    return report;
   }
 }

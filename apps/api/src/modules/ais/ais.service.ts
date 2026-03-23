@@ -31,6 +31,7 @@ export class AIsService {
         description: true,
         status: true,
         accessType: true,
+        isPublic: true,
         documentCount: true,
         conversationCount: true,
         questionCount: true,
@@ -137,6 +138,7 @@ export class AIsService {
         temperature: dto.temperature || 0.7,
         isPublic: dto.isPublic ?? false,
         scoreThreshold: dto.scoreThreshold ?? 0.6,
+        category: dto.category,
       },
     });
   }
@@ -165,6 +167,7 @@ export class AIsService {
         status: dto.status,
         isPublic: dto.isPublic,
         scoreThreshold: dto.scoreThreshold,
+        category: dto.category,
       },
     });
   }

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { prisma } from '@corpusai/database';
 import {
   getFeatureLimits,
@@ -18,6 +18,9 @@ export class UsersService {
         email: true,
         name: true,
         image: true,
+        username: true,
+        bio: true,
+        notificationPreferences: true,
         subscriptionPlan: true,
         subscriptionStatus: true,
         subscriptionStart: true,
@@ -39,17 +42,35 @@ export class UsersService {
   }
 
   async updateProfile(userId: string, data: UpdateProfileDto) {
+    if (data.username) {
+      const existing = await prisma.user.findUnique({
+        where: { username: data.username },
+        select: { id: true },
+      });
+      if (existing && existing.id !== userId) {
+        throw new ConflictException('This username is already taken');
+      }
+    }
+
     return prisma.user.update({
       where: { id: userId },
       data: {
         name: data.name,
         image: data.image,
+        username: data.username,
+        bio: data.bio,
+        ...(data.notificationPreferences !== undefined
+          ? { notificationPreferences: data.notificationPreferences }
+          : {}),
       },
       select: {
         id: true,
         email: true,
         name: true,
         image: true,
+        username: true,
+        bio: true,
+        notificationPreferences: true,
         updatedAt: true,
       },
     });

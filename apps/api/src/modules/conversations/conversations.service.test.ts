@@ -48,6 +48,7 @@ vi.mock('@corpusai/subscription', () => ({
 
 vi.mock('@corpusai/ai-rules', () => ({
   determineConfidence: vi.fn().mockReturnValue('HIGH'),
+  buildSystemPrompt: vi.fn().mockReturnValue('mocked system prompt'),
 }));
 
 vi.mock('../../shared/daily-stats', () => ({
@@ -96,6 +97,7 @@ describe('ConversationsService', () => {
         primaryColor: '#3b82f6',
         logo: 'logo.png',
         status: 'ACTIVE',
+        isPublic: true,
         accessType: 'FREE',
       });
 

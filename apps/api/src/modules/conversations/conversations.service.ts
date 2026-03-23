@@ -1,7 +1,13 @@
 import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
-import { prisma, MessageRole, AIStatus, ConfidenceLevel } from '@corpusai/database';
+import {
+  prisma,
+  MessageRole,
+  AIStatus,
+  ConfidenceLevel,
+  type TransactionClient,
+} from '@corpusai/database';
 import { canAskQuestion, type SubscriptionPlanType } from '@corpusai/subscription';
-import { determineConfidence } from '@corpusai/ai-rules';
+import { determineConfidence, buildSystemPrompt } from '@corpusai/ai-rules';
 import type { RAGResponse } from '@corpusai/corpus';
 import { RagService } from '../rag';
 import { incrementDailyStats } from '../../shared/daily-stats';
@@ -44,8 +50,11 @@ export class ConversationsService {
     });
     return messages
       .reverse()
-      .filter((m) => m.role === MessageRole.USER || m.role === MessageRole.ASSISTANT)
-      .map((m) => ({
+      .filter(
+        (m: { role: string; content: string }) =>
+          m.role === MessageRole.USER || m.role === MessageRole.ASSISTANT
+      )
+      .map((m: { role: string; content: string }) => ({
         role: m.role === MessageRole.USER ? ('user' as const) : ('assistant' as const),
         content: m.content,
       }));
@@ -66,7 +75,7 @@ export class ConversationsService {
         primaryColor: true,
         logo: true,
         status: true,
-        accessType: true,
+        isPublic: true,
       },
     });
 
@@ -74,11 +83,9 @@ export class ConversationsService {
       throw new NotFoundException('AI not found');
     }
 
-    // Transform for widget compatibility
     return {
       ...ai,
-      avatar: ai.logo, // Alias for frontend
-      isPublic: ai.accessType === 'FREE', // Free access = public
+      avatar: ai.logo,
     };
   }
 
@@ -203,7 +210,7 @@ export class ConversationsService {
     }
 
     // Use transaction to ensure conversation creation and counter update are atomic
-    const conversation = await prisma.$transaction(async (tx) => {
+    const conversation = await prisma.$transaction(async (tx: TransactionClient) => {
       const newConversation = await tx.conversation.create({
         data: {
           aiId: ai.id,
@@ -244,6 +251,7 @@ export class ConversationsService {
             id: true,
             userId: true,
             systemPrompt: true,
+            language: true,
             temperature: true,
             maxTokens: true,
             scoreThreshold: true,
@@ -283,7 +291,10 @@ export class ConversationsService {
         conversation.aiId,
         content,
         {
-          systemPrompt: conversation.ai.systemPrompt ?? undefined,
+          systemPrompt: buildSystemPrompt({
+            customPrompt: conversation.ai.systemPrompt ?? undefined,
+            language: conversation.ai.language,
+          }),
           temperature: conversation.ai.temperature,
           maxTokens: conversation.ai.maxTokens,
         },
@@ -340,7 +351,7 @@ export class ConversationsService {
     }
 
     // Update conversation and AI question count atomically
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: TransactionClient) => {
       await tx.conversation.update({
         where: { id: conversationId },
         data: {
@@ -391,6 +402,7 @@ export class ConversationsService {
             id: true,
             userId: true,
             systemPrompt: true,
+            language: true,
             temperature: true,
             maxTokens: true,
             scoreThreshold: true,
@@ -434,7 +446,10 @@ export class ConversationsService {
         conversation.aiId,
         content,
         {
-          systemPrompt: conversation.ai.systemPrompt ?? undefined,
+          systemPrompt: buildSystemPrompt({
+            customPrompt: conversation.ai.systemPrompt ?? undefined,
+            language: conversation.ai.language,
+          }),
           temperature: conversation.ai.temperature,
           maxTokens: conversation.ai.maxTokens,
         },
@@ -482,7 +497,7 @@ export class ConversationsService {
       });
 
       // Update conversation and AI question count atomically
-      await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx: TransactionClient) => {
         await tx.conversation.update({
           where: { id: conversationId },
           data: {
