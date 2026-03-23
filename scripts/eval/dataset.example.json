@@ -1,0 +1,27 @@
+[
+  {
+    "question": "Quelle est la taille maximale d'un chunk dans le pipeline RAG ?",
+    "expected_answer": "La taille maximale d'un chunk est de 400 tokens, avec un overlap de 50 tokens, en utilisant l'encoding cl100k_base de tiktoken.",
+    "document_id": "example"
+  },
+  {
+    "question": "Comment indexer un document dans le pipeline RAG ?",
+    "expected_answer": "Pour indexer un document, il faut appeler la méthode index() du RAGPipelineImpl en lui passant un tableau de documents avec les champs id, content et source. On peut passer un callback onProgress pour suivre l'avancement.",
+    "document_id": "example"
+  },
+  {
+    "question": "Quelles sont les différences entre RecursiveChunker et TokenChunker ?",
+    "expected_answer": "Le TokenChunker est utilisé en production et découpe le texte en chunks de 400 tokens via tiktoken cl100k_base. Le RecursiveChunker découpe récursivement selon des séparateurs textuels. Seul le TokenChunker est utilisé en production.",
+    "document_id": "example"
+  },
+  {
+    "question": "Quel est le prix mensuel de l'abonnement Enterprise ?",
+    "expected_answer": "Je ne trouve pas cette information dans les documents disponibles.",
+    "document_id": "example"
+  },
+  {
+    "question": "Explique le fonctionnement du HybridReranker et comment il combine les scores sémantiques et lexicaux.",
+    "expected_answer": "Le HybridReranker combine 60% de score sémantique (cosine similarity) et 40% de score lexical (BM25). Il prend les résultats de la recherche vectorielle et les reclasse en calculant un score final pondéré entre la similarité cosinus et le score BM25 basé sur la fréquence des termes.",
+    "document_id": "example"
+  }
+]

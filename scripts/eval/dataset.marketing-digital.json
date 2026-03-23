@@ -1,0 +1,102 @@
+[
+  {
+    "question": "Quels sont les composants principaux du marketing digital ?",
+    "expected_answer": "Les composants principaux sont le SEO, le SEA, le marketing de contenu, le marketing sur les réseaux sociaux, l'e-mail marketing et l'analyse de données.",
+    "document_id": "cmmxgywk30001syl1fkc79aei"
+  },
+  {
+    "question": "Quelle est la différence entre un mot-clé short-tail et un mot-clé long-tail ?",
+    "expected_answer": "Un mot-clé short-tail est composé de 1 à 3 mots avec un fort volume de recherche mais une forte concurrence. Un mot-clé long-tail est composé de 4 mots ou plus, moins concurrentiel, plus ciblé et avec un taux de conversion plus élevé.",
+    "document_id": "cmmxgywk30001syl1fkc79aei"
+  },
+  {
+    "question": "Quelles sont les trois étapes du fonctionnement d'un moteur de recherche ?",
+    "expected_answer": "Les trois étapes sont le crawling (exploration par des robots), l'indexation (analyse et stockage du contenu) et le ranking (classement des pages selon un algorithme lors d'une recherche).",
+    "document_id": "cmmxgywk30001syl1fkc79aei"
+  },
+  {
+    "question": "Quels outils peut-on utiliser pour gérer les publications sur les réseaux sociaux ?",
+    "expected_answer": "On peut utiliser Hootsuite, Buffer ou Sprout Social pour planifier et gérer les publications sur plusieurs plateformes et suivre les performances.",
+    "document_id": "cmmxgywk30001syl1fkc79aei"
+  },
+  {
+    "question": "Pourquoi faut-il éviter le keyword stuffing en SEO ?",
+    "expected_answer": "Le keyword stuffing consiste à utiliser excessivement des mots-clés. Les moteurs de recherche peuvent pénaliser le site en le considérant comme spammy. Il faut utiliser les mots-clés de manière naturelle et contextuelle.",
+    "document_id": "cmmxgywk30001syl1fkc79aei"
+  },
+  {
+    "question": "Qu'est-ce que le SEO et pourquoi est-il important ?",
+    "expected_answer": "Le SEO est l'ensemble des techniques visant à améliorer la visibilité d'un site dans les résultats organiques des moteurs de recherche. Il est important car il augmente la visibilité, renforce la crédibilité, attire un trafic qualifié et offre un ROI élevé sur le long terme.",
+    "document_id": "cmmxgywk30001syl1fkc79aei"
+  },
+  {
+    "question": "Quels sont les avantages du marketing digital par rapport au marketing traditionnel ?",
+    "expected_answer": "Le marketing digital offre une portée mondiale, une meilleure personnalisation, plus de flexibilité, un engagement plus fort, une mesurabilité en temps réel et un ciblage précis basé sur des données démographiques et comportementales.",
+    "document_id": "cmmxgywk30001syl1fkc79aei"
+  },
+  {
+    "question": "Quelles sont les spécificités de TikTok comme plateforme marketing ?",
+    "expected_answer": "TikTok connaît une croissance rapide, surtout parmi les jeunes générations. Le contenu y est court, créatif et souvent viral. C'est une plateforme idéale pour les campagnes de notoriété et d'engagement créatif.",
+    "document_id": "cmmxgywk30001syl1fkc79aei"
+  },
+  {
+    "question": "Comment fonctionne le broken link building ?",
+    "expected_answer": "Le broken link building consiste à identifier des liens brisés sur d'autres sites dans sa niche, puis à contacter les webmasters pour leur suggérer de remplacer ces liens cassés par des liens vers son propre contenu pertinent.",
+    "document_id": "cmmxgywk30001syl1fkc79aei"
+  },
+  {
+    "question": "Quels sont les éléments clés d'une bonne expérience utilisateur (UX) ?",
+    "expected_answer": "Les éléments clés sont l'architecture de l'information, le design visuel, l'accessibilité, la performance, l'adaptation mobile, l'interactivité, la pertinence du contenu et la sécurité des données.",
+    "document_id": "cmmxgywk30001syl1fkc79aei"
+  },
+  {
+    "question": "Qu'est-ce que la balise hreflang et quand l'utiliser ?",
+    "expected_answer": "La balise hreflang est utilisée en SEO international pour indiquer aux moteurs de recherche la langue et la région ciblées par chaque page. Elle s'utilise quand on a un site multilingue ou multi-régions.",
+    "document_id": "cmmxgywk30001syl1fkc79aei"
+  },
+  {
+    "question": "Quels KPIs faut-il suivre pour mesurer les performances SEO ?",
+    "expected_answer": "Les KPIs clés sont le classement des mots-clés, le trafic organique, le taux de clics (CTR), le taux de rebond, le temps passé sur le site, les pages par session, les conversions, les backlinks acquis et la vitesse de chargement.",
+    "document_id": "cmmxgywk30001syl1fkc79aei"
+  },
+  {
+    "question": "Comment intégrer les réseaux sociaux dans une stratégie marketing globale ?",
+    "expected_answer": "Il faut définir des objectifs clairs, connaître son audience, créer un calendrier de contenu, utiliser des outils de gestion, engager avec l'audience, analyser les résultats et intégrer avec les autres canaux comme le site web et l'email marketing.",
+    "document_id": "cmmxgywk30001syl1fkc79aei"
+  },
+  {
+    "question": "Quelles sont les compétences requises pour un social media manager ?",
+    "expected_answer": "Un social media manager doit maîtriser les plateformes sociales, avoir des compétences en communication, être capable d'analyser les données et d'adapter les stratégies en fonction des résultats.",
+    "document_id": "cmmxgywk30001syl1fkc79aei"
+  },
+  {
+    "question": "Qu'est-ce que le marketing automation et quel est son objectif ?",
+    "expected_answer": "Le marketing automation consiste à automatiser les tâches répétitives pour gagner en efficacité et personnaliser les interactions avec les clients. Il utilise des outils pour les campagnes d'emailing, le scoring des leads et la gestion des réseaux sociaux.",
+    "document_id": "cmmxgywk30001syl1fkc79aei"
+  },
+  {
+    "question": "Comment optimiser une fiche Google My Business pour le SEO local ?",
+    "expected_answer": "Il faut créer et vérifier la fiche, remplir toutes les informations (adresse, horaires, téléphone, site web), choisir les bonnes catégories, ajouter des photos de qualité, assurer la cohérence des NAP sur tous les annuaires et encourager les avis clients.",
+    "document_id": "cmmxgywk30001syl1fkc79aei"
+  },
+  {
+    "question": "Quels sont les risques liés à l'achat de backlinks ?",
+    "expected_answer": "L'achat de backlinks expose le site à des pénalités sévères de la part des moteurs de recherche, pouvant aller jusqu'à la désindexation du site. Il vaut mieux acquérir des backlinks de manière organique et naturelle.",
+    "document_id": "cmmxgywk30001syl1fkc79aei"
+  },
+  {
+    "question": "Quelles techniques permettent d'améliorer la vitesse de chargement d'un site ?",
+    "expected_answer": "On peut compresser les images et fichiers, utiliser la mise en cache, minimiser les scripts et styles CSS, utiliser un réseau de distribution de contenu (CDN) et optimiser les formats de fichiers (WebP pour les images, MP4 pour les vidéos).",
+    "document_id": "cmmxgywk30001syl1fkc79aei"
+  },
+  {
+    "question": "Quel est le prix d'un abonnement CorpusAI Pro ?",
+    "expected_answer": "Je ne trouve pas cette information dans les documents disponibles.",
+    "document_id": "cmmxgywk30001syl1fkc79aei"
+  },
+  {
+    "question": "Qu'est-ce que l'intelligence artificielle a changé dans le marketing digital depuis 2020 ?",
+    "expected_answer": "Depuis les années 2020, l'intelligence artificielle, le machine learning et la réalité augmentée sont utilisés pour personnaliser les expériences client et optimiser les campagnes marketing.",
+    "document_id": "cmmxgywk30001syl1fkc79aei"
+  }
+]

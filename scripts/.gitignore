@@ -1,0 +1,4 @@
+eval/node_modules/
+eval/dist/
+eval/.env
+eval/reports/*.json
