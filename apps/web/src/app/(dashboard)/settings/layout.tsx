@@ -25,7 +25,7 @@ const settingsNav: SettingsNavItem[] = [
     icon: <CreditCardIcon className="h-4 w-4" />,
   },
   {
-    label: 'Securite',
+    label: 'Sécurité',
     href: ROUTES.settings.security,
     icon: <ShieldIcon className="h-4 w-4" />,
   },
@@ -35,7 +35,7 @@ const settingsNav: SettingsNavItem[] = [
     icon: <BellIcon className="h-4 w-4" />,
   },
   {
-    label: 'Cles API',
+    label: 'Clés API',
     href: ROUTES.settings.apiKeys,
     icon: <KeyIcon className="h-4 w-4" />,
   },
@@ -48,14 +48,14 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   return (
     <div className="container max-w-6xl py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Parametres</h1>
-        <p className="mt-2 text-muted-foreground">Gerez votre compte et vos preferences.</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-tx-primary">Paramètres</h1>
+        <p className="mt-1 text-sm text-tx-muted">Gérez votre compte et vos préférences.</p>
       </div>
 
       <div className="flex flex-col gap-8 md:flex-row">
         {/* Sidebar Navigation */}
-        <nav className="w-full shrink-0 md:w-56">
-          <ul className="space-y-1">
+        <nav className="w-full shrink-0 md:w-52">
+          <ul className="space-y-0.5">
             {settingsNav.map((item) => {
               const isActive = pathname === item.href;
               return (
@@ -63,13 +63,17 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                   <button
                     onClick={() => navigateTo(item.href)}
                     className={cn(
-                      'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                      'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] transition-all duration-150',
                       isActive
-                        ? 'bg-accent font-medium text-accent-foreground'
-                        : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                        ? 'bg-[hsl(var(--accent-500)/0.08)] font-medium text-tx-primary shadow-[inset_2px_0_0_hsl(var(--accent-500))]'
+                        : 'text-tx-muted hover:bg-[hsl(var(--surface-2))] hover:text-tx-secondary'
                     )}
                   >
-                    {item.icon}
+                    <span
+                      className={cn('shrink-0', isActive ? 'text-indigo-400' : 'text-tx-disabled')}
+                    >
+                      {item.icon}
+                    </span>
                     {item.label}
                   </button>
                 </li>

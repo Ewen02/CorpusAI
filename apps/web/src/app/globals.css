@@ -4,82 +4,318 @@
 
 @layer base {
   :root {
-    /* CorpusAI Dark Theme — Neutral, sophisticated palette */
-    --background: 220 14% 4%;
-    --foreground: 210 20% 98%;
+    /* ── shadcn required variables ── */
+    --background:             224 20% 5%;
+    --foreground:             220 20% 97%;
 
-    --card: 220 13% 6.5%;
-    --card-foreground: 210 20% 98%;
+    --card:                   224 15% 10%;
+    --card-foreground:        220 20% 97%;
 
-    --primary: 230 55% 56%;
-    --primary-foreground: 0 0% 100%;
+    --popover:                224 14% 13%;
+    --popover-foreground:     220 20% 97%;
 
-    --secondary: 220 10% 14%;
-    --secondary-foreground: 210 20% 98%;
+    --primary:                235 85% 58%;
+    --primary-foreground:     0 0% 100%;
 
-    --muted: 220 10% 14%;
-    --muted-foreground: 220 8% 56%;
+    --secondary:              224 14% 13%;
+    --secondary-foreground:   220 20% 97%;
 
-    --accent: 220 10% 14%;
-    --accent-foreground: 210 20% 98%;
+    --muted:                  224 14% 13%;
+    --muted-foreground:       220 8% 45%;
 
-    --destructive: 0 62% 50%;
-    --success: 142 76% 36%;
-    --warning: 38 92% 50%;
+    --accent:                 224 15% 10%;
+    --accent-foreground:      220 20% 97%;
 
-    --border: 220 8% 15%;
-    --ring: 230 55% 56%;
+    --destructive:            4 80% 56%;
+    --destructive-foreground: 0 0% 100%;
 
-    --radius: 0.5rem;
+    --border:                 224 14% 18%;
+    --input:                  224 15% 10%;
+    --ring:                   235 85% 58%;
+
+    --radius:                 0.5rem;
+
+    /* ── CorpusAI – Surfaces ── */
+    --surface-0:   224 18% 7%;
+    --surface-1:   224 15% 10%;
+    --surface-2:   224 14% 13%;
+    --surface-3:   224 13% 17%;
+
+    /* ── CorpusAI – Borders ── */
+    --border-subtle:  224 15% 14%;
+    --border-default: 224 14% 18%;
+    --border-strong:  224 12% 25%;
+
+    /* ── CorpusAI – Text ── */
+    --text-primary:   220 20% 97%;
+    --text-secondary: 220 10% 70%;
+    --text-muted:     220 8% 45%;
+    --text-disabled:  220 5% 30%;
+
+    /* ── CorpusAI – Accent ramp (Indigo électrique #5468ff) ── */
+    --accent-400: 235 85% 65%;
+    --accent-500: 235 85% 58%;
+    --accent-600: 235 80% 50%;
+
+    /* ── CorpusAI – Semantic ── */
+    --success:        152 70% 42%;
+    --success-subtle: 152 50% 8%;
+    --warning:         38 95% 55%;
+    --warning-subtle:  38 60% 8%;
+    --danger:           4 80% 56%;
+    --danger-subtle:    4 50% 8%;
+    --info:           205 85% 55%;
+    --info-subtle:    205 55% 8%;
+
+    /* ── CorpusAI – Shadows ── */
+    --shadow-sm:        0 1px 2px hsl(224 20% 3% / 0.4), 0 0 0 1px hsl(220 20% 97% / 0.04);
+    --shadow-md:        0 4px 12px hsl(224 20% 3% / 0.5), 0 1px 3px hsl(224 20% 3% / 0.3), inset 0 1px 0 hsl(220 20% 97% / 0.04);
+    --shadow-lg:        0 8px 32px hsl(224 20% 3% / 0.4), inset 0 1px 0 hsl(220 20% 97% / 0.08);
+    --shadow-accent:    0 4px 16px hsl(235 85% 58% / 0.3);
+    --shadow-accent-sm: 0 0 0 1px hsl(235 85% 58% / 0.05), 0 4px 16px hsl(235 85% 58% / 0.08);
+
+    /* ── CorpusAI – Blur ── */
+    --blur-glass: blur(12px);
+    --blur-heavy: blur(40px);
+
+    /* ── CorpusAI – Transitions ── */
+    --transition-fast: 100ms ease;
+    --transition-base: 150ms ease;
+    --transition-slow: 200ms ease;
   }
 
   * {
     @apply border-border;
   }
 
-  body {
-    @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+  html, body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: var(--font-sans), system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: hsl(235 85% 58% / 0.25);
+    color: hsl(var(--foreground));
+  }
+
+  ::-webkit-scrollbar       { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.1);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.2);
   }
 }
 
-/* Custom Animations */
+/* ─────────────────── Surface utilities ─────────────────── */
+@layer components {
+
+  /* ── Surface levels ── */
+  .surface-raised {
+    background: hsl(var(--surface-1));
+    border: 1px solid hsl(var(--border-default));
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .surface-elevated {
+    background: hsl(var(--surface-2));
+    border: 1px solid hsl(var(--border-strong));
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+  }
+
+  .surface-glass {
+    background: hsl(var(--surface-1) / 0.6);
+    backdrop-filter: var(--blur-glass) saturate(1.5);
+    -webkit-backdrop-filter: var(--blur-glass) saturate(1.5);
+    border: 1px solid hsl(220 20% 97% / 0.06);
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .surface-stat {
+    background: linear-gradient(135deg, hsl(var(--surface-1)), hsl(224 15% 12%));
+    border: 1px solid hsl(var(--accent-500) / 0.25);
+    border-radius: 12px;
+    box-shadow: var(--shadow-accent-sm);
+  }
+
+  /* ── Glass panels ── */
+  .glass {
+    background: hsl(var(--surface-1) / 0.6);
+    border: 1px solid hsl(220 20% 97% / 0.07);
+    backdrop-filter: var(--blur-glass);
+    -webkit-backdrop-filter: var(--blur-glass);
+    box-shadow:
+      inset 0 1px 0 hsl(220 20% 97% / 0.06),
+      var(--shadow-md);
+  }
+
+  .glass-strong {
+    background: hsl(var(--surface-2) / 0.75);
+    border: 1px solid hsl(220 20% 97% / 0.12);
+    backdrop-filter: var(--blur-glass);
+    -webkit-backdrop-filter: var(--blur-glass);
+    box-shadow:
+      inset 0 1px 0 hsl(220 20% 97% / 0.09),
+      var(--shadow-lg);
+  }
+
+  .glass-hover {
+    transition:
+      background var(--transition-base),
+      border-color var(--transition-base);
+  }
+  .glass-hover:hover {
+    background: hsl(var(--surface-2) / 0.75);
+    border-color: hsl(220 20% 97% / 0.14);
+  }
+
+  /* ── Gradient orbs (ambient background) ── */
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 0;
+    filter: var(--blur-heavy);
+  }
+
+  .orb-accent {
+    background: radial-gradient(circle, hsl(235 85% 40%) 0%, transparent 70%);
+    opacity: 0.5;
+  }
+
+  .orb-subtle {
+    background: radial-gradient(circle, hsl(235 85% 50%) 0%, transparent 70%);
+    opacity: 0.2;
+  }
+
+  /* ── Gradient text ── */
+  .text-gradient {
+    background: linear-gradient(135deg, hsl(var(--accent-400)), hsl(270 70% 65%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-accent {
+    background: linear-gradient(135deg, hsl(var(--accent-400)), hsl(var(--accent-600)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ── Page background (ambient glow) ── */
+  .bg-page {
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -10%, hsl(235 85% 58% / 0.08) 0%, transparent 70%),
+      hsl(var(--background));
+  }
+
+  /* ── Gradient primary button/CTA ── */
+  .bg-gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--accent-500)), hsl(270 70% 60%));
+  }
+
+  /* ── Glow borders ── */
+  .glow-accent {
+    box-shadow:
+      0 0 0 1px hsl(235 85% 58% / 0.4),
+      0 0 20px hsl(235 85% 58% / 0.12),
+      var(--shadow-md);
+  }
+
+  /* ── Focus ring (accessibility) ── */
+  .focus-ring {
+    outline: none;
+    box-shadow:
+      0 0 0 2px hsl(var(--background)),
+      0 0 0 4px hsl(var(--accent-500));
+  }
+
+  /* ── Font display (Instrument Serif) ── */
+  .font-display {
+    font-family: var(--font-display), Georgia, serif;
+  }
+}
+
+/* ─────────────────── Custom Animations ─────────────────── */
+
 /* Shimmer loading effect */
 @keyframes shimmer {
-  0% { background-position: -1000px 0; }
-  100% { background-position: 1000px 0; }
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .animate-shimmer {
   background: linear-gradient(
     90deg,
-    hsl(var(--muted)) 0%,
-    hsl(var(--muted-foreground) / 0.2) 50%,
-    hsl(var(--muted)) 100%
+    hsl(var(--surface-2)) 25%,
+    hsl(var(--surface-3)) 50%,
+    hsl(var(--surface-2)) 75%
   );
-  background-size: 1000px 100%;
-  animation: shimmer 2s infinite;
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
 }
 
-/* Page entry animation */
+/* Page entry */
 @keyframes fade-in-up {
   from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 .animate-fade-in-up {
   animation: fade-in-up 0.4s ease-out both;
 }
 
-/* Scale in for cards */
+/* Scale in */
 @keyframes scale-in {
   from { opacity: 0; transform: scale(0.97); }
-  to { opacity: 1; transform: scale(1); }
+  to   { opacity: 1; transform: scale(1); }
 }
 .animate-scale-in {
   animation: scale-in 0.3s ease-out both;
 }
 
-/* Hover lift */
-.hover-lift {
-  @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md;
+/* Slide up */
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
+.animate-slide-up {
+  animation: slide-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Slide down */
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-down {
+  animation: slide-down 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Blur in */
+@keyframes blur-in {
+  from { opacity: 0; filter: blur(4px); }
+  to   { opacity: 1; filter: blur(0); }
+}
+.animate-blur-in {
+  animation: blur-in 0.4s ease-out both;
+}
+
+/* Stagger children utility */
+.stagger-children > * {
+  animation: fade-in-up 0.4s ease-out both;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 60ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 120ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 180ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 240ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 300ms; }

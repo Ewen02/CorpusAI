@@ -45,10 +45,13 @@ interface CreateAIInput {
   maxTokens?: number;
   scoreThreshold?: number;
   isPublic?: boolean;
+  language?: 'fr' | 'en';
 }
 
 interface UpdateAIData extends Partial<CreateAIInput> {
   status?: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED';
+  category?: 'SUPPORT' | 'EDUCATION' | 'LEGAL' | 'FINANCE' | 'HEALTH' | 'TECH' | 'OTHER';
+  scoreThreshold?: number;
 }
 
 export function useCreateAI() {

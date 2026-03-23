@@ -11,7 +11,15 @@ import {
 } from '@corpusai/ui';
 import { authClient } from '@/lib/auth-client';
 import { useAIs } from '@/lib/queries';
-import { HomeIcon, BotIcon, ChartIcon, SettingsIcon, BookIcon, ShieldIcon } from '@/lib/icons';
+import {
+  HomeIcon,
+  BotIcon,
+  ChartIcon,
+  SettingsIcon,
+  BookIcon,
+  ShieldIcon,
+  CompassIcon,
+} from '@/lib/icons';
 
 // Navigation items
 const mainNavItems: NavItem[] = [
@@ -27,6 +35,12 @@ const mainNavItems: NavItem[] = [
     label: 'Analytics',
     href: '/analytics',
     icon: <ChartIcon className="h-4 w-4" />,
+  },
+  {
+    id: 'explore',
+    label: 'Explorer',
+    href: '/explore',
+    icon: <CompassIcon className="h-4 w-4" />,
   },
 ];
 

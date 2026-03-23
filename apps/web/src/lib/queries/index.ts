@@ -87,3 +87,31 @@ export {
   useCustomerPortal,
   type Invoice,
 } from './use-billing';
+
+// Eval hooks
+export {
+  evalKeys,
+  useEvalReports,
+  useEvalReport,
+  useEvalDatasets,
+  useRunEval,
+  type EvalReport,
+  type EvalReportSummary,
+  type EvalSummary,
+  type EvalResult,
+  type EvalMetrics,
+} from './use-eval';
+
+// Explore hooks
+export {
+  exploreKeys,
+  useExploreAIs,
+  useFeaturedAIs,
+  useCreatorProfile,
+  type ExploreAICard,
+  type ExploreCreator,
+  type ExploreMeta,
+  type ExploreAIsResponse,
+  type CreatorProfile,
+  type ExploreParams,
+} from './use-explore';

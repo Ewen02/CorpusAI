@@ -25,6 +25,7 @@ import {
   ConversationsTab,
   AnalyticsTab,
   DebugTab,
+  IntegrationTab,
 } from './components';
 import type { AI } from '@corpusai/types';
 import { PageWrapper } from '@/components/page-wrapper';
@@ -155,6 +156,7 @@ export default function AIDetailPage() {
             <TabsTrigger value="documents">Documents</TabsTrigger>
             <TabsTrigger value="conversations">Historique</TabsTrigger>
             <TabsTrigger value="analytics">Analytiques</TabsTrigger>
+            <TabsTrigger value="integration">Intégration</TabsTrigger>
             <TabsTrigger value="debug">Debug</TabsTrigger>
           </TabsList>
 
@@ -167,7 +169,6 @@ export default function AIDetailPage() {
               isStreaming={isStreaming}
               aiName={aiData.name}
               welcomeMessage={welcomeMessage}
-              primaryColor={aiData.primaryColor ?? undefined}
               onSendMessage={sendMessage}
               onSelectConversation={handleConversationSelect}
               onNewConversation={startNewConversation}
@@ -203,6 +204,10 @@ export default function AIDetailPage() {
               questionCount={aiData.questionCount}
               documentCount={aiData.documentCount}
             />
+          </TabsContent>
+
+          <TabsContent value="integration">
+            <IntegrationTab ai={aiData} />
           </TabsContent>
 
           <TabsContent value="debug">

@@ -19,7 +19,6 @@ interface ChatTabProps {
   isStreaming: boolean;
   aiName: string;
   welcomeMessage?: string;
-  primaryColor?: string;
   onSendMessage: (content: string) => void;
   onSelectConversation: (conversation: Conversation) => void;
   onNewConversation: () => void;
@@ -38,16 +37,15 @@ export const ChatTab = React.memo(function ChatTab({
   isStreaming,
   aiName,
   welcomeMessage,
-  primaryColor,
   onSendMessage,
   onSelectConversation,
   onNewConversation,
   onSourceClick,
 }: ChatTabProps) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
       {/* Conversation sidebar */}
-      <Card variant="glass" className="lg:col-span-1 h-[600px] flex flex-col overflow-hidden">
+      <Card variant="glass" className="flex h-[600px] flex-col overflow-hidden lg:col-span-1">
         {isLoadingConversations ? (
           <ConversationListSkeleton />
         ) : (
@@ -61,14 +59,13 @@ export const ChatTab = React.memo(function ChatTab({
       </Card>
 
       {/* Chat interface */}
-      <Card variant="glass" className="lg:col-span-3 h-[600px] flex flex-col overflow-hidden">
+      <Card variant="glass" className="flex h-[600px] flex-col overflow-hidden lg:col-span-3">
         <ChatInterface
           messages={messages}
           onSendMessage={onSendMessage}
           isLoading={isStreaming}
           welcomeMessage={welcomeMessage}
           aiName={aiName}
-          primaryColor={primaryColor}
           onSourceClick={onSourceClick}
           className="flex-1"
         />

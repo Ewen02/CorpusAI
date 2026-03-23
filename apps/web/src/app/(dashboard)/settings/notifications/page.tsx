@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import * as React from "react";
+import * as React from 'react';
 import {
   Button,
   Switch,
@@ -10,7 +10,8 @@ import {
   CardDescription,
   CardContent,
   Separator,
-} from "@corpusai/ui";
+} from '@corpusai/ui';
+import { apiClient } from '@/lib/api-client';
 
 interface NotificationSetting {
   id: string;
@@ -28,76 +29,76 @@ interface NotificationCategory {
 
 const defaultCategories: NotificationCategory[] = [
   {
-    id: "email",
-    title: "Notifications par email",
-    description: "Gérez les emails que vous recevez de CorpusAI",
+    id: 'email',
+    title: 'Notifications par email',
+    description: 'Gérez les emails que vous recevez de CorpusAI',
     settings: [
       {
-        id: "email_weekly",
-        label: "Résumé hebdomadaire",
+        id: 'email_weekly',
+        label: 'Résumé hebdomadaire',
         description: "Recevez un résumé de l'activité de vos assistants",
         enabled: true,
       },
       {
-        id: "email_quota",
-        label: "Alertes de quota",
-        description: "Soyez averti lorsque vous approchez de vos limites",
+        id: 'email_quota',
+        label: 'Alertes de quota',
+        description: 'Soyez averti lorsque vous approchez de vos limites',
         enabled: true,
       },
       {
-        id: "email_updates",
-        label: "Mises à jour produit",
-        description: "Nouveautés et améliorations de CorpusAI",
+        id: 'email_updates',
+        label: 'Mises à jour produit',
+        description: 'Nouveautés et améliorations de CorpusAI',
         enabled: false,
       },
       {
-        id: "email_tips",
-        label: "Conseils et astuces",
-        description: "Apprenez à mieux utiliser vos assistants IA",
+        id: 'email_tips',
+        label: 'Conseils et astuces',
+        description: 'Apprenez à mieux utiliser vos assistants IA',
         enabled: false,
       },
     ],
   },
   {
-    id: "activity",
-    title: "Activité des assistants",
-    description: "Notifications sur vos assistants IA",
+    id: 'activity',
+    title: 'Activité des assistants',
+    description: 'Notifications sur vos assistants IA',
     settings: [
       {
-        id: "activity_new_conversation",
-        label: "Nouvelles conversations",
-        description: "Quand un utilisateur démarre une conversation",
+        id: 'activity_new_conversation',
+        label: 'Nouvelles conversations',
+        description: 'Quand un utilisateur démarre une conversation',
         enabled: false,
       },
       {
-        id: "activity_document_indexed",
-        label: "Documents indexés",
-        description: "Quand un document est prêt à être utilisé",
+        id: 'activity_document_indexed',
+        label: 'Documents indexés',
+        description: 'Quand un document est prêt à être utilisé',
         enabled: true,
       },
       {
-        id: "activity_errors",
-        label: "Erreurs",
-        description: "Quand un probleme survient avec un assistant",
+        id: 'activity_errors',
+        label: 'Erreurs',
+        description: 'Quand un probleme survient avec un assistant',
         enabled: true,
       },
     ],
   },
   {
-    id: "marketing",
-    title: "Marketing",
-    description: "Communications promotionnelles",
+    id: 'marketing',
+    title: 'Marketing',
+    description: 'Communications promotionnelles',
     settings: [
       {
-        id: "marketing_newsletter",
-        label: "Newsletter",
+        id: 'marketing_newsletter',
+        label: 'Newsletter',
         description: "Actualites sur l'IA et CorpusAI",
         enabled: false,
       },
       {
-        id: "marketing_offers",
-        label: "Offres speciales",
-        description: "Promotions et offres exclusives",
+        id: 'marketing_offers',
+        label: 'Offres speciales',
+        description: 'Promotions et offres exclusives',
         enabled: false,
       },
     ],
@@ -108,6 +109,30 @@ export default function SettingsNotificationsPage() {
   const [categories, setCategories] = React.useState(defaultCategories);
   const [isSaving, setIsSaving] = React.useState(false);
   const [hasChanges, setHasChanges] = React.useState(false);
+  const [saveError, setSaveError] = React.useState<string | null>(null);
+
+  // Load saved preferences on mount
+  React.useEffect(() => {
+    apiClient
+      .get<{ notificationPreferences?: Record<string, boolean> | null }>('/users/me')
+      .then((profile) => {
+        const prefs = profile.notificationPreferences;
+        if (!prefs) return;
+        setCategories((prev) =>
+          prev.map((category) => ({
+            ...category,
+            settings: category.settings.map((setting) => ({
+              ...setting,
+              enabled:
+                setting.id in prefs ? (prefs[setting.id] ?? setting.enabled) : setting.enabled,
+            })),
+          }))
+        );
+      })
+      .catch(() => {
+        // Non-blocking — keep defaults if fetch fails
+      });
+  }, []);
 
   const handleToggle = (categoryId: string, settingId: string) => {
     setCategories((prev) =>
@@ -127,12 +152,18 @@ export default function SettingsNotificationsPage() {
 
   const handleSave = async () => {
     setIsSaving(true);
+    setSaveError(null);
     try {
-      // TODO: Save preferences to API
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const prefs: Record<string, boolean> = {};
+      categories.forEach((category) => {
+        category.settings.forEach((setting) => {
+          prefs[setting.id] = setting.enabled;
+        });
+      });
+      await apiClient.patch('/users/me', { notificationPreferences: prefs });
       setHasChanges(false);
     } catch (err) {
-      console.error("Error saving preferences:", err);
+      setSaveError(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde');
     } finally {
       setIsSaving(false);
     }
@@ -165,15 +196,10 @@ export default function SettingsNotificationsPage() {
                 {idx > 0 && <Separator />}
                 <div className="flex items-center justify-between py-2">
                   <div className="space-y-0.5">
-                    <label
-                      htmlFor={setting.id}
-                      className="text-sm font-medium cursor-pointer"
-                    >
+                    <label htmlFor={setting.id} className="cursor-pointer text-sm font-medium">
                       {setting.label}
                     </label>
-                    <p className="text-sm text-muted-foreground">
-                      {setting.description}
-                    </p>
+                    <p className="text-sm text-muted-foreground">{setting.description}</p>
                   </div>
                   <Switch
                     id={setting.id}
@@ -188,13 +214,16 @@ export default function SettingsNotificationsPage() {
       ))}
 
       {/* Actions */}
-      <div className="flex items-center justify-between pt-4">
-        <Button variant="ghost" onClick={handleDisableAll}>
-          Tout désactiver
-        </Button>
-        <Button onClick={handleSave} disabled={!hasChanges || isSaving}>
-          {isSaving ? "Enregistrement..." : "Enregistrer les préférences"}
-        </Button>
+      <div className="space-y-3 pt-4">
+        {saveError && <p className="text-sm text-destructive">{saveError}</p>}
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" onClick={handleDisableAll}>
+            Tout désactiver
+          </Button>
+          <Button onClick={handleSave} disabled={!hasChanges || isSaving}>
+            {isSaving ? 'Enregistrement...' : 'Enregistrer les préférences'}
+          </Button>
+        </div>
       </div>
     </div>
   );

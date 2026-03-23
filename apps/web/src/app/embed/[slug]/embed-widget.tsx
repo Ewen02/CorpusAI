@@ -99,7 +99,7 @@ export default function EmbedPage() {
       if (!ai) return;
 
       try {
-        const sessionId = getOrCreateSessionId();
+        const _sessionId = getOrCreateSessionId();
         const response = await apiClient.post<StartConversationResponse>(`/chat/${slug}/start`, {});
         setConversationId(response.id);
       } catch (err) {
@@ -254,7 +254,6 @@ export default function EmbedPage() {
           }
           aiName={ai.name}
           aiAvatar={ai.avatar ?? undefined}
-          primaryColor={effectivePrimaryColor}
           placeholder="Posez votre question..."
         />
       </div>

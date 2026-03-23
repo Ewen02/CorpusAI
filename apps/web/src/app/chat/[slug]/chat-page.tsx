@@ -78,7 +78,6 @@ export default function ChatPage() {
             }
             aiName={ai.name}
             aiAvatar={ai.avatar ?? undefined}
-            primaryColor={ai.primaryColor ?? undefined}
             placeholder="Posez votre question..."
           />
         </div>

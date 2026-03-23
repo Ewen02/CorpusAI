@@ -12,16 +12,13 @@ export default function CreateAIPage() {
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  // Form state
   const [formValues, setFormValues] = React.useState<AIFormValues>(DEFAULT_AI_FORM_VALUES);
   const [slug, setSlug] = React.useState('');
 
-  // Handle field changes
   const handleFieldChange = React.useCallback(
     <K extends keyof AIFormValues>(field: K, value: AIFormValues[K]) => {
       setFormValues((prev) => ({ ...prev, [field]: value }));
 
-      // Auto-generate slug from name
       if (field === 'name' && typeof value === 'string') {
         const generatedSlug = value
           .toLowerCase()
@@ -49,8 +46,10 @@ export default function CreateAIPage() {
         welcomeMessage: formValues.welcomeMessage,
         primaryColor: formValues.primaryColor,
         accessType: formValues.isPublic ? 'FREE' : 'PRIVATE',
+        category: formValues.category,
         maxTokens: formValues.maxTokens,
         temperature: formValues.temperature,
+        language: formValues.language,
       });
       goToAI(ai.id);
     } catch (err) {
@@ -68,21 +67,32 @@ export default function CreateAIPage() {
     onSlugChange: setSlug,
   });
 
+  const tabTriggerClass =
+    'rounded-md px-4 py-1.5 text-[13px] font-medium transition-all duration-150 data-[state=active]:bg-[hsl(var(--surface-1))] data-[state=active]:text-tx-primary data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-[hsl(var(--border-default))] data-[state=inactive]:text-tx-muted';
+
   return (
     <PageWrapper className="container max-w-4xl py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Creer un assistant IA</h1>
-        <p className="mt-2 text-muted-foreground">
-          Configurez votre assistant et commencez a lui ajouter des documents.
+        <h1 className="text-2xl font-semibold tracking-tight text-tx-primary">
+          Créer un assistant IA
+        </h1>
+        <p className="mt-1 text-sm text-tx-muted">
+          Configurez votre assistant et commencez à lui ajouter des documents.
         </p>
       </div>
 
       <form onSubmit={handleSubmit}>
         <Tabs defaultValue="general" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="behavior">Comportement</TabsTrigger>
-            <TabsTrigger value="appearance">Apparence</TabsTrigger>
+          <TabsList className="inline-flex items-center gap-0.5 rounded-lg bg-[hsl(var(--surface-2))] p-1">
+            <TabsTrigger value="general" className={tabTriggerClass}>
+              Général
+            </TabsTrigger>
+            <TabsTrigger value="behavior" className={tabTriggerClass}>
+              Comportement
+            </TabsTrigger>
+            <TabsTrigger value="appearance" className={tabTriggerClass}>
+              Apparence
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="general" className="space-y-6">
@@ -100,17 +110,23 @@ export default function CreateAIPage() {
 
         <ErrorAlert message={error} className="mt-6" />
 
-        <div className="mt-8 flex items-center justify-end gap-4">
+        <div className="mt-8 flex items-center justify-end gap-3">
           <Button
             type="button"
             variant="outline"
+            size="sm"
             onClick={() => router.back()}
             disabled={isLoading}
           >
             Annuler
           </Button>
-          <Button variant="default" type="submit" disabled={isLoading || !formValues.name || !slug}>
-            {isLoading ? 'Creation en cours...' : "Creer l'assistant"}
+          <Button
+            type="submit"
+            size="sm"
+            disabled={isLoading || !formValues.name || !slug}
+            className="bg-gradient-to-r from-indigo-500 to-indigo-600 shadow-[0_2px_8px_hsl(var(--accent-500)/0.35)] hover:opacity-90 disabled:opacity-50"
+          >
+            {isLoading ? 'Création en cours...' : "Créer l'assistant"}
           </Button>
         </div>
       </form>

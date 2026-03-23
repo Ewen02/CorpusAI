@@ -2,10 +2,10 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, Button, StatCard } from '@corpusai/ui';
+import { Button, StatCard, cn } from '@corpusai/ui';
 import { useDashboardStats, useAIs, useUsage, type UsageLimitItem } from '@/lib/queries';
 import { DashboardSkeleton } from '@/components/skeletons';
-import { AIPreviewCard, EmptyAIState } from '@/components';
+import { AICard, EmptyAIState } from '@/components';
 import { BotIcon, FileIcon, MessageIcon, UsersIcon, PlusIcon } from '@/lib/icons';
 import { PageWrapper } from '@/components/page-wrapper';
 
@@ -36,34 +36,48 @@ export default function DashboardPage() {
   return (
     <PageWrapper className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Bienvenue ! Voici un apercu de votre activite.</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-tx-primary">Dashboard</h1>
+          <p className="mt-1 text-sm text-tx-muted">
+            Bienvenue ! Voici un aperçu de votre activité.
+          </p>
+        </div>
+        <Button
+          onClick={handleCreateAI}
+          className="shrink-0 bg-gradient-to-r from-indigo-500 to-indigo-600 shadow-accent transition-all hover:opacity-90 hover:shadow-accent"
+        >
+          <PlusIcon className="mr-2 h-4 w-4" />
+          Créer un AI
+        </Button>
       </div>
 
       {/* Onboarding Banner — show for new users with 0 AIs */}
       {ais && ais.length === 0 && (
-        <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
-          <CardContent className="py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold">Bienvenue sur CorpusAI !</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Creez votre premier assistant IA en 3 etapes : nommez-le, uploadez vos documents,
-                  et commencez a poser des questions.
-                </p>
-              </div>
-              <Button onClick={handleCreateAI} className="ml-4 shrink-0">
-                <PlusIcon className="mr-2 h-4 w-4" />
-                Creer mon premier AI
-              </Button>
+        <div className="relative overflow-hidden rounded-xl border border-[hsl(var(--accent-500)/0.25)] bg-gradient-to-br from-[hsl(var(--surface-1))] to-[hsl(235_20%_12%)] p-6">
+          {/* Ambient glow */}
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_80%_at_80%_50%,hsl(var(--accent-500)/0.08),transparent)]" />
+          <div className="relative flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-tx-primary">Bienvenue sur CorpusAI !</h2>
+              <p className="mt-1 max-w-lg text-sm text-tx-muted">
+                Créez votre premier assistant IA en 3 étapes : nommez-le, uploadez vos documents, et
+                commencez à poser des questions.
+              </p>
             </div>
-          </CardContent>
-        </Card>
+            <Button
+              onClick={handleCreateAI}
+              className="shrink-0 bg-gradient-to-r from-indigo-500 to-indigo-600 shadow-accent"
+            >
+              <PlusIcon className="mr-2 h-4 w-4" />
+              Créer mon premier AI
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard title="AIs Actifs" value={stats?.aiCount ?? 0} icon={BotIcon} />
         <StatCard title="Documents" value={stats?.documentCount ?? 0} icon={FileIcon} />
         <StatCard title="Questions" value={stats?.questionCount ?? 0} icon={MessageIcon} />
@@ -72,29 +86,49 @@ export default function DashboardPage() {
 
       {/* Usage Quotas */}
       {usage && (
-        <Card>
-          <CardContent className="py-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-medium">Utilisation — Plan {usage.plan}</h3>
-              <span className="text-xs text-muted-foreground">
-                {usage.status === 'ACTIVE' ? 'Actif' : usage.status}
+        <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] p-5">
+          {/* Header */}
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <h3 className="text-sm font-semibold text-tx-primary">Utilisation</h3>
+              <span className="rounded-md border border-[hsl(var(--accent-500)/0.3)] bg-[hsl(var(--accent-500)/0.1)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-indigo-400">
+                {usage.plan}
               </span>
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <UsageBar label="AIs" item={usage.limits.ais} />
-              <UsageBar label="Questions / jour" item={usage.limits.questionsPerDay} />
-            </div>
-          </CardContent>
-        </Card>
+            <span
+              className={cn(
+                'text-xs font-medium',
+                usage.status === 'ACTIVE' ? 'text-success' : 'text-tx-muted'
+              )}
+            >
+              {usage.status === 'ACTIVE' ? '● Actif' : usage.status}
+            </span>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2">
+            <UsageBar label="AIs créés" item={usage.limits.ais} />
+            <UsageBar label="Questions / jour" item={usage.limits.questionsPerDay} />
+          </div>
+        </div>
       )}
 
       {/* AIs Section */}
-      <div>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Mes AIs</h2>
-          <Button variant="default" onClick={handleCreateAI}>
-            + Creer un AI
-          </Button>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-lg font-semibold text-tx-primary">Mes AIs</h2>
+            {ais && ais.length > 0 && (
+              <span className="rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-2))] px-1.5 py-0.5 text-[11px] tabular-nums text-tx-muted">
+                {ais.length}
+              </span>
+            )}
+          </div>
+          {ais && ais.length > 0 && (
+            <Button variant="outline" size="sm" onClick={handleCreateAI}>
+              <PlusIcon className="mr-1.5 h-3.5 w-3.5" />
+              Nouvel AI
+            </Button>
+          )}
         </div>
 
         {!ais || ais.length === 0 ? (
@@ -102,19 +136,18 @@ export default function DashboardPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {ais.map((ai) => (
-              <AIPreviewCard key={ai.id} ai={ai} onClick={() => handleNavigateToAI(ai.id)} />
+              <AICard key={ai.id} ai={ai} onClick={() => handleNavigateToAI(ai.id)} />
             ))}
-            <Card
-              className="flex min-h-[120px] cursor-pointer items-center justify-center border-dashed transition-all duration-200 hover:border-primary/30 hover:bg-primary/5"
+            {/* "+ Nouvel AI" card */}
+            <button
               onClick={handleCreateAI}
+              className="group flex min-h-[160px] w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[hsl(var(--border-default))] bg-transparent p-6 text-tx-disabled transition-all duration-150 hover:border-[hsl(var(--accent-500)/0.4)] hover:bg-[hsl(var(--accent-500)/0.04)] hover:text-tx-muted"
             >
-              <CardContent className="flex flex-col items-center py-6">
-                <div className="mb-2 rounded-full bg-primary/10 p-2">
-                  <PlusIcon className="h-4 w-4 text-primary" />
-                </div>
-                <span className="text-sm text-muted-foreground">Nouveau</span>
-              </CardContent>
-            </Card>
+              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-dashed border-[hsl(var(--border-strong))] transition-all duration-150 group-hover:border-[hsl(var(--accent-500)/0.5)] group-hover:bg-[hsl(var(--accent-500)/0.08)]">
+                <PlusIcon className="h-4 w-4" />
+              </div>
+              <span className="text-sm font-medium">Nouvel AI</span>
+            </button>
           </div>
         )}
       </div>
@@ -126,25 +159,48 @@ function UsageBar({ label, item }: { label: string; item: UsageLimitItem }) {
   const isUnlimited = item.max === -1;
   const percent = isUnlimited ? 0 : Math.min(100, Math.round((item.used / item.max) * 100));
   const isWarning = !isUnlimited && percent >= 80;
+  const isDanger = !isUnlimited && percent >= 95;
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-2">
       <div className="flex items-center justify-between text-xs">
-        <span className="text-muted-foreground">{label}</span>
-        <span className={isWarning ? 'text-warning font-medium' : 'text-muted-foreground'}>
+        <span className="font-medium text-tx-secondary">{label}</span>
+        <span
+          className={cn(
+            'tabular-nums',
+            isDanger
+              ? 'font-semibold text-danger'
+              : isWarning
+                ? 'font-medium text-warning'
+                : 'text-tx-muted'
+          )}
+        >
           {isUnlimited ? `${item.used} / ∞` : `${item.used} / ${item.max}`}
         </span>
       </div>
-      {!isUnlimited && (
-        <div className="h-1.5 w-full rounded-full bg-muted">
+
+      {isUnlimited ? (
+        <div className="h-2 w-full overflow-hidden rounded-full bg-[hsl(var(--surface-2))]">
+          <div className="h-full w-full rounded-full bg-[hsl(var(--accent-500)/0.2)]" />
+        </div>
+      ) : (
+        <div className="h-2 w-full overflow-hidden rounded-full bg-[hsl(var(--surface-2))]">
           <div
-            className={`h-full rounded-full transition-all ${
-              isWarning ? 'bg-warning' : 'bg-primary'
-            }`}
+            className={cn(
+              'h-full rounded-full transition-all duration-500',
+              isDanger
+                ? 'bg-danger'
+                : isWarning
+                  ? 'bg-warning'
+                  : 'bg-gradient-to-r from-indigo-500 to-indigo-400'
+            )}
             style={{ width: `${percent}%` }}
           />
         </div>
       )}
+
+      {isWarning && !isDanger && <p className="text-[11px] text-warning">Approche de la limite</p>}
+      {isDanger && <p className="text-[11px] font-medium text-danger">Limite presque atteinte</p>}
     </div>
   );
 }

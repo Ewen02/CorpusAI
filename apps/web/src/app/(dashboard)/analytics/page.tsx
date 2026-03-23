@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
-import { Card, CardContent, Button, StatCard } from '@corpusai/ui';
+import { StatCard, cn } from '@corpusai/ui';
 import { useAnalytics, type AnalyticsPeriod } from '@/lib/queries';
 import { AnalyticsSkeleton } from '@/components/skeletons';
 import { PERIOD_OPTIONS } from '@/lib/constants';
-import { FileIcon, MessageIcon, CalendarIcon } from '@/lib/icons';
+import { FileIcon, MessageIcon } from '@/lib/icons';
 import { PageWrapper } from '@/components/page-wrapper';
 
 const AnalyticsCharts = dynamic(() => import('./charts'), {
@@ -20,46 +20,46 @@ export default function AnalyticsPage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto py-6">
+      <PageWrapper>
         <AnalyticsSkeleton />
-      </div>
+      </PageWrapper>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="container mx-auto py-6">
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">Erreur lors du chargement des analytics</p>
-          </CardContent>
-        </Card>
-      </div>
+      <PageWrapper>
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[hsl(var(--border-default))] py-16 text-center">
+          <p className="text-sm text-tx-muted">Erreur lors du chargement des analytics.</p>
+        </div>
+      </PageWrapper>
     );
   }
 
   return (
-    <PageWrapper className="container mx-auto space-y-6 py-6">
+    <PageWrapper className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
-          <p className="text-muted-foreground">Suivez l&apos;évolution de votre activité</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-tx-primary">Analytics</h1>
+          <p className="mt-1 text-sm text-tx-muted">Suivez l&apos;évolution de votre activité.</p>
         </div>
 
-        {/* Period Selector */}
-        <div className="flex items-center gap-2 rounded-lg border border-border bg-card p-1">
+        {/* Period Selector — pill segment */}
+        <div className="flex items-center gap-0.5 rounded-lg bg-[hsl(var(--surface-2))] p-1">
           {PERIOD_OPTIONS.map((option) => (
-            <Button
+            <button
               key={option.value}
-              variant={period === option.value ? 'secondary' : 'ghost'}
-              size="sm"
               onClick={() => setPeriod(option.value)}
-              className="gap-2"
+              className={cn(
+                'rounded-md px-3 py-1.5 text-[13px] font-medium transition-all duration-150',
+                period === option.value
+                  ? 'bg-[hsl(var(--surface-1))] text-tx-primary shadow-sm ring-1 ring-[hsl(var(--border-default))]'
+                  : 'text-tx-muted hover:text-tx-secondary'
+              )}
             >
-              <CalendarIcon className="h-4 w-4" />
               {option.label}
-            </Button>
+            </button>
           ))}
         </div>
       </div>

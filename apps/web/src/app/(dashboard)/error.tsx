@@ -1,5 +1,6 @@
 'use client';
 
+import * as Sentry from '@sentry/nextjs';
 import * as React from 'react';
 import { Button, Card, CardContent, CardHeader, CardTitle, CardDescription } from '@corpusai/ui';
 
@@ -10,13 +11,12 @@ interface ErrorBoundaryProps {
 
 export default function DashboardError({ error, reset }: ErrorBoundaryProps) {
   React.useEffect(() => {
-    // Log the error to an error reporting service
-    console.error('Dashboard error:', error);
+    Sentry.captureException(error);
   }, [error]);
 
   return (
     <div className="container py-8">
-      <Card className="max-w-lg mx-auto">
+      <Card className="mx-auto max-w-lg">
         <CardHeader>
           <CardTitle className="text-destructive">Une erreur est survenue</CardTitle>
           <CardDescription>
@@ -29,7 +29,7 @@ export default function DashboardError({ error, reset }: ErrorBoundaryProps) {
           </p>
           <div className="flex gap-2">
             <Button onClick={reset}>Reessayer</Button>
-            <Button variant="outline" onClick={() => window.location.href = '/dashboard'}>
+            <Button variant="outline" onClick={() => (window.location.href = '/dashboard')}>
               Retour au dashboard
             </Button>
           </div>

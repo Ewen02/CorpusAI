@@ -1,16 +1,10 @@
 'use client';
 
 import * as React from 'react';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Badge,
-} from '@corpusai/ui';
+import { Card, CardContent, CardHeader, CardTitle, Badge, cn } from '@corpusai/ui';
 import { AI_STATUS_CONFIG } from '@/lib/constants';
 import { getTimeAgo } from '@/lib/utils';
-import { BotIcon, FileIcon, MessageIcon, UsersIcon } from '@/lib/icons';
+import { FileIcon, MessageIcon, UsersIcon } from '@/lib/icons';
 import type { AI, AIStatus } from '@corpusai/types';
 
 /**
@@ -88,53 +82,72 @@ const AICardFull = React.memo(function AICardFull({
   const status = AI_STATUS_CONFIG[ai.status];
   const updatedAt = new Date(ai.updatedAt);
   const timeAgo = getTimeAgo(updatedAt);
+  const initial = ai.name.charAt(0).toUpperCase();
 
   return (
-    <Card
-      variant="interactive"
-      className="cursor-pointer"
+    <div
       onClick={onClick}
+      className="group relative cursor-pointer rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] p-5 transition-all duration-150 hover:-translate-y-[1px] hover:border-[hsl(var(--border-strong))] hover:bg-[hsl(var(--surface-2))] hover:shadow-md"
     >
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
-              <BotIcon className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
-              <CardTitle className="text-base truncate">{ai.name}</CardTitle>
-              <p className="text-xs text-muted-foreground">/chat/{ai.slug}</p>
-            </div>
+      {/* Header : avatar + nom + status */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          {/* Avatar initiale avec gradient indigo */}
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-400/20 to-indigo-600/10 text-sm font-semibold text-indigo-400 ring-1 ring-[hsl(var(--accent-500)/0.2)]">
+            {initial}
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className={`h-2 w-2 rounded-full ${status.dot} ${ai.status === 'ACTIVE' ? 'shadow-[0_0_6px] shadow-green-500/50' : ''}`} />
-            <Badge variant={status.variant}>{status.label}</Badge>
+          <div className="min-w-0">
+            <p className="truncate text-[15px] font-semibold leading-tight text-tx-primary">
+              {ai.name}
+            </p>
+            <p className="text-[12px] text-tx-muted">/chat/{ai.slug}</p>
           </div>
         </div>
-      </CardHeader>
-      <CardContent>
-        {ai.description && (
-          <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-            {ai.description}
-          </p>
-        )}
-        <div className="flex items-center gap-4 text-xs text-muted-foreground divide-x divide-border">
-          <span className="flex items-center gap-1">
-            <FileIcon className="h-3 w-3" />
-            {ai.documentCount} docs
-          </span>
-          <span className="flex items-center gap-1 pl-4">
-            <MessageIcon className="h-3 w-3" />
-            {ai.questionCount} questions
-          </span>
-          <span className="flex items-center gap-1 pl-4">
-            <UsersIcon className="h-3 w-3" />
-            {ai.conversationCount} conv.
-          </span>
+
+        {/* Status */}
+        <div className="flex shrink-0 items-center gap-1.5">
+          <span
+            className={cn(
+              'h-1.5 w-1.5 rounded-full',
+              ai.status === 'ACTIVE'
+                ? 'animate-pulse bg-success shadow-[0_0_6px_hsl(var(--success)/0.6)]'
+                : ai.status === 'DRAFT'
+                  ? 'bg-warning'
+                  : 'bg-tx-disabled/40'
+            )}
+          />
+          <Badge variant={status.variant} className="text-[11px]">
+            {status.label}
+          </Badge>
         </div>
-        <p className="text-xs text-muted-foreground/70 mt-2">Modifie {timeAgo}</p>
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Description */}
+      {ai.description && (
+        <p className="mt-3 line-clamp-2 text-[13px] leading-relaxed text-tx-muted">
+          {ai.description}
+        </p>
+      )}
+
+      {/* Stats row */}
+      <div className="mt-4 flex items-center gap-3 text-[12px] text-tx-muted">
+        <span className="flex items-center gap-1.5">
+          <FileIcon className="h-3 w-3 opacity-60" />
+          {ai.documentCount} docs
+        </span>
+        <span className="h-3 w-px bg-[hsl(var(--border-default))]" />
+        <span className="flex items-center gap-1.5">
+          <MessageIcon className="h-3 w-3 opacity-60" />
+          {ai.questionCount}
+        </span>
+        <span className="h-3 w-px bg-[hsl(var(--border-default))]" />
+        <span className="flex items-center gap-1.5">
+          <UsersIcon className="h-3 w-3 opacity-60" />
+          {ai.conversationCount}
+        </span>
+        <span className="ml-auto text-[11px] text-tx-disabled">{timeAgo}</span>
+      </div>
+    </div>
   );
 });
 
@@ -149,17 +162,12 @@ const AICardCompact = React.memo(function AICardCompact({
   onClick: () => void;
 }) {
   const status =
-    AI_STATUS_CONFIG[ai.status as keyof typeof AI_STATUS_CONFIG] ||
-    AI_STATUS_CONFIG.DRAFT;
+    AI_STATUS_CONFIG[ai.status as keyof typeof AI_STATUS_CONFIG] || AI_STATUS_CONFIG.DRAFT;
   const documentCount = ai._count?.documents ?? 0;
   const questionCount = ai.questionCount ?? 0;
 
   return (
-    <Card
-      variant="interactive"
-      className="cursor-pointer"
-      onClick={onClick}
-    >
+    <Card variant="interactive" className="cursor-pointer" onClick={onClick}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base">{ai.name}</CardTitle>

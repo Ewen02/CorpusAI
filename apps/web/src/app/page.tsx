@@ -1,32 +1,24 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import {
-  Button,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  Badge,
-} from '@corpusai/ui';
+import { Button, Badge } from '@corpusai/ui';
 import { AnimatedSection } from '@/components/animated-section';
 
 export const metadata: Metadata = {
-  title: 'CorpusAI - Turn Your Documents Into AI Assistants',
+  title: 'CorpusAI — Créez votre IA depuis vos documents',
   description:
-    'Upload PDFs, train your AI assistant, and embed it anywhere. Build conversational AI from your own knowledge base in minutes.',
+    'Importez vos PDF, entraînez votre assistant IA et partagez-le avec la communauté. Créez une IA conversationnelle depuis votre base de connaissances en quelques minutes.',
   openGraph: {
-    title: 'CorpusAI - Turn Your Documents Into AI Assistants',
+    title: 'CorpusAI — Créez votre IA depuis vos documents',
     description:
-      'Upload PDFs, train your AI assistant, and embed it anywhere. Build conversational AI from your own knowledge base in minutes.',
+      'Importez vos PDF, entraînez votre assistant IA et partagez-le avec la communauté.',
     url: 'https://corpusai.io',
     siteName: 'CorpusAI',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'CorpusAI - Turn Your Documents Into AI Assistants',
-    description: 'Upload PDFs, train your AI assistant, and embed it anywhere.',
+    title: 'CorpusAI — Créez votre IA depuis vos documents',
+    description: 'Importez vos PDF, entraînez votre assistant IA et partagez-le.',
   },
 };
 
@@ -34,12 +26,12 @@ export const revalidate = 3600;
 
 const features = [
   {
-    title: 'Upload & Index',
+    title: 'Importez & indexez',
     description:
-      'Import PDFs, documents, and web pages. Our AI automatically processes and indexes your content for instant retrieval.',
+      'PDF, documents, pages web. Notre pipeline RAG traite et indexe automatiquement votre contenu pour une recherche instantanée.',
     icon: (
       <svg
-        className="h-6 w-6"
+        className="h-5 w-5"
         fill="none"
         viewBox="0 0 24 24"
         strokeWidth={1.5}
@@ -54,12 +46,12 @@ const features = [
     ),
   },
   {
-    title: 'AI-Powered Search',
+    title: 'Conversations naturelles',
     description:
-      'Ask questions in natural language. Get precise answers with citations pointing directly to your source documents.',
+      'Posez des questions en langage naturel. Obtenez des réponses précises avec des citations directes vers vos sources.',
     icon: (
       <svg
-        className="h-6 w-6"
+        className="h-5 w-5"
         fill="none"
         viewBox="0 0 24 24"
         strokeWidth={1.5}
@@ -68,18 +60,18 @@ const features = [
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
-          d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"
+          d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"
         />
       </svg>
     ),
   },
   {
-    title: 'Embed Anywhere',
+    title: 'Intégrez partout',
     description:
-      'Deploy your AI assistant as a widget on any website. Customizable design to match your brand identity.',
+      "Déployez votre assistant comme widget sur n'importe quel site. Design personnalisable pour correspondre à votre identité.",
     icon: (
       <svg
-        className="h-6 w-6"
+        className="h-5 w-5"
         fill="none"
         viewBox="0 0 24 24"
         strokeWidth={1.5}
@@ -94,12 +86,12 @@ const features = [
     ),
   },
   {
-    title: 'Analytics & Insights',
+    title: 'Partagez avec la communauté',
     description:
-      'Track user questions, popular topics, and knowledge gaps. Continuously improve your content based on real usage.',
+      "Rendez votre IA publique et rejoignez la marketplace. Découvrez les assistants créés par d'autres utilisateurs.",
     icon: (
       <svg
-        className="h-6 w-6"
+        className="h-5 w-5"
         fill="none"
         viewBox="0 0 24 24"
         strokeWidth={1.5}
@@ -108,52 +100,10 @@ const features = [
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
-          d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"
+          d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"
         />
       </svg>
     ),
-  },
-];
-
-const plans = [
-  {
-    name: 'Starter',
-    price: 'Free',
-    description: 'Perfect for trying out CorpusAI',
-    features: ['1 Corpus', '100 documents', '1,000 queries/month', 'Community support'],
-    cta: 'Get Started',
-    popular: false,
-  },
-  {
-    name: 'Pro',
-    price: '$29',
-    period: '/month',
-    description: 'For professionals and small teams',
-    features: [
-      '10 Corpus',
-      'Unlimited documents',
-      '50,000 queries/month',
-      'Custom branding',
-      'Priority support',
-      'API access',
-    ],
-    cta: 'Start Free Trial',
-    popular: true,
-  },
-  {
-    name: 'Enterprise',
-    price: 'Custom',
-    description: 'For large organizations',
-    features: [
-      'Unlimited Corpus',
-      'Unlimited everything',
-      'SSO & SAML',
-      'Dedicated infrastructure',
-      'SLA guarantee',
-      'Custom integrations',
-    ],
-    cta: 'Contact Sales',
-    popular: false,
   },
 ];
 
@@ -167,77 +117,95 @@ export default function Home() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <span className="text-sm font-bold text-primary-foreground">C</span>
             </div>
-            <span className="text-xl font-bold">
-              <span className="text-primary">Corpus</span>AI
-            </span>
+            <span className="text-base font-semibold tracking-tight">CorpusAI</span>
           </div>
           <div className="hidden items-center gap-8 md:flex">
-            <a href="#features" className="text-sm text-muted-foreground hover:text-foreground">
-              Features
+            <a
+              href="#features"
+              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Fonctionnalités
             </a>
-            <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground">
-              Pricing
-            </a>
-            <a href="#" className="text-sm text-muted-foreground hover:text-foreground">
-              Docs
-            </a>
+            <Link
+              href="/explore"
+              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Explorer
+            </Link>
           </div>
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" asChild>
-              <Link href="/sign-in">Sign In</Link>
+              <Link href="/sign-in">Se connecter</Link>
             </Button>
             <Button size="sm" asChild>
-              <Link href="/sign-up">Get Started</Link>
+              <Link href="/sign-up">Commencer gratuitement</Link>
             </Button>
           </div>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden pb-20 pt-32 md:pb-32 md:pt-40">
-        <div className="relative mx-auto max-w-7xl px-6 text-center">
-          <Badge variant="secondary" className="mb-6">
-            Now in Public Beta
+      <section className="relative overflow-hidden pb-24 pt-36 md:pb-32 md:pt-44">
+        {/* Radial gradient background */}
+        <div
+          className="pointer-events-none absolute inset-0 -z-10"
+          aria-hidden
+          style={{
+            background:
+              'radial-gradient(ellipse 80% 50% at 50% -10%, hsl(230 65% 58% / 0.12) 0%, transparent 70%)',
+          }}
+        />
+
+        <div className="relative mx-auto max-w-5xl px-6 text-center">
+          <Badge variant="secondary" className="mb-6 text-xs">
+            Maintenant en bêta publique
           </Badge>
-          <h1 className="mx-auto max-w-4xl text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
-            Your documents. <span className="text-primary">Your AI.</span> Your rules.
+          <h1 className="mx-auto max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
+            <span className="text-gradient">Vos documents.</span>
+            <br />
+            Votre IA. Votre communauté.
           </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground md:text-xl">
-            Turn any document into a conversational AI in minutes. Upload PDFs, train your
-            assistant, and embed it anywhere.
+          <p className="mx-auto mt-6 max-w-xl text-base text-muted-foreground md:text-lg">
+            Transformez n'importe quel document en assistant conversationnel en quelques minutes.
+            Partagez-le avec la communauté ou intégrez-le sur votre site.
           </p>
-          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Button size="lg" className="min-w-[180px]" asChild>
-              <Link href="/sign-up">Start Building Free</Link>
+          <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Button size="lg" className="min-w-[200px]" asChild>
+              <Link href="/sign-up">Créer mon IA gratuitement</Link>
             </Button>
-            <Button variant="outline" size="lg" className="min-w-[180px]">
-              View Documentation
+            <Button variant="outline" size="lg" className="min-w-[160px]" asChild>
+              <Link href="/explore">Explorer la communauté</Link>
             </Button>
           </div>
-          <p className="mt-6 text-sm text-muted-foreground">
-            No credit card required. Free forever.
+          <p className="mt-4 text-xs text-muted-foreground/60">
+            Gratuit. Aucune carte de crédit requise.
           </p>
         </div>
 
-        {/* Hero visual - Embed snippet */}
+        {/* Hero visual */}
         <div className="relative mx-auto mt-16 max-w-2xl px-6">
-          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-lg">
-            <div className="flex items-center gap-2 border-b border-border bg-muted/50 px-4 py-3">
-              <span className="font-mono text-xs text-muted-foreground">index.html</span>
+          <div className="shadow-glass overflow-hidden rounded-xl border border-border/60 bg-card">
+            <div className="flex items-center gap-2 border-b border-border/60 bg-muted/30 px-4 py-3">
+              <div className="flex gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-border/80" />
+                <span className="h-2.5 w-2.5 rounded-full bg-border/80" />
+                <span className="h-2.5 w-2.5 rounded-full bg-border/80" />
+              </div>
+              <span className="ml-2 font-mono text-xs text-muted-foreground/60">index.html</span>
             </div>
             <div className="p-6 font-mono text-sm leading-relaxed">
-              <p className="text-muted-foreground">
-                &lt;!-- Add your AI assistant in one line --&gt;
+              <p className="text-muted-foreground/50">
+                &lt;!-- Intégrez votre IA en une ligne --&gt;
               </p>
               <p className="mt-2">
                 <span className="text-muted-foreground">&lt;</span>
                 <span className="text-primary">script</span>
                 <span className="text-muted-foreground"> src=</span>
-                <span className="text-green-400">&quot;https://corpusai.io/widget.js&quot;</span>
+                <span className="text-emerald-400">&quot;https://corpusai.io/widget.js&quot;</span>
               </p>
               <p className="pl-4">
                 <span className="text-muted-foreground">data-ai=</span>
-                <span className="text-green-400">&quot;your-assistant-slug&quot;</span>
+                <span className="text-emerald-400">&quot;votre-assistant&quot;</span>
                 <span className="text-muted-foreground"> /&gt;</span>
               </p>
             </div>
@@ -246,123 +214,117 @@ export default function Home() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="border-t border-border py-20 md:py-32">
+      <section id="features" className="border-t border-border/60 py-20 md:py-28">
         <div className="mx-auto max-w-7xl px-6">
           <div className="text-center">
-            <Badge variant="outline" className="mb-4">
-              Features
-            </Badge>
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Everything you need to build AI-powered knowledge bases
+            <p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted-foreground/50">
+              Fonctionnalités
+            </p>
+            <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              Tout ce dont vous avez besoin
             </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-muted-foreground">
-              From document ingestion to deployment, CorpusAI handles the entire pipeline so you can
-              focus on what matters: your content.
+            <p className="mx-auto mt-3 max-w-lg text-sm text-muted-foreground">
+              De l'import de documents au déploiement, CorpusAI gère l'intégralité du pipeline.
             </p>
           </div>
 
-          <div className="mt-16 grid gap-6 md:grid-cols-2">
+          <div className="mt-14 grid gap-4 md:grid-cols-2">
             {features.map((feature, index) => (
-              <AnimatedSection key={feature.title} delay={index * 100}>
-                <Card className="h-full border-border bg-card">
-                  <CardHeader>
-                    <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      {feature.icon}
-                    </div>
-                    <CardTitle>{feature.title}</CardTitle>
-                    <CardDescription>{feature.description}</CardDescription>
-                  </CardHeader>
-                </Card>
+              <AnimatedSection key={feature.title} delay={index * 80}>
+                <div className="group rounded-xl border border-border/60 bg-card p-6 transition-all duration-200 hover:border-primary/20 hover:bg-card/80">
+                  <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    {feature.icon}
+                  </div>
+                  <h3 className="mb-2 text-sm font-semibold">{feature.title}</h3>
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    {feature.description}
+                  </p>
+                </div>
               </AnimatedSection>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section id="pricing" className="border-t border-border py-20 md:py-32">
+      {/* Community Section */}
+      <section className="border-t border-border/60 py-20 md:py-28">
         <div className="mx-auto max-w-7xl px-6">
-          <div className="text-center">
-            <Badge variant="outline" className="mb-4">
-              Pricing
-            </Badge>
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Simple, transparent pricing
-            </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-muted-foreground">
-              Start free and scale as you grow. No hidden fees, no surprises.
-            </p>
-          </div>
+          <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
+            <div>
+              <p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted-foreground/50">
+                Communauté
+              </p>
+              <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+                Une marketplace d'assistants IA
+              </h2>
+              <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                Des créateurs du monde entier partagent leurs assistants alimentés par des documents
+                réels. Support client, cours éducatifs, guides juridiques — découvrez des AIs utiles
+                créés par la communauté.
+              </p>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <Button asChild>
+                  <Link href="/explore">Explorer les AIs</Link>
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link href="/sign-up">Partager le mien</Link>
+                </Button>
+              </div>
+            </div>
 
-          <div className="mt-16 grid gap-6 md:grid-cols-3">
-            {plans.map((plan, index) => (
-              <AnimatedSection key={plan.name} delay={index * 100}>
-                <Card
-                  className={`relative h-full ${
-                    plan.popular ? 'border-primary bg-card shadow-md' : 'border-border bg-card'
-                  }`}
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { name: 'Assistant Juridique', category: 'Juridique', count: '2.4k' },
+                { name: 'Cours de Python', category: 'Éducation', count: '1.8k' },
+                { name: 'Support Produit', category: 'Support', count: '3.1k' },
+                { name: 'Guide Fiscal 2024', category: 'Finance', count: '980' },
+              ].map((ai) => (
+                <div
+                  key={ai.name}
+                  className="rounded-xl border border-border/60 bg-card p-4 transition-all duration-200 hover:border-primary/20"
                 >
-                  {plan.popular && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <Badge>Most Popular</Badge>
-                    </div>
-                  )}
-                  <CardHeader className="text-center">
-                    <CardTitle>{plan.name}</CardTitle>
-                    <div className="mt-4">
-                      <span className="text-4xl font-bold">{plan.price}</span>
-                      {plan.period && <span className="text-muted-foreground">{plan.period}</span>}
-                    </div>
-                    <CardDescription className="mt-2">{plan.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-3">
-                      {plan.features.map((feature) => (
-                        <li key={feature} className="flex items-center gap-2 text-sm">
-                          <svg
-                            className="h-4 w-4 text-primary"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            strokeWidth={2}
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M4.5 12.75l6 6 9-13.5"
-                            />
-                          </svg>
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
-                    <Button className="mt-6 w-full" variant={plan.popular ? 'default' : 'outline'}>
-                      {plan.cta}
-                    </Button>
-                  </CardContent>
-                </Card>
-              </AnimatedSection>
-            ))}
+                  <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15 text-xs font-semibold text-primary">
+                    {ai.name.charAt(0)}
+                  </div>
+                  <p className="text-xs font-medium leading-snug">{ai.name}</p>
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="rounded-full bg-muted/60 px-2 py-0.5 text-[10px] text-muted-foreground">
+                      {ai.category}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground/60">{ai.count} conv.</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="border-t border-border py-20 md:py-32">
+      <section className="border-t border-border/60 py-20 md:py-28">
         <AnimatedSection>
-          <div className="mx-auto max-w-3xl px-6 text-center">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Start building your AI assistant today
+          <div className="shadow-glass relative mx-auto max-w-3xl overflow-hidden rounded-2xl border border-border/60 bg-card px-8 py-16 text-center">
+            <div
+              className="pointer-events-none absolute inset-0 -z-10"
+              aria-hidden
+              style={{
+                background:
+                  'radial-gradient(ellipse 60% 60% at 50% 0%, hsl(230 65% 58% / 0.08) 0%, transparent 70%)',
+              }}
+            />
+            <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              Rejoignez la communauté CorpusAI
             </h2>
-            <p className="mt-4 text-lg text-muted-foreground">
-              Upload your documents, configure your assistant, and deploy it anywhere — in minutes.
+            <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-muted-foreground">
+              Créez votre premier assistant IA, partagez-le avec la communauté, et découvrez des
+              milliers d'AIs utiles créés par d'autres.
             </p>
-            <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Button size="lg" asChild>
-                <Link href="/sign-up">Get Started Free</Link>
+                <Link href="/sign-up">Commencer gratuitement</Link>
               </Button>
-              <Button variant="outline" size="lg">
-                View Documentation
+              <Button variant="outline" size="lg" asChild>
+                <Link href="/explore">Explorer d'abord</Link>
               </Button>
             </div>
           </div>
@@ -370,33 +332,28 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border py-12">
+      <footer className="border-t border-border/60 py-10">
         <div className="mx-auto max-w-7xl px-6">
           <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <span className="text-sm font-bold text-primary-foreground">C</span>
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary">
+                <span className="text-xs font-bold text-primary-foreground">C</span>
               </div>
-              <span className="text-xl font-bold">
-                <span className="text-primary">Corpus</span>AI
-              </span>
+              <span className="text-sm font-semibold tracking-tight">CorpusAI</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
-              <a href="#" className="hover:text-foreground">
-                Privacy
+              <Link href="/explore" className="transition-colors hover:text-foreground">
+                Explorer
+              </Link>
+              <a href="#" className="transition-colors hover:text-foreground">
+                Confidentialité
               </a>
-              <a href="#" className="hover:text-foreground">
-                Terms
-              </a>
-              <a href="#" className="hover:text-foreground">
-                Documentation
-              </a>
-              <a href="#" className="hover:text-foreground">
-                GitHub
+              <a href="#" className="transition-colors hover:text-foreground">
+                Conditions
               </a>
             </div>
-            <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} CorpusAI. All rights reserved.
+            <p className="text-xs text-muted-foreground/50">
+              © {new Date().getFullYear()} CorpusAI
             </p>
           </div>
         </div>

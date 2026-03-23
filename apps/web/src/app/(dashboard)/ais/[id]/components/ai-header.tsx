@@ -4,17 +4,14 @@ import * as React from 'react';
 import {
   Badge,
   Button,
-  Separator,
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
+  cn,
   DocumentIcon,
   ChatIcon,
   QuestionIcon,
   SettingsIcon,
   ShareIcon,
 } from '@corpusai/ui';
-import { AI_STATUS_CONFIG, AI_STATUS_BADGE_CLASS } from '@/lib/constants';
+import { AI_STATUS_CONFIG } from '@/lib/constants';
 import type { AI } from '@corpusai/types';
 
 interface AIHeaderProps {
@@ -23,71 +20,73 @@ interface AIHeaderProps {
   onShare?: () => void;
 }
 
-/**
- * Header component for the AI detail page.
- * Displays AI name, status, stats, and action buttons.
- */
-export const AIHeader = React.memo(function AIHeader({
-  ai,
-  onSettings,
-  onShare,
-}: AIHeaderProps) {
+export const AIHeader = React.memo(function AIHeader({ ai, onSettings, onShare }: AIHeaderProps) {
   const statusConfig = AI_STATUS_CONFIG[ai.status];
+  const initial = ai.name.charAt(0).toUpperCase();
 
   return (
-    <div className="flex items-start justify-between mb-8">
-      <div>
-        <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-bold tracking-tight">{ai.name}</h1>
-          <Badge className={AI_STATUS_BADGE_CLASS[ai.status]}>
-            {statusConfig.label}
-          </Badge>
+    <div className="mb-6 flex items-start justify-between gap-4">
+      {/* Left: avatar + infos */}
+      <div className="flex items-start gap-4">
+        {/* Avatar — gradient indigo cohérent avec AICard */}
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-400/20 to-indigo-600/10 text-[18px] font-bold text-[hsl(var(--accent-500))] ring-1 ring-[hsl(var(--accent-500)/0.2)]">
+          {initial}
         </div>
-        {ai.description && (
-          <p className="text-muted-foreground mt-2">{ai.description}</p>
-        )}
-        <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="flex items-center gap-1">
-                <DocumentIcon className="h-4 w-4" />
-                {ai.documentCount} documents
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>Documents indexes</TooltipContent>
-          </Tooltip>
-          <Separator orientation="vertical" className="h-4" />
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="flex items-center gap-1">
-                <ChatIcon className="h-4 w-4" />
-                {ai.conversationCount} conversations
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>Conversations totales</TooltipContent>
-          </Tooltip>
-          <Separator orientation="vertical" className="h-4" />
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="flex items-center gap-1">
-                <QuestionIcon className="h-4 w-4" />
-                {ai.questionCount} questions
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>Questions posees</TooltipContent>
-          </Tooltip>
+
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl font-semibold tracking-tight text-tx-primary">{ai.name}</h1>
+            <div className="flex items-center gap-1.5">
+              <span
+                className={cn(
+                  'h-1.5 w-1.5 rounded-full',
+                  ai.status === 'ACTIVE'
+                    ? 'animate-pulse bg-[hsl(var(--success))] shadow-[0_0_6px_hsl(var(--success)/0.6)]'
+                    : ai.status === 'DRAFT'
+                      ? 'bg-[hsl(var(--warning))]'
+                      : 'bg-tx-disabled/40'
+                )}
+              />
+              <Badge variant={statusConfig.variant} className="text-[11px]">
+                {statusConfig.label}
+              </Badge>
+            </div>
+          </div>
+
+          {ai.description && <p className="mt-1 text-[13px] text-tx-muted">{ai.description}</p>}
+
+          {/* Stats inline */}
+          <div className="mt-3 flex items-center gap-3 text-[12px] text-tx-muted">
+            <span className="flex items-center gap-1.5">
+              <DocumentIcon className="h-3.5 w-3.5 opacity-60" />
+              {ai.documentCount} docs
+            </span>
+            <span className="h-3 w-px bg-[hsl(var(--border-default))]" />
+            <span className="flex items-center gap-1.5">
+              <ChatIcon className="h-3.5 w-3.5 opacity-60" />
+              {ai.conversationCount} conversations
+            </span>
+            <span className="h-3 w-px bg-[hsl(var(--border-default))]" />
+            <span className="flex items-center gap-1.5">
+              <QuestionIcon className="h-3.5 w-3.5 opacity-60" />
+              {ai.questionCount} questions
+            </span>
+          </div>
         </div>
       </div>
 
+      {/* Right: action buttons */}
       <div className="flex items-center gap-2">
-        <Button variant="outline" onClick={onSettings}>
-          <SettingsIcon className="h-4 w-4 mr-2" />
-          Parametres
+        <Button variant="outline" size="sm" onClick={onSettings}>
+          <SettingsIcon className="mr-1.5 h-3.5 w-3.5" />
+          Paramètres
         </Button>
-        <Button variant="outline" onClick={onShare}>
-          <ShareIcon className="h-4 w-4 mr-2" />
-          Partager
-        </Button>
+        {onShare && (
+          <Button variant="outline" size="sm" onClick={onShare}>
+            <ShareIcon className="mr-1.5 h-3.5 w-3.5" />
+            Partager
+          </Button>
+        )}
       </div>
     </div>
   );

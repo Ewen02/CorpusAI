@@ -8,6 +8,7 @@ export {
   BarChart3 as ChartIcon,
   Settings as SettingsIcon,
   BookOpen as BookIcon,
+  Compass as CompassIcon,
 
   // Content
   FileText as FileIcon,
