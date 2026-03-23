@@ -7,7 +7,7 @@
  * This is the standard payload structure used by the RAG pipeline.
  */
 export interface ChunkPayload {
-  /** The chunk text content */
+  /** The chunk text content (child chunk for parent-child indexed docs) */
   text: string;
   /** Source document name/path */
   source: string;
@@ -15,6 +15,9 @@ export interface ChunkPayload {
   documentId: string;
   /** Position of this chunk within the document */
   chunkIndex: number;
+  /** Parent chunk text (~512 tokens). Only present for parent-child indexed documents.
+   *  When present, the RAG pipeline sends this to the LLM instead of `text`. */
+  parent_content?: string;
   /** Additional metadata */
   [key: string]: unknown;
 }

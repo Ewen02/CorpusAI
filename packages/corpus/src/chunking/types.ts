@@ -28,6 +28,10 @@ export interface ChunkMetadata {
   startOffset?: number;
   /** Position de fin dans le document original (caractères) */
   endOffset?: number;
+  /** Texte du parent chunk (~512 tokens). Absent sur les anciens docs → fallback sur text. */
+  parentContent?: string;
+  /** Header de section détecté (Markdown ou "Titre :") */
+  sectionHeader?: string;
   /** Métadonnées additionnelles */
   [key: string]: unknown;
 }
@@ -67,6 +71,18 @@ export interface MarkdownChunkerOptions {
   maxChunkSize?: number;
   /** Inclure les headers dans chaque chunk */
   includeHeaders?: boolean;
+}
+
+/**
+ * Options pour le chunking parent-child
+ */
+export interface ParentChildChunkerOptions {
+  /** Taille cible des child chunks en tokens (défaut: 128) */
+  childSizeTokens?: number;
+  /** Taille cible des parent chunks en tokens (défaut: 512) */
+  parentSizeTokens?: number;
+  /** Overlap entre children en tokens, par frontières de phrases (défaut: 32) */
+  childOverlapTokens?: number;
 }
 
 /**

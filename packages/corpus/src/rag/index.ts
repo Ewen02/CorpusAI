@@ -3,6 +3,7 @@ export type {
   Document,
   IndexResult,
   IndexOptions,
+  ContextEnrichmentConfig,
   ProcessingStage,
   ProgressCallback,
   QueryOptions,

@@ -26,8 +26,9 @@ export type {
   RecursiveChunkerOptions,
   MarkdownChunkerOptions,
   TokenChunkerOptions,
+  ParentChildChunkerOptions,
 } from './chunking';
-export { RecursiveChunker, MarkdownChunker, TokenChunker } from './chunking';
+export { RecursiveChunker, MarkdownChunker, TokenChunker, ParentChildChunker } from './chunking';
 
 // RAG Pipeline
 export type {
@@ -35,6 +36,7 @@ export type {
   Document,
   IndexResult,
   IndexOptions,
+  ContextEnrichmentConfig,
   ProcessingStage,
   ProgressCallback,
   QueryOptions,
@@ -62,8 +64,14 @@ export {
 } from './parsers';
 
 // Reranking
-export type { Reranker, RerankerConfig, ScoredResult } from './reranking';
-export { BM25, HybridReranker } from './reranking';
+export type {
+  Reranker,
+  AsyncReranker,
+  RerankerConfig,
+  ScoredResult,
+  CohereRerankerConfig,
+} from './reranking';
+export { BM25, HybridReranker, CohereReranker } from './reranking';
 
 // Cache
 export type { CacheService, CachedEmbeddingConfig, CacheMetrics } from './cache';

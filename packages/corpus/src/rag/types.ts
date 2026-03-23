@@ -34,7 +34,7 @@ export interface IndexResult {
 /**
  * Étape de traitement pour le progress callback
  */
-export type ProcessingStage = 'chunking' | 'embedding' | 'storing';
+export type ProcessingStage = 'chunking' | 'enriching' | 'embedding' | 'storing';
 
 /**
  * Callback de progression pour l'indexation
@@ -50,19 +50,41 @@ export interface ProgressCallback {
 }
 
 /**
+ * Configuration de l'enrichissement contextuel des chunks
+ */
+export interface ContextEnrichmentConfig {
+  /** OpenAI API key (réutilise celui du LLM config si absent) */
+  apiKey?: string;
+  /** Base URL optionnel (ex: OpenRouter) */
+  baseURL?: string;
+  /** Modèle à utiliser. Défaut: 'gpt-4o-mini' */
+  model?: string;
+  /** Concurrence max d'appels simultanés. Défaut: 5 */
+  concurrency?: number;
+  /** Nombre max de tokens pour la troncature du document. Défaut: 6000 */
+  maxDocumentTokens?: number;
+}
+
+/**
  * Options d'indexation
  */
 export interface IndexOptions {
   /** Callback de progression */
   onProgress?: ProgressCallback;
+  /** Active l'enrichissement contextuel des chunks avant embedding */
+  enableContextEnrichment?: boolean;
+  /** Config de l'enrichissement (utilise les defaults si absent) */
+  contextEnrichmentConfig?: ContextEnrichmentConfig;
 }
 
 /**
  * Options de requête RAG
  */
 export interface QueryOptions {
-  /** Nombre de chunks à récupérer */
+  /** Nombre de chunks à récupérer depuis Qdrant. Si absent: 10 avec CohereReranker, 5 sinon */
   topK?: number;
+  /** Nombre de résultats à garder après reranking Cohere. Défaut: 3 */
+  topN?: number;
   /** Score minimum de similarité */
   scoreThreshold?: number;
   /** Filtres sur les métadonnées */
@@ -75,6 +97,8 @@ export interface QueryOptions {
   conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>;
   /** Limite de caractères pour le contexte (approximation tokens × 4). Default: 16000 (~4000 tokens) */
   maxContextChars?: number;
+  /** Active HyDE (Hypothetical Document Embeddings). Si absent : heuristique automatique (question < 8 mots sans mot-clé spécifique) */
+  useHyde?: boolean;
 }
 
 /**
@@ -111,6 +135,8 @@ export interface QueryMetrics {
   completionTokens?: number;
   /** Total tokens (prompt + completion) */
   totalTokens?: number;
+  /** Temps de génération HyDE (ms). Absent si HyDE non utilisé */
+  hydeMs?: number;
 }
 
 /**

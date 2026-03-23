@@ -1,14 +1,16 @@
 import OpenAI from 'openai';
 import { buildSystemPrompt, buildContextSection } from '@corpusai/ai-rules';
 import type { EmbeddingService } from '../embeddings/types';
-import type { VectorStoreService, SearchResult } from '../vector-store/types';
+import type { VectorStoreService, SearchResult, FilterCondition } from '../vector-store/types';
 import type { ChunkingService, Chunk } from '../chunking/types';
-import type { Reranker, ScoredResult } from '../reranking/types';
+import type { Reranker, AsyncReranker, ScoredResult } from '../reranking/types';
+import { CohereReranker } from '../reranking/cohere-reranker';
 import type {
   RAGPipeline,
   Document,
   IndexResult,
   IndexOptions,
+  ContextEnrichmentConfig,
   QueryOptions,
   QueryMetrics,
   RAGResponse,
@@ -16,6 +18,68 @@ import type {
   LLMConfig,
   ProgressCallback,
 } from './types';
+
+/**
+ * Retries a context enrichment call on 429 rate-limit errors, parsing the
+ * OpenAI "Please try again in X.Xs" delay from the error message when available.
+ * Falls back to `fallback` (original chunk text) after `maxRetries` failures.
+ */
+async function enrichWithRetry(
+  fn: () => Promise<string>,
+  chunkIndex: number,
+  fallback: string,
+  maxRetries = 3
+): Promise<string> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const is429 =
+        message.includes('429') ||
+        message.toLowerCase().includes('rate limit') ||
+        message.toLowerCase().includes('too many requests');
+
+      if (!is429 || attempt === maxRetries) {
+        console.warn(
+          `[Context Enrichment] Failed for chunk ${chunkIndex} (${message}), using original text`
+        );
+        return fallback;
+      }
+
+      // Parse "Please try again in X.Xs" or "in Xms" from the OpenAI error
+      const retryMatch = /try again in (\d+(?:\.\d+)?)(m?s)/.exec(message);
+      let delay: number;
+      if (retryMatch?.[1]) {
+        const value = parseFloat(retryMatch[1]);
+        delay = retryMatch[2] === 'ms' ? value : value * 1000;
+        delay = Math.min(delay + 100, 10_000); // 100ms buffer, cap at 10s
+      } else {
+        delay = 1000 * Math.pow(2, attempt); // fallback: 1s, 2s, 4s
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  return fallback;
+}
+
+/**
+ * Exécute un tableau de tâches asynchrones avec une concurrence limitée.
+ * Préserve l'ordre des résultats.
+ */
+async function withConcurrency<T>(tasks: (() => Promise<T>)[], limit: number): Promise<T[]> {
+  const results = new Array<T>(tasks.length);
+  const queue = tasks.map((task, i) => ({ task, i }));
+  const workers = Array.from({ length: Math.min(limit, tasks.length) }, async () => {
+    while (queue.length > 0) {
+      const item = queue.shift()!;
+      results[item.i] = await item.task();
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
 
 /**
  * Pipeline RAG complet.
@@ -51,7 +115,7 @@ export class RAGPipelineImpl implements RAGPipeline {
     private vectorStore: VectorStoreService,
     private chunker: ChunkingService,
     private llmConfig: LLMConfig,
-    private reranker?: Reranker
+    private reranker?: Reranker | AsyncReranker
   ) {
     this.openai = new OpenAI({
       apiKey: llmConfig.apiKey,
@@ -93,6 +157,8 @@ export class RAGPipelineImpl implements RAGPipeline {
    */
   async index(documents: Document[], options?: IndexOptions): Promise<IndexResult> {
     const onProgress = options?.onProgress;
+    const enableEnrichment = options?.enableContextEnrichment ?? false;
+    const enrichmentConfig: ContextEnrichmentConfig = options?.contextEnrichmentConfig ?? {};
 
     await this.vectorStore.ensureCollection();
 
@@ -133,21 +199,41 @@ export class RAGPipelineImpl implements RAGPipeline {
     const chunkIds: string[] = [];
     onProgress?.('chunking', 10, `${totalChunks} chunks created`);
 
-    // === PHASE 2 & 3: EMBEDDING + STORING by batch (10-100%) ===
+    // === PHASE 1.5: ENRICHING (10-30%) — optional ===
+    // Génère une phrase de contexte pour chaque chunk via GPT-4o-mini.
+    // Le texte enrichi est utilisé uniquement pour l'embedding, le payload Qdrant stocke chunk.text.
+    let enrichedTexts: string[] | null = null;
+    if (enableEnrichment && documents.length > 0) {
+      onProgress?.('enriching', 10, `Enriching ${totalChunks} chunks`);
+      const primaryDoc = documents[0]!;
+      enrichedTexts = await this.enrichChunks(
+        allChunks,
+        primaryDoc.content,
+        enrichmentConfig,
+        onProgress
+      );
+    }
+
+    // === PHASE 2 & 3: EMBEDDING + STORING by batch (30-100% with enrichment, 10-100% without) ===
     // Process chunks in batches: embed then store immediately to minimize memory usage
+    const embeddingStart = enableEnrichment ? 30 : 10;
+    const embeddingRange = 100 - embeddingStart;
     const totalBatches = Math.ceil(totalChunks / RAGPipelineImpl.EMBEDDING_BATCH_SIZE);
-    onProgress?.('embedding', 10, `Starting embedding (${totalBatches} batches)`);
+    onProgress?.('embedding', embeddingStart, `Starting embedding (${totalBatches} batches)`);
 
     for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
       const start = batchIndex * RAGPipelineImpl.EMBEDDING_BATCH_SIZE;
       const end = Math.min(start + RAGPipelineImpl.EMBEDDING_BATCH_SIZE, totalChunks);
       const batchChunks = allChunks.slice(start, end);
-      const batchTexts = batchChunks.map((c) => c.text);
+
+      // Use enriched text for embedding if available, otherwise original chunk text
+      const batchTexts = batchChunks.map((c, i) => enrichedTexts?.[start + i] ?? c.text);
 
       // Embed this batch with retry logic
       const batchEmbeddings = await this.embedWithRetry(batchTexts);
 
       // Prepare and store points for this batch immediately
+      // IMPORTANT: payload always stores the original chunk.text, never the enriched text
       const batchPoints = batchChunks.map((chunk, i) => {
         const vector = batchEmbeddings[i];
         if (!vector) {
@@ -162,6 +248,7 @@ export class RAGPipelineImpl implements RAGPipeline {
             source: chunk.metadata.source,
             documentId: chunk.metadata.documentId,
             chunkIndex: chunk.metadata.chunkIndex,
+            ...(chunk.metadata.parentContent && { parent_content: chunk.metadata.parentContent }),
           },
         };
       });
@@ -169,9 +256,10 @@ export class RAGPipelineImpl implements RAGPipeline {
       // Store this batch immediately (don't accumulate embeddings in memory)
       await this.vectorStore.upsert(batchPoints);
 
-      // Progress: 10-100% for combined embedding + storing
-      const progress = 10 + Math.round(((batchIndex + 1) / totalBatches) * 90);
-      const stage = progress < 80 ? 'embedding' : 'storing';
+      // Progress: embeddingStart-100% for combined embedding + storing
+      const progress =
+        embeddingStart + Math.round(((batchIndex + 1) / totalBatches) * embeddingRange);
+      const stage = progress < embeddingStart + embeddingRange * 0.7 ? 'embedding' : 'storing';
       onProgress?.(stage, progress, `Batch ${batchIndex + 1}/${totalBatches}`);
     }
 
@@ -190,14 +278,17 @@ export class RAGPipelineImpl implements RAGPipeline {
    */
   async query(question: string, options: QueryOptions = {}): Promise<RAGResponse> {
     const {
-      topK = 5,
+      topK: topKOption,
+      topN = 3,
       scoreThreshold = 0.6,
       filter,
       includeSources = true,
       rerankerConfig,
       conversationHistory = [],
       maxContextChars,
+      useHyde: useHydeOption,
     } = options;
+    const topK = topKOption ?? (this.reranker instanceof CohereReranker ? 10 : 5);
     const totalStart = Date.now();
     const metrics: QueryMetrics = {
       embeddingMs: 0,
@@ -213,22 +304,37 @@ export class RAGPipelineImpl implements RAGPipeline {
       `[RAG] Options: topK=${topK}, scoreThreshold=${scoreThreshold}, historyLength=${conversationHistory.length}`
     );
 
-    // 1. Embedding de la question
+    // 1. Embedding de la question + recherche (HyDE si applicable)
     const embedStart = Date.now();
-    const questionEmbedding = await this.embeddings.embed(question);
-    metrics.embeddingMs = Date.now() - embedStart;
-    this.log(`[RAG] Embedding: ${metrics.embeddingMs}ms`);
+    const useHyde = this.shouldUseHyde(question, useHydeOption);
+    let results: SearchResult[];
 
-    // 2. Recherche dans le vector store
-    const searchStart = Date.now();
-    const results = await this.vectorStore.search(questionEmbedding, {
-      limit: topK,
-      scoreThreshold,
-      filter,
-      withPayload: true,
-    });
-    metrics.searchMs = Date.now() - searchStart;
-    this.log(`[RAG] Search: ${results.length} results in ${metrics.searchMs}ms`);
+    if (useHyde) {
+      this.log('[RAG] HyDE enabled — generating hypothetical document');
+      const { results: hydeResults, hydeMs } = await this.hydeSearch(question, {
+        limit: topK,
+        scoreThreshold,
+        filter,
+      });
+      results = hydeResults;
+      metrics.hydeMs = hydeMs;
+      metrics.embeddingMs = hydeMs;
+      metrics.searchMs = 0;
+      this.log(`[RAG] HyDE search: ${results.length} results in ${hydeMs}ms`);
+    } else {
+      const questionEmbedding = await this.embeddings.embed(question);
+      metrics.embeddingMs = Date.now() - embedStart;
+      this.log(`[RAG] Embedding: ${metrics.embeddingMs}ms`);
+      const searchStart = Date.now();
+      results = await this.vectorStore.search(questionEmbedding, {
+        limit: topK,
+        scoreThreshold,
+        filter,
+        withPayload: true,
+      });
+      metrics.searchMs = Date.now() - searchStart;
+      this.log(`[RAG] Search: ${results.length} results in ${metrics.searchMs}ms`);
+    }
 
     // Log each result with score
     results.forEach((r, i) => {
@@ -239,10 +345,17 @@ export class RAGPipelineImpl implements RAGPipeline {
 
     // 3. Appliquer le reranking si configuré
     const rerankStart = Date.now();
-    const rankedResults = this.applyReranking(results, question, rerankerConfig);
+    const allRankedResults = await this.applyRerankingAsync(results, question, rerankerConfig);
+    // Tronquer au topN après reranking (pertinent pour CohereReranker qui réduit 10 → 3)
+    const rankedResults = allRankedResults.slice(0, topN);
     metrics.rerankMs = Date.now() - rerankStart;
     if (this.reranker) {
       this.log(`[RAG] Reranking: ${metrics.rerankMs}ms`);
+      rankedResults.forEach((r, i) => {
+        this.log(
+          `[RAG]   Reranked #${i + 1} finalScore=${('finalScore' in r ? r.finalScore : r.score).toFixed(4)} semantic=${('semanticScore' in r ? r.semanticScore : r.score).toFixed(4)}`
+        );
+      });
     }
 
     // 4. Construction du contexte
@@ -250,7 +363,9 @@ export class RAGPipelineImpl implements RAGPipeline {
       chunkId: r.id,
       documentSource: (r.payload.source as string) || 'unknown',
       score: this.getScore(r),
-      text: (r.payload.text as string) || '',
+      // Use parent_content for LLM context if available (richer ~512 tokens),
+      // fallback to text for backwards-compatibility with old indexed documents.
+      text: (r.payload.parent_content as string) || (r.payload.text as string) || '',
     }));
 
     const context = this.buildContext(sources, maxContextChars);
@@ -264,17 +379,10 @@ export class RAGPipelineImpl implements RAGPipeline {
       sources.length > 0 ? sources.reduce((sum, s) => sum + s.score, 0) / sources.length : 0;
     this.log(`[RAG] Average score: ${avgScore.toFixed(4)}`);
 
-    const lowRelevance = rankedResults.length === 0 || avgScore < 0.5;
-    if (lowRelevance) {
-      this.log('[RAG] Low relevance - LLM will be warned');
-    }
-
     this.log('[RAG] Calling LLM...');
     const llmStart = Date.now();
 
-    const systemContent = lowRelevance
-      ? `${this.systemPrompt}\n\nNote : le contexte ci-dessous a une pertinence faible par rapport à la question. Réponds quand même du mieux possible avec ce que tu as, et précise si l'information est partielle.\n\nCONTEXTE:\n---\n${context || 'Aucun contexte disponible.'}\n---`
-      : `${this.systemPrompt}\n\nCONTEXTE:\n---\n${context}\n---`;
+    const systemContent = `${this.systemPrompt}\n\nCONTEXTE:\n---\n${context || 'Aucun contexte disponible.'}\n---`;
 
     // Build messages with conversation history (last 6 messages max)
     const historyMessages = conversationHistory.slice(-6).map((m) => ({
@@ -319,14 +427,17 @@ export class RAGPipelineImpl implements RAGPipeline {
     options: QueryOptions = {}
   ): AsyncGenerator<string, RAGResponse> {
     const {
-      topK = 5,
+      topK: topKOption,
+      topN = 3,
       scoreThreshold = 0.6,
       filter,
       includeSources = true,
       rerankerConfig,
       conversationHistory = [],
       maxContextChars,
+      useHyde: useHydeOption,
     } = options;
+    const topK = topKOption ?? (this.reranker instanceof CohereReranker ? 10 : 5);
 
     this.log('\n========== RAG QUERY STREAM ==========');
     this.log(`[RAG-STREAM] Question: "${question}"`);
@@ -334,16 +445,28 @@ export class RAGPipelineImpl implements RAGPipeline {
       `[RAG-STREAM] Options: topK=${topK}, scoreThreshold=${scoreThreshold}, historyLength=${conversationHistory.length}`
     );
 
-    // 1. Embedding de la question
-    const questionEmbedding = await this.embeddings.embed(question);
+    // 1. Embedding de la question + recherche (HyDE si applicable)
+    const useHyde = this.shouldUseHyde(question, useHydeOption);
+    let results: SearchResult[];
 
-    // 2. Recherche dans le vector store
-    const results = await this.vectorStore.search(questionEmbedding, {
-      limit: topK,
-      scoreThreshold,
-      filter,
-      withPayload: true,
-    });
+    if (useHyde) {
+      this.log('[RAG-STREAM] HyDE enabled — generating hypothetical document');
+      const { results: hydeResults, hydeMs } = await this.hydeSearch(question, {
+        limit: topK,
+        scoreThreshold,
+        filter,
+      });
+      results = hydeResults;
+      this.log(`[RAG-STREAM] HyDE search: ${results.length} results in ${hydeMs}ms`);
+    } else {
+      const questionEmbedding = await this.embeddings.embed(question);
+      results = await this.vectorStore.search(questionEmbedding, {
+        limit: topK,
+        scoreThreshold,
+        filter,
+        withPayload: true,
+      });
+    }
 
     this.log(`[RAG-STREAM] Search: ${results.length} results`);
     results.forEach((r, i) => {
@@ -353,14 +476,17 @@ export class RAGPipelineImpl implements RAGPipeline {
     });
 
     // 3. Appliquer le reranking si configuré
-    const rankedResults = this.applyReranking(results, question, rerankerConfig);
+    const allRankedResults = await this.applyRerankingAsync(results, question, rerankerConfig);
+    const rankedResults = allRankedResults.slice(0, topN);
 
     // 4. Construction du contexte
     const sources: Source[] = rankedResults.map((r) => ({
       chunkId: r.id,
       documentSource: (r.payload.source as string) || 'unknown',
       score: this.getScore(r),
-      text: (r.payload.text as string) || '',
+      // Use parent_content for LLM context if available (richer ~512 tokens),
+      // fallback to text for backwards-compatibility with old indexed documents.
+      text: (r.payload.parent_content as string) || (r.payload.text as string) || '',
     }));
 
     const context = this.buildContext(sources, maxContextChars);
@@ -369,15 +495,8 @@ export class RAGPipelineImpl implements RAGPipeline {
       sources.length > 0 ? sources.reduce((sum, s) => sum + s.score, 0) / sources.length : 0;
     this.log(`[RAG-STREAM] Average score: ${avgScore.toFixed(4)}`);
 
-    const lowRelevance = rankedResults.length === 0 || avgScore < 0.5;
-    if (lowRelevance) {
-      this.log('[RAG-STREAM] Low relevance - LLM will be warned');
-    }
-
     // 5. Génération en streaming
-    const systemContent = lowRelevance
-      ? `${this.systemPrompt}\n\nNote : le contexte ci-dessous a une pertinence faible par rapport à la question. Réponds quand même du mieux possible avec ce que tu as, et précise si l'information est partielle.\n\nCONTEXTE:\n---\n${context || 'Aucun contexte disponible.'}\n---`
-      : `${this.systemPrompt}\n\nCONTEXTE:\n---\n${context}\n---`;
+    const systemContent = `${this.systemPrompt}\n\nCONTEXTE:\n---\n${context || 'Aucun contexte disponible.'}\n---`;
 
     // Build messages with conversation history (last 6 messages max)
     const historyMessages = conversationHistory.slice(-6).map((m) => ({
@@ -458,17 +577,113 @@ export class RAGPipelineImpl implements RAGPipeline {
   }
 
   /**
-   * Applique le reranking si un reranker est configuré.
+   * Applique le reranking (sync ou async) si un reranker est configuré.
+   * Utilise instanceof CohereReranker pour discriminer async vs sync.
    */
-  private applyReranking(
+  private async applyRerankingAsync(
     results: SearchResult[],
     query: string,
     config?: import('../reranking/types').RerankerConfig
-  ): (SearchResult | ScoredResult)[] {
+  ): Promise<(SearchResult | ScoredResult)[]> {
     if (!this.reranker || results.length === 0) {
       return results;
     }
-    return this.reranker.rerank(results, query, config);
+    if (this.reranker instanceof CohereReranker) {
+      return await this.reranker.rerank(results, query, config);
+    }
+    // Sync reranker (HybridReranker)
+    return (this.reranker as Reranker).rerank(results, query, config);
+  }
+
+  /**
+   * Détermine si HyDE doit être utilisé pour cette question.
+   * - `useHyde` explicite → respecte l'override
+   * - Question avec mot-clé spécifique → pas de HyDE (question ciblée)
+   * - Question courte (< 8 mots) → HyDE actif (question vague)
+   * - Sinon (longue sans keyword) → HyDE actif
+   */
+  private shouldUseHyde(question: string, useHyde?: boolean): boolean {
+    if (useHyde !== undefined) return useHyde;
+    const specificKeywords =
+      /\b(comment|pourquoi|quelle?s?|combien|quand|où|définition|signifie|explique|liste|résume|compare)\b/i;
+    // Question ciblée (avec keyword) = pas de HyDE, quelle que soit la longueur
+    if (specificKeywords.test(question)) return false;
+    const words = question.trim().split(/\s+/);
+    // Question courte et vague = HyDE
+    return words.length < 8;
+  }
+
+  /**
+   * Génère une réponse hypothétique à la question via le LLM.
+   * Fallback sur la question brute si la réponse est vide ou en cas d'erreur.
+   */
+  private async generateHypotheticalDoc(question: string): Promise<string> {
+    const response = await this.openai.chat.completions.create({
+      model: this.model,
+      temperature: 0.7,
+      max_tokens: 150,
+      messages: [
+        {
+          role: 'user',
+          content: `Réponds brièvement à cette question comme si tu étais un expert : ${question}`,
+        },
+      ],
+    });
+    return response.choices[0]?.message.content || question;
+  }
+
+  /**
+   * Recherche HyDE : génère un document hypothétique, embed question + doc hypothétique
+   * en parallèle, fait deux recherches Qdrant, merge et déduplique par id (meilleur score).
+   * Fallback sur recherche standard si la génération échoue.
+   */
+  private async hydeSearch(
+    question: string,
+    options: { limit: number; scoreThreshold: number; filter?: FilterCondition }
+  ): Promise<{ results: SearchResult[]; hydeMs: number }> {
+    const hydeStart = Date.now();
+    try {
+      const hypotheticalDoc = await this.generateHypotheticalDoc(question);
+      this.log(`[RAG] HyDE hypothetical doc: "${hypotheticalDoc.slice(0, 100)}..."`);
+
+      // Embed en parallèle
+      const [questionVec, hypoVec] = await Promise.all([
+        this.embeddings.embed(question),
+        this.embeddings.embed(hypotheticalDoc),
+      ]);
+
+      // Recherche en parallèle
+      const searchOptions = { ...options, withPayload: true };
+      const [resultsQ, resultsHypo] = await Promise.all([
+        this.vectorStore.search(questionVec, searchOptions),
+        this.vectorStore.search(hypoVec, searchOptions),
+      ]);
+
+      // Merger + déduper : garder le meilleur score par id
+      const merged = new Map<string, SearchResult>();
+      for (const r of [...resultsQ, ...resultsHypo]) {
+        const existing = merged.get(r.id);
+        if (!existing || r.score > existing.score) {
+          merged.set(r.id, r);
+        }
+      }
+
+      // Trier par score décroissant, puis garder topK
+      const results = [...merged.values()]
+        .sort((a, b) => b.score - a.score)
+        .slice(0, options.limit);
+
+      return { results, hydeMs: Date.now() - hydeStart };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.warn('[RAG] HyDE failed, falling back to standard search:', msg);
+      const questionVec = await this.embeddings.embed(question);
+      const results = await this.vectorStore.search(questionVec, {
+        ...options,
+        withPayload: true,
+      });
+      return { results, hydeMs: Date.now() - hydeStart };
+    }
   }
 
   /**
@@ -477,6 +692,84 @@ export class RAGPipelineImpl implements RAGPipeline {
   private getScore(result: SearchResult | ScoredResult): number {
     // ScoredResult a un finalScore, SearchResult a juste score
     return 'finalScore' in result ? result.finalScore : result.score;
+  }
+
+  /**
+   * Enrichit les chunks avec une phrase de contexte générée par GPT-4o-mini.
+   * Le texte enrichi est utilisé uniquement pour l'embedding, pas stocké dans le payload.
+   *
+   * @param chunks - Chunks à enrichir
+   * @param documentContent - Contenu brut du document (pour le contexte)
+   * @param config - Configuration de l'enrichissement
+   * @returns Tableau de textes enrichis (même ordre que chunks), fallback sur chunk.text si erreur
+   */
+  private async enrichChunks(
+    chunks: Chunk[],
+    documentContent: string,
+    config: ContextEnrichmentConfig,
+    onProgress?: ProgressCallback
+  ): Promise<string[]> {
+    const model = config.model ?? 'gpt-4o-mini';
+    const concurrency = config.concurrency ?? 3;
+    const maxDocumentChars = (config.maxDocumentTokens ?? 6000) * 4;
+
+    // Truncate document to maxDocumentChars, cutting on last \n if possible
+    let documentTruncated = documentContent.slice(0, maxDocumentChars);
+    if (documentContent.length > maxDocumentChars) {
+      const lastNewline = documentTruncated.lastIndexOf('\n');
+      if (lastNewline > maxDocumentChars * 0.5) {
+        documentTruncated = documentTruncated.slice(0, lastNewline);
+      }
+    }
+
+    // Create a separate OpenAI client for enrichment (may differ from LLM config)
+    const enrichmentClient = new OpenAI({
+      apiKey: config.apiKey ?? this.llmConfig.apiKey,
+      baseURL: config.baseURL ?? this.llmConfig.baseURL,
+    });
+
+    // Estimate and log cost before starting
+    const estimatedInputTokens = chunks.reduce(
+      (sum, c) => sum + Math.ceil((documentTruncated.length + c.text.length) / 4),
+      0
+    );
+    const estimatedOutputTokens = chunks.length * 15;
+    const estimatedCost =
+      (estimatedInputTokens / 1_000_000) * 0.15 + (estimatedOutputTokens / 1_000_000) * 0.6;
+    console.log(
+      `[Context Enrichment] ${chunks.length} chunks, ~${Math.ceil(estimatedInputTokens / 1000)}K input tokens, ~${estimatedOutputTokens} output tokens, estimated cost: $${estimatedCost.toFixed(4)} (model: ${model})`
+    );
+
+    const tasks = chunks.map((chunk, i) => async (): Promise<string> => {
+      return enrichWithRetry(
+        async () => {
+          const prompt = `Document : ${documentTruncated}\n\nExtrait : ${chunk.text}\n\nEn une phrase, décris où cet extrait se situe dans le document et son sujet. Réponds directement.`;
+
+          const response = await enrichmentClient.chat.completions.create({
+            model,
+            temperature: 0,
+            max_tokens: 60,
+            messages: [{ role: 'user', content: prompt }],
+          });
+
+          const contextPhrase = response.choices[0]?.message?.content?.trim();
+          if (!contextPhrase) {
+            console.warn(`[Context Enrichment] Empty response for chunk ${i}, using original text`);
+            return chunk.text;
+          }
+
+          return `${contextPhrase}\n${chunk.text}`;
+        },
+        i,
+        chunk.text
+      );
+    });
+
+    const results = await withConcurrency(tasks, concurrency);
+
+    onProgress?.('enriching', 30, `${chunks.length} chunks enriched`);
+
+    return results;
   }
 
   /**
