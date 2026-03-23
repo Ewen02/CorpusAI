@@ -94,6 +94,9 @@ export type { ChartTooltipProps } from './molecules/chart-tooltip';
 
 export { MarkdownRenderer } from './molecules/markdown-renderer';
 
+export { ExploreAICard } from './molecules/explore-ai-card';
+export type { ExploreAICardProps } from './molecules/explore-ai-card';
+
 // Organisms
 export { ChatInterface, ChatInterfaceSkeleton } from './organisms/chat-interface';
 export type {

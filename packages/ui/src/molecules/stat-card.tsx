@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { cn } from '../lib/utils';
-import { Card, CardHeader, CardTitle, CardContent } from './card';
 import { TrendBadge } from './trend-badge';
 
 export interface StatCardProps {
@@ -21,24 +20,41 @@ export function StatCard({
   className,
 }: StatCardProps) {
   return (
-    <Card variant="glass" className={cn('border-l-2 border-l-primary/50', className)}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
+    <div
+      className={cn(
+        'relative overflow-hidden rounded-lg border border-[hsl(var(--accent-500)/0.2)] p-5',
+        'bg-gradient-to-br from-[hsl(var(--surface-1))] to-[hsl(224_15%_12%)]',
+        'shadow-[var(--shadow-accent-sm)]',
+        className
+      )}
+    >
+      {/* Ambient glow top-right */}
+      <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-[radial-gradient(circle,hsl(var(--accent-500)/0.1),transparent_70%)]" />
+
+      {/* Header : label + icon */}
+      <div className="relative flex items-start justify-between gap-3">
+        <p className="text-tx-muted text-[13px] font-medium">{title}</p>
         {Icon && (
-          <div className="bg-primary/10 rounded-xl p-2.5">
-            <Icon className="h-4 w-4 text-primary" />
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-400/20 to-indigo-600/10 ring-1 ring-[hsl(var(--accent-500)/0.2)]">
+            <Icon className="h-4 w-4 text-indigo-400" />
           </div>
         )}
-      </CardHeader>
-      <CardContent>
-        <div className="text-3xl font-bold">{value.toLocaleString()}</div>
-        {trend && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <TrendBadge value={trend.value} isPositive={trend.isPositive} />
-            <span>{trendLabel}</span>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Value — domine */}
+      <div className="relative mt-3">
+        <span className="text-tx-primary text-[28px] font-bold leading-none tracking-tight">
+          {value.toLocaleString()}
+        </span>
+      </div>
+
+      {/* Trend */}
+      {trend && (
+        <div className="text-tx-muted relative mt-2 flex items-center gap-1.5 text-[12px]">
+          <TrendBadge value={trend.value} isPositive={trend.isPositive} />
+          <span>{trendLabel}</span>
+        </div>
+      )}
+    </div>
   );
 }

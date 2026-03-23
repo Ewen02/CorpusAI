@@ -4,39 +4,39 @@
 
 @layer base {
   :root {
-    /* CorpusAI Dark Theme */
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
+    --background:             224 20% 5%;
+    --foreground:             220 20% 97%;
 
-    --card: 240 10% 5.9%;
-    --card-foreground: 0 0% 98%;
+    --card:                   224 15% 10%;
+    --card-foreground:        220 20% 97%;
 
-    --popover: 240 10% 5.9%;
-    --popover-foreground: 0 0% 98%;
+    --popover:                224 14% 13%;
+    --popover-foreground:     220 20% 97%;
 
-    --primary: 221 83% 53%;
-    --primary-foreground: 0 0% 100%;
+    --primary:                235 85% 58%;
+    --primary-foreground:     0 0% 100%;
 
-    --secondary: 240 5% 15%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary:              224 14% 13%;
+    --secondary-foreground:   220 20% 97%;
 
-    --muted: 240 5% 15%;
-    --muted-foreground: 240 5% 65%;
+    --muted:                  224 14% 13%;
+    --muted-foreground:       220 8% 45%;
 
-    --accent: 240 5% 15%;
-    --accent-foreground: 0 0% 98%;
+    --accent:                 224 15% 10%;
+    --accent-foreground:      220 20% 97%;
 
-    --destructive: 0 62% 50%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive:            4 80% 56%;
+    --destructive-foreground: 0 0% 100%;
 
-    --success: 142 76% 36%;
-    --warning: 38 92% 50%;
+    --border:                 224 14% 18%;
+    --input:                  224 15% 10%;
+    --ring:                   235 85% 58%;
 
-    --border: 240 5% 17%;
-    --input: 240 5% 17%;
-    --ring: 221 83% 53%;
+    --radius:                 0.5rem;
 
-    --radius: 0.5rem;
+    --success: 152 70% 42%;
+    --warning:  38 95% 55%;
+    --danger:    4 80% 56%;
   }
 
   * {

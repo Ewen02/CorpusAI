@@ -24,10 +24,16 @@ export function ChartTooltip({
   const formattedLabel = formatLabel ? formatLabel(label) : String(label);
 
   return (
-    <div className={cn('rounded-lg border border-border bg-card p-3 shadow-md', className)}>
-      <p className="text-sm font-medium">{formattedLabel}</p>
-      <p className="text-sm text-muted-foreground">
-        {value} {metric}
+    <div
+      className={cn(
+        'rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-2))]',
+        'px-3 py-2 shadow-lg backdrop-blur-sm',
+        className
+      )}
+    >
+      <p className="text-tx-muted text-[11px] font-medium">{formattedLabel}</p>
+      <p className="text-tx-primary mt-0.5 text-[15px] font-semibold">
+        {value} <span className="text-tx-muted text-[12px] font-normal">{metric}</span>
       </p>
     </div>
   );

@@ -2,9 +2,7 @@
 
 import * as React from 'react';
 import { cn } from '../lib/utils';
-import { Button } from '../atoms/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../atoms/avatar';
-import { Separator } from '../atoms/separator';
 import { Skeleton } from '../atoms/skeleton';
 
 // ============================================
@@ -69,35 +67,43 @@ function useSidebar() {
 }
 
 // ============================================
+// Plan label helper
+// ============================================
+
+const planLabel: Record<UserData['plan'], string> = {
+  FREE: 'Plan gratuit',
+  CREATOR: 'Creator',
+  PRO: 'Pro',
+  ENTERPRISE: 'Enterprise',
+};
+
+// ============================================
 // Sub-components
 // ============================================
 
-function SidebarHeader({
-  logo,
-  user,
-  onUpgrade,
-}: {
-  logo?: React.ReactNode;
-  user: UserData;
-  onUpgrade?: () => void;
-}) {
+function SidebarHeader({ logo, user }: { logo?: React.ReactNode; user: UserData }) {
   const { isCollapsed } = useSidebar();
 
   return (
-    <div className="flex items-center justify-between p-4">
-      <div className="flex items-center gap-2">
+    <div className="flex h-[60px] shrink-0 items-center px-3">
+      <div className={cn('flex min-w-0 items-center gap-3', isCollapsed && 'justify-center')}>
         {logo || (
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
-            C
+          <div className="shadow-accent-sm relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-400 to-indigo-600 ring-1 ring-[hsl(var(--accent-500)/0.3)]">
+            <span className="relative z-10 text-sm font-bold tracking-tight text-white">C</span>
+            <div className="absolute inset-0 rounded-lg bg-gradient-to-b from-white/15 to-transparent" />
           </div>
         )}
-        {!isCollapsed && <span className="font-semibold text-foreground">CorpusAI</span>}
+        {!isCollapsed && (
+          <div className="flex min-w-0 flex-col">
+            <span className="text-[15px] font-semibold leading-none tracking-tight text-foreground">
+              CorpusAI
+            </span>
+            <span className="text-tx-muted mt-[3px] text-[11px] leading-none">
+              {planLabel[user.plan]}
+            </span>
+          </div>
+        )}
       </div>
-      {!isCollapsed && user.plan === 'FREE' && onUpgrade && (
-        <Button variant="outline" size="sm" onClick={onUpgrade}>
-          Upgrade
-        </Button>
-      )}
     </div>
   );
 }
@@ -121,33 +127,43 @@ function SidebarNav({
   };
 
   return (
-    <div className="px-3 py-2">
+    <div className="px-2 py-1">
       {title && !isCollapsed && (
-        <h3 className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        <p className="text-tx-disabled mb-1 px-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.08em]">
           {title}
-        </h3>
+        </p>
       )}
-      <nav className="space-y-1">
+      <nav className="space-y-0.5">
         {items.map((item) => {
-          const isActive = currentPath === item.href || currentPath.startsWith(item.href + '/');
+          const isActive =
+            currentPath === item.href ||
+            (item.href !== '/dashboard' && currentPath.startsWith(item.href + '/'));
           return (
             <button
               key={item.id}
               onClick={() => handleClick(item.href)}
+              title={isCollapsed ? item.label : undefined}
               className={cn(
-                'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150',
+                'group relative flex w-full items-center gap-2.5 rounded-md px-2.5 py-[7px] text-sm transition-all duration-100',
+                isCollapsed && 'justify-center px-2',
                 isActive
-                  ? 'border-l-2 border-primary bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-white/[0.04] hover:text-foreground',
-                isCollapsed && 'justify-center px-2'
+                  ? 'text-tx-primary bg-[hsl(var(--accent-500)/0.1)] font-medium shadow-[inset_2px_0_0_hsl(var(--accent-500))]'
+                  : 'text-tx-muted hover:bg-surface-2 hover:text-tx-secondary'
               )}
             >
-              <span className="shrink-0">{item.icon}</span>
+              <span
+                className={cn(
+                  'shrink-0 transition-all duration-100',
+                  isActive ? 'text-indigo-400 opacity-100' : 'opacity-60 group-hover:opacity-90'
+                )}
+              >
+                {item.icon}
+              </span>
               {!isCollapsed && (
                 <>
                   <span className="flex-1 text-left">{item.label}</span>
                   {item.badge && (
-                    <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-xs">
+                    <span className="bg-surface-2 text-tx-muted ml-auto rounded-full border border-[hsl(var(--border-default))] px-1.5 py-0.5 text-[10px] tabular-nums">
                       {item.badge}
                     </span>
                   )}
@@ -160,6 +176,18 @@ function SidebarNav({
     </div>
   );
 }
+
+const statusBg: Record<AINavItem['status'], string> = {
+  active: 'bg-[hsl(var(--success)/0.15)] text-success',
+  draft: 'bg-[hsl(var(--warning)/0.15)] text-warning',
+  paused: 'bg-surface-3 text-tx-disabled',
+};
+
+const statusDot: Record<AINavItem['status'], string> = {
+  active: 'bg-success animate-pulse',
+  draft: 'bg-warning',
+  paused: 'bg-tx-disabled/40',
+};
 
 function SidebarAIList({
   items,
@@ -181,18 +209,20 @@ function SidebarAIList({
     setIsMobileOpen(false);
   };
 
-  const statusColors = {
-    active: 'bg-green-500',
-    draft: 'bg-yellow-500',
-    paused: 'bg-gray-500',
-  };
-
   return (
-    <div className="px-3 py-2">
-      <h3 className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        Mes AIs
-      </h3>
-      <nav className="space-y-1">
+    <div className="px-2 py-1">
+      {/* Section header */}
+      <div className="mb-1 flex items-center justify-between px-2 py-1">
+        <p className="text-tx-disabled text-[10px] font-semibold uppercase tracking-[0.08em]">
+          Mes AIs
+        </p>
+        {items.length > 0 && (
+          <span className="text-tx-disabled text-[10px] tabular-nums">{items.length}</span>
+        )}
+      </div>
+
+      {/* AI items — scroll si plus de 6 */}
+      <nav className="max-h-[200px] space-y-0.5 overflow-y-auto">
         {items.map((item) => {
           const isActive = currentPath.includes(item.id);
           return (
@@ -200,33 +230,39 @@ function SidebarAIList({
               key={item.id}
               onClick={() => handleClick(item.href)}
               className={cn(
-                'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-150',
+                'group flex w-full items-center gap-2.5 rounded-md px-2.5 py-[7px] text-sm transition-all duration-100',
                 isActive
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-white/[0.04] hover:text-foreground'
+                  ? 'text-tx-primary bg-[hsl(var(--accent-500)/0.1)] shadow-[inset_2px_0_0_hsl(var(--accent-500))]'
+                  : 'text-tx-muted hover:bg-surface-2 hover:text-tx-secondary'
               )}
             >
+              {/* Avatar initiale colorée selon status */}
               <span
                 className={cn(
-                  'h-2 w-2 shrink-0 rounded-full',
-                  statusColors[item.status],
-                  item.status === 'active' && 'ring-2 ring-green-500/20'
+                  'flex h-5 w-5 shrink-0 items-center justify-center rounded-sm text-[10px] font-semibold',
+                  statusBg[item.status]
                 )}
-              />
-              <span className="flex-1 truncate text-left">{item.name}</span>
+              >
+                {item.name.charAt(0).toUpperCase()}
+              </span>
+              <span className="flex-1 truncate text-left text-[13px]">{item.name}</span>
+              {/* Status dot */}
+              <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', statusDot[item.status])} />
             </button>
           );
         })}
-        {onCreateAI && (
-          <button
-            onClick={onCreateAI}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-all duration-150 hover:bg-white/[0.04] hover:text-foreground"
-          >
-            <PlusIcon className="h-4 w-4" />
-            <span>Créer un AI</span>
-          </button>
-        )}
       </nav>
+
+      {/* Bouton créer — dashed border */}
+      {onCreateAI && (
+        <button
+          onClick={onCreateAI}
+          className="text-tx-disabled hover:text-tx-muted mt-1 flex w-full items-center gap-2.5 rounded-md border border-dashed border-[hsl(var(--border-subtle))] px-2.5 py-[7px] text-[13px] transition-all duration-100 hover:border-[hsl(var(--border-default))]"
+        >
+          <PlusIcon className="h-3.5 w-3.5 shrink-0" />
+          <span>Créer un AI</span>
+        </button>
+      )}
     </div>
   );
 }
@@ -235,44 +271,54 @@ function SidebarUser({ user, onSignOut }: { user: UserData; onSignOut?: () => vo
   const { isCollapsed } = useSidebar();
   const [isOpen, setIsOpen] = React.useState(false);
 
-  const planLabels = {
-    FREE: 'Free',
-    CREATOR: 'Creator',
-    PRO: 'Pro',
-    ENTERPRISE: 'Enterprise',
-  };
-
   return (
-    <div className="border-t border-border p-3">
+    <div className="p-2">
+      {/* User row */}
       <div
         className={cn(
-          'flex cursor-pointer items-center gap-3 rounded-lg p-2 transition-all duration-150 hover:bg-white/[0.04]',
+          'hover:bg-surface-2 flex cursor-pointer items-center gap-2.5 rounded-md p-2 transition-all duration-100',
           isCollapsed && 'justify-center'
         )}
         onClick={() => setIsOpen(!isOpen)}
       >
-        <Avatar className="h-8 w-8">
+        <Avatar className="h-7 w-7 shrink-0 ring-1 ring-[hsl(var(--border-default))]">
           <AvatarImage src={user.avatar} />
-          <AvatarFallback className="bg-primary/20 text-xs text-primary">
+          <AvatarFallback className="bg-[hsl(var(--accent-500)/0.15)] text-[11px] font-semibold text-indigo-400">
             {user.name.charAt(0).toUpperCase()}
           </AvatarFallback>
         </Avatar>
         {!isCollapsed && (
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{user.name}</p>
-            <p className="truncate text-xs text-muted-foreground">{planLabels[user.plan]}</p>
-          </div>
+          <>
+            <div className="min-w-0 flex-1">
+              <p className="text-tx-primary truncate text-[13px] font-medium leading-none">
+                {user.name}
+              </p>
+              <p className="text-tx-disabled mt-[3px] truncate text-[11px] leading-none">
+                {user.email}
+              </p>
+            </div>
+            <ChevronDownIcon
+              className={cn(
+                'text-tx-disabled h-3.5 w-3.5 shrink-0 transition-transform duration-150',
+                isOpen && 'rotate-180'
+              )}
+            />
+          </>
         )}
       </div>
-      {isOpen && !isCollapsed && onSignOut && (
-        <div className="mt-2 space-y-1">
-          <button
-            onClick={onSignOut}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-all duration-150 hover:bg-white/[0.04] hover:text-foreground"
-          >
-            <LogOutIcon className="h-4 w-4" />
-            <span>Déconnexion</span>
-          </button>
+
+      {/* Logout dropdown */}
+      {isOpen && !isCollapsed && (
+        <div className="animate-scale-in bg-surface-2 mt-1 rounded-md border border-[hsl(var(--border-default))] p-1 shadow-md">
+          {onSignOut && (
+            <button
+              onClick={onSignOut}
+              className="text-tx-muted hover:bg-surface-3 hover:text-tx-primary flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-[13px] transition-colors duration-100"
+            >
+              <LogOutIcon className="text-danger/70 h-3.5 w-3.5" />
+              <span>Déconnexion</span>
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -287,10 +333,9 @@ function Sidebar({
   currentPath,
   onNavigate,
   onCreateAI,
-  onUpgrade,
   onSignOut,
   logo,
-}: Omit<DashboardLayoutProps, 'children'>) {
+}: Omit<DashboardLayoutProps, 'children' | 'onUpgrade'>) {
   const { isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen } = useSidebar();
 
   return (
@@ -298,7 +343,7 @@ function Sidebar({
       {/* Mobile overlay */}
       {isMobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-background/90 lg:hidden"
+          className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm lg:hidden"
           onClick={() => setIsMobileOpen(false)}
         />
       )}
@@ -306,21 +351,24 @@ function Sidebar({
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-0 z-50 flex h-full flex-col border-r border-border bg-card transition-all duration-300',
-          isCollapsed ? 'w-16' : 'w-72',
+          'bg-surface-1 fixed left-0 top-0 z-50 flex h-full flex-col border-r border-[hsl(var(--border-subtle))]',
+          'transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]',
+          isCollapsed ? 'w-[60px]' : 'w-[240px]',
           isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >
-        <SidebarHeader logo={logo} user={user} onUpgrade={onUpgrade} />
+        <SidebarHeader logo={logo} user={user} />
 
-        <Separator />
+        {/* Separator under header */}
+        <div className="mx-3 h-px bg-gradient-to-r from-transparent via-[hsl(var(--border-subtle))] to-transparent" />
 
-        <div className="flex-1 overflow-y-auto">
+        {/* Scrollable nav area */}
+        <div className="flex-1 overflow-y-auto py-2">
           <SidebarNav items={navItems} currentPath={currentPath} onNavigate={onNavigate} />
 
           {aiItems && aiItems.length > 0 && (
             <>
-              <Separator className="my-2" />
+              <div className="mx-3 my-2 h-px bg-gradient-to-r from-transparent via-[hsl(var(--border-subtle))] to-transparent" />
               <SidebarAIList
                 items={aiItems}
                 currentPath={currentPath}
@@ -331,22 +379,29 @@ function Sidebar({
           )}
         </div>
 
+        {/* Bottom nav (Settings, Docs) */}
         {bottomNavItems && bottomNavItems.length > 0 && (
           <>
-            <Separator />
+            <div className="mx-3 h-px bg-gradient-to-r from-transparent via-[hsl(var(--border-subtle))] to-transparent" />
             <SidebarNav items={bottomNavItems} currentPath={currentPath} onNavigate={onNavigate} />
           </>
         )}
 
+        {/* Separator before user footer */}
+        <div className="mx-3 h-px bg-gradient-to-r from-transparent via-[hsl(var(--border-subtle))] to-transparent" />
+
         <SidebarUser user={user} onSignOut={onSignOut} />
 
-        {/* Collapse toggle - desktop only */}
+        {/* Collapse toggle — desktop only */}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="absolute -right-3 top-20 hidden h-6 w-6 items-center justify-center rounded-full border border-border bg-card transition-colors hover:bg-accent lg:flex"
+          className="bg-surface-2 text-tx-muted hover:bg-surface-3 hover:text-tx-primary absolute -right-3 top-[72px] hidden h-6 w-6 items-center justify-center rounded-full border border-[hsl(var(--border-default))] shadow-sm transition-all duration-150 lg:flex"
         >
           <ChevronIcon
-            className={cn('h-4 w-4 transition-transform', isCollapsed && 'rotate-180')}
+            className={cn(
+              'h-3.5 w-3.5 transition-transform duration-200',
+              isCollapsed && 'rotate-180'
+            )}
           />
         </button>
       </aside>
@@ -356,14 +411,13 @@ function Sidebar({
 
 function Header({ onMenuClick }: { onMenuClick: () => void }) {
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 lg:px-6">
+    <header className="sticky top-0 z-30 flex h-14 items-center border-b border-[hsl(var(--border-subtle))] bg-background/80 px-4 backdrop-blur-sm supports-[backdrop-filter]:bg-background/60 lg:px-6">
       <button
         onClick={onMenuClick}
-        className="rounded-lg p-2 transition-colors hover:bg-accent lg:hidden"
+        className="text-tx-muted hover:bg-surface-2 hover:text-tx-primary rounded-md p-1.5 transition-colors lg:hidden"
       >
         <MenuIcon className="h-5 w-5" />
       </button>
-      {/* Breadcrumb, search, notifications will be added here */}
     </header>
   );
 }
@@ -388,7 +442,6 @@ export function DashboardLayout({
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
 
-  // Persist collapsed state
   React.useEffect(() => {
     const stored = localStorage.getItem('sidebar-collapsed');
     if (stored) {
@@ -411,12 +464,16 @@ export function DashboardLayout({
           currentPath={currentPath}
           onNavigate={onNavigate}
           onCreateAI={onCreateAI}
-          onUpgrade={onUpgrade}
           onSignOut={onSignOut}
           logo={logo}
         />
 
-        <div className={cn('transition-all duration-300', isCollapsed ? 'lg:pl-16' : 'lg:pl-72')}>
+        <div
+          className={cn(
+            'transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]',
+            isCollapsed ? 'lg:pl-[60px]' : 'lg:pl-[240px]'
+          )}
+        >
           <Header onMenuClick={() => setIsMobileOpen(true)} />
           <main className="p-4 lg:p-6">{children}</main>
         </div>
@@ -426,7 +483,7 @@ export function DashboardLayout({
 }
 
 // ============================================
-// Icons
+// Icons (local SVGs — no external dep)
 // ============================================
 
 function PlusIcon({ className }: { className?: string }) {
@@ -483,6 +540,23 @@ function ChevronIcon({ className }: { className?: string }) {
   );
 }
 
+function ChevronDownIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
 function MenuIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -509,28 +583,57 @@ function MenuIcon({ className }: { className?: string }) {
 export function DashboardLayoutSkeleton() {
   return (
     <div className="flex min-h-screen bg-background">
-      {/* Sidebar skeleton */}
-      <aside className="hidden w-72 flex-col border-r border-border lg:flex">
-        <div className="flex items-center gap-2 p-4">
+      <aside className="bg-surface-1 hidden w-[240px] flex-col border-r border-[hsl(var(--border-subtle))] lg:flex">
+        {/* Header */}
+        <div className="flex h-[60px] items-center gap-3 px-3">
           <Skeleton className="h-8 w-8 rounded-lg" />
-          <Skeleton className="h-5 w-24" />
+          <div className="space-y-1.5">
+            <Skeleton className="h-3.5 w-20" />
+            <Skeleton className="h-2.5 w-14" />
+          </div>
         </div>
-        <Separator />
-        <div className="flex-1 space-y-2 p-3">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-10 w-full rounded-lg" />
+
+        <div className="bg-surface-2 mx-3 h-px" />
+
+        {/* Nav items */}
+        <div className="flex-1 space-y-0.5 p-2 pt-3">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-9 w-full rounded-md" />
           ))}
+          <div className="bg-surface-2 mx-1 my-3 h-px" />
+          <Skeleton className="mb-1.5 h-2.5 w-16" />
+          {[1, 2].map((i) => (
+            <Skeleton key={i} className="h-9 w-full rounded-md" />
+          ))}
+        </div>
+
+        {/* Bottom */}
+        <div className="bg-surface-2 mx-3 h-px" />
+        <div className="space-y-0.5 p-2">
+          {[1, 2].map((i) => (
+            <Skeleton key={i} className="h-9 w-full rounded-md" />
+          ))}
+        </div>
+
+        <div className="bg-surface-2 mx-3 h-px" />
+
+        {/* User */}
+        <div className="flex items-center gap-2.5 p-3">
+          <Skeleton className="h-7 w-7 rounded-full" />
+          <div className="space-y-1.5">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-2.5 w-32" />
+          </div>
         </div>
       </aside>
 
-      {/* Content skeleton */}
       <div className="flex-1">
-        <header className="h-14 border-b border-border" />
+        <header className="h-14 border-b border-[hsl(var(--border-subtle))]" />
         <main className="p-6">
-          <Skeleton className="mb-6 h-8 w-48" />
+          <Skeleton className="mb-6 h-7 w-40" />
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-32 rounded-lg" />
+              <Skeleton key={i} className="h-28 rounded-lg" />
             ))}
           </div>
         </main>

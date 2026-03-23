@@ -3,7 +3,6 @@
 import * as React from 'react';
 import { cn } from '../lib/utils';
 import { Button } from '../atoms/button';
-import { Avatar, AvatarFallback, AvatarImage } from '../atoms/avatar';
 import { Skeleton } from '../atoms/skeleton';
 
 // ============================================
@@ -27,7 +26,6 @@ export interface ConversationListProps {
   onDelete?: (conversationId: string) => void;
   isLoading?: boolean;
   aiName?: string;
-  aiAvatar?: string;
   className?: string;
 }
 
@@ -64,7 +62,6 @@ interface ConversationItemProps {
   onClick: () => void;
   onDelete?: () => void;
   aiName?: string;
-  aiAvatar?: string;
 }
 
 function ConversationItem({
@@ -73,49 +70,55 @@ function ConversationItem({
   onClick,
   onDelete,
   aiName = 'Assistant',
-  aiAvatar,
 }: ConversationItemProps) {
   const title = conversation.title || 'Nouvelle conversation';
   const preview = conversation.lastMessage
-    ? truncateText(conversation.lastMessage, 60)
+    ? truncateText(conversation.lastMessage, 55)
     : 'Aucun message';
+  const initial = aiName.charAt(0).toUpperCase();
 
   return (
     <div
       className={cn(
-        'group relative flex cursor-pointer items-start gap-3 rounded-lg p-3 transition-all duration-200',
+        'group relative flex cursor-pointer items-start gap-3 rounded-lg p-3 transition-all duration-150',
         isSelected
-          ? 'border border-primary/20 bg-primary/10 shadow-sm'
-          : 'border border-transparent hover:border-border hover:bg-muted/50'
+          ? 'border border-[hsl(var(--accent-500)/0.2)] bg-[hsl(var(--accent-500)/0.08)] shadow-[inset_2px_0_0_hsl(var(--accent-500))]'
+          : 'border border-transparent hover:border-[hsl(var(--border-default))] hover:bg-[hsl(var(--surface-2))]'
       )}
       onClick={onClick}
     >
-      <Avatar
-        className={cn('h-9 w-9 shrink-0 ring-2', isSelected ? 'ring-primary/30' : 'ring-border')}
+      {/* Avatar initiale gradient */}
+      <div
+        className={cn(
+          'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[12px] font-semibold',
+          isSelected
+            ? 'bg-gradient-to-br from-indigo-400/25 to-indigo-600/15 text-[hsl(var(--accent-500))] ring-1 ring-[hsl(var(--accent-500)/0.3)]'
+            : 'text-tx-muted bg-[hsl(var(--surface-2))] ring-1 ring-[hsl(var(--border-default))]'
+        )}
       >
-        <AvatarImage src={aiAvatar} />
-        <AvatarFallback className="bg-primary text-xs text-primary-foreground">
-          {aiName.charAt(0).toUpperCase()}
-        </AvatarFallback>
-      </Avatar>
+        {initial}
+      </div>
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <h3 className={cn('truncate text-sm font-medium', isSelected && 'text-primary')}>
+          <h3
+            className={cn(
+              'truncate text-[13px] font-medium',
+              isSelected ? 'text-tx-primary' : 'text-tx-secondary'
+            )}
+          >
             {title}
           </h3>
-          <span className="shrink-0 text-[11px] text-muted-foreground/60">
+          <span className="text-tx-disabled shrink-0 text-[10px]">
             {formatRelativeTime(conversation.updatedAt)}
           </span>
         </div>
 
-        <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground/70">{preview}</p>
+        <p className="text-tx-disabled mt-0.5 line-clamp-1 text-[12px]">{preview}</p>
 
-        <div className="mt-1.5 flex items-center gap-2">
-          <span className="flex items-center gap-1 text-[11px] text-muted-foreground/50">
-            <MessageIcon className="h-3 w-3" />
-            {conversation.messageCount}
-          </span>
+        <div className="text-tx-disabled mt-1.5 flex items-center gap-1.5 text-[11px]">
+          <MessageIcon className="h-3 w-3" />
+          {conversation.messageCount}
         </div>
       </div>
 
@@ -123,7 +126,7 @@ function ConversationItem({
         <Button
           variant="ghost"
           size="icon"
-          className="absolute right-2 top-2 h-6 w-6 opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+          className="absolute right-2 top-2 h-6 w-6 opacity-0 transition-opacity hover:bg-[hsl(var(--danger)/0.1)] hover:text-[hsl(var(--danger))] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent-500)/0.5)] group-hover:opacity-100"
           onClick={(e) => {
             e.stopPropagation();
             onDelete();
@@ -149,7 +152,6 @@ export function ConversationList({
   onDelete,
   isLoading = false,
   aiName,
-  aiAvatar,
   className,
 }: ConversationListProps) {
   if (isLoading) {
@@ -159,19 +161,19 @@ export function ConversationList({
   return (
     <div className={cn('flex h-full flex-col', className)}>
       {/* Header */}
-      <div className="border-b border-border p-4">
+      <div className="border-b border-[hsl(var(--border-subtle))] px-3 py-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Conversations</h2>
+          <h2 className="text-tx-disabled text-[12px] font-semibold uppercase tracking-wide">
+            Conversations
+          </h2>
           {onNewConversation && (
-            <Button
-              variant="ghost"
-              size="sm"
+            <button
               onClick={onNewConversation}
-              className="h-8 gap-1.5 text-xs hover:bg-primary/10 hover:text-primary"
+              className="text-tx-muted flex items-center gap-1 rounded-md px-2 py-1 text-[12px] font-medium transition-all hover:bg-[hsl(var(--accent-500)/0.08)] hover:text-[hsl(var(--accent-500))]"
             >
               <PlusIcon className="h-3.5 w-3.5" />
               Nouvelle
-            </Button>
+            </button>
           )}
         </div>
       </div>
@@ -180,20 +182,18 @@ export function ConversationList({
       <div className="flex-1 overflow-y-auto p-2">
         {conversations.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center p-4 text-center">
-            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20">
-              <MessageIcon className="h-5 w-5 text-primary/60" />
+            <div className="to-indigo-600/8 mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-400/15 ring-1 ring-[hsl(var(--accent-500)/0.2)]">
+              <MessageIcon className="h-5 w-5 text-indigo-400/70" />
             </div>
-            <p className="mb-1 text-sm text-muted-foreground">Aucune conversation</p>
-            <p className="mb-4 text-xs text-muted-foreground/50">Posez votre première question</p>
+            <p className="text-tx-secondary mb-1 text-[13px] font-medium">Aucune conversation</p>
+            <p className="text-tx-disabled mb-4 text-[12px]">Posez votre première question</p>
             {onNewConversation && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-primary/20 hover:bg-primary/10 hover:text-primary"
+              <button
                 onClick={onNewConversation}
+                className="rounded-md bg-[hsl(var(--accent-500)/0.1)] px-3 py-1.5 text-[12px] font-medium text-[hsl(var(--accent-500))] hover:bg-[hsl(var(--accent-500)/0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent-500)/0.5)]"
               >
                 Démarrer
-              </Button>
+              </button>
             )}
           </div>
         ) : (
@@ -206,7 +206,6 @@ export function ConversationList({
                 onClick={() => onSelect(conversation)}
                 onDelete={onDelete ? () => onDelete(conversation.id) : undefined}
                 aiName={aiName}
-                aiAvatar={aiAvatar}
               />
             ))}
           </div>
@@ -281,18 +280,18 @@ function MessageIcon({ className }: { className?: string }) {
 export function ConversationListSkeleton() {
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-border p-4">
+      <div className="border-b border-[hsl(var(--border-subtle))] px-3 py-3">
         <div className="flex items-center justify-between">
-          <Skeleton className="h-5 w-24" />
-          <Skeleton className="h-8 w-20 rounded-lg" />
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-7 w-20 rounded-md" />
         </div>
       </div>
       <div className="flex-1 space-y-1 p-2">
         {[1, 2, 3, 4, 5].map((i) => (
           <div key={i} className="flex items-start gap-3 rounded-lg p-3">
-            <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+            <Skeleton className="h-8 w-8 shrink-0 rounded-lg" />
             <div className="flex-1 space-y-2">
-              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3.5 w-3/4" />
               <Skeleton className="h-3 w-full" />
               <Skeleton className="h-3 w-1/4" />
             </div>

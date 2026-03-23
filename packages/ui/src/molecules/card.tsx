@@ -2,13 +2,14 @@ import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../lib/utils';
 
-const cardVariants = cva('rounded-lg border text-card-foreground shadow-sm', {
+const cardVariants = cva('rounded-lg border text-card-foreground', {
   variants: {
     variant: {
-      default: 'border-border bg-card',
-      glass: 'bg-card/80 border-border/60 shadow-sm',
+      default: 'border-border bg-card shadow-sm',
+      glass: 'bg-gradient-to-b from-card to-card/60 border-border/50 shadow-glass backdrop-blur-sm',
+      elevated: 'border-primary/10 bg-card shadow-lg',
       interactive:
-        'border-border bg-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-primary/20',
+        'border-border/60 bg-card shadow-sm transition-all duration-200 cursor-pointer hover:-translate-y-0.5 hover:bg-card/80 hover:border-primary/20 hover:shadow-md',
     },
   },
   defaultVariants: {
