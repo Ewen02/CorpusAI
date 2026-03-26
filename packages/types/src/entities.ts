@@ -64,6 +64,8 @@ export interface AI {
   scoreThreshold: number;
   language: string;
   accessType: AccessType;
+  hasAccessToken: boolean;
+  hasAccessCode: boolean;
   price?: number | null;
   documentCount: number;
   conversationCount: number;
