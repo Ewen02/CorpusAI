@@ -19,7 +19,15 @@ export interface UploadedFile {
   status: DocumentUploadStatus;
   progress: number;
   error?: string;
+  currentStep?: string | null;
 }
+
+export const PROCESSING_STEP_LABELS: Record<string, string> = {
+  PARSING: 'Lecture du document…',
+  CHUNKING: 'Découpage en sections…',
+  EMBEDDING: 'Compréhension du contenu…',
+  STORING: 'Enregistrement…',
+};
 
 export interface DocumentUploaderProps {
   onFilesSelected: (files: File[]) => void;
@@ -160,10 +168,10 @@ function DropZone({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={cn(
-        'relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors',
+        'relative cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition-colors',
         isDragging && 'border-primary bg-primary/5',
         !isDragging && 'border-border hover:border-primary/50 hover:bg-muted/50',
-        (disabled || remainingSlots <= 0) && 'opacity-50 cursor-not-allowed'
+        (disabled || remainingSlots <= 0) && 'cursor-not-allowed opacity-50'
       )}
     >
       <input
@@ -176,14 +184,10 @@ function DropZone({
         disabled={disabled || remainingSlots <= 0}
       />
 
-      <UploadIcon className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
+      <UploadIcon className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
 
-      <p className="text-sm font-medium text-foreground mb-1">
-        Glissez vos fichiers ici
-      </p>
-      <p className="text-xs text-muted-foreground mb-3">
-        ou cliquez pour sélectionner
-      </p>
+      <p className="mb-1 text-sm font-medium text-foreground">Glissez vos fichiers ici</p>
+      <p className="mb-3 text-xs text-muted-foreground">ou cliquez pour sélectionner</p>
 
       <div className="flex flex-wrap justify-center gap-1">
         {Object.values(FILE_TYPE_LABELS).map((label) => (
@@ -193,7 +197,7 @@ function DropZone({
         ))}
       </div>
 
-      <p className="text-xs text-muted-foreground mt-3">
+      <p className="mt-3 text-xs text-muted-foreground">
         Max {formatFileSize(maxFileSize)} par fichier • {remainingSlots} fichier(s) restant(s)
       </p>
     </div>
@@ -212,22 +216,27 @@ function validateFiles(
     .slice(0, maxCount);
 }
 
+// ============================================
+
+// File List
+// ============================================
+
 interface FileListItemProps {
   uploadedFile: UploadedFile;
   onRemove?: (id: string) => void;
 }
 
 function FileListItem({ uploadedFile, onRemove }: FileListItemProps) {
-  const { id, file, status, progress, error } = uploadedFile;
+  const { id, file, status, error } = uploadedFile;
 
   return (
-    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+    <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
       <div className="shrink-0">
         <FileIcon className="h-8 w-8 text-muted-foreground" />
       </div>
 
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{file.name}</p>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{file.name}</p>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span>{getFileExtension(file.name)}</span>
           <span>•</span>
@@ -239,29 +248,13 @@ function FileListItem({ uploadedFile, onRemove }: FileListItemProps) {
             </>
           )}
         </div>
-
-        {(status === 'uploading' || status === 'processing') && (
-          <div className="mt-2 h-1 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        )}
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
-        <Badge className={cn('text-xs', STATUS_COLORS[status])}>
-          {STATUS_LABELS[status]}
-        </Badge>
+      <div className="flex shrink-0 items-center gap-2">
+        <Badge className={cn('text-xs', STATUS_COLORS[status])}>{STATUS_LABELS[status]}</Badge>
 
         {onRemove && status !== 'uploading' && status !== 'processing' && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => onRemove(id)}
-          >
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onRemove(id)}>
             <XIcon className="h-4 w-4" />
             <span className="sr-only">Supprimer</span>
           </Button>
@@ -300,15 +293,14 @@ export function DocumentUploader({
           currentFileCount={uploadedFiles.length}
         />
 
-        {uploadedFiles.length > 0 && (
+        {uploadedFiles.filter((f) => f.status !== 'processing' && f.status !== 'success').length >
+          0 && (
           <div className="space-y-2">
-            {uploadedFiles.map((file) => (
-              <FileListItem
-                key={file.id}
-                uploadedFile={file}
-                onRemove={onFileRemove}
-              />
-            ))}
+            {uploadedFiles
+              .filter((f) => f.status !== 'processing' && f.status !== 'success')
+              .map((file) => (
+                <FileListItem key={file.id} uploadedFile={file} onRemove={onFileRemove} />
+              ))}
           </div>
         )}
       </CardContent>

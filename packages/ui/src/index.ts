@@ -131,6 +131,9 @@ export type {
 export { ShareModal } from './organisms/share-modal';
 export type { ShareModalProps, ShareModalAI } from './organisms/share-modal';
 
+export { NotificationBar } from './organisms/notification-bar';
+export type { NotificationBarProps, NotificationBarItem } from './organisms/notification-bar';
+
 // Templates
 export { DashboardLayout, DashboardLayoutSkeleton } from './templates/dashboard-layout';
 export type {

@@ -2,41 +2,164 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes cursor-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes typing-wave {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  30% {
+    transform: translateY(-5px);
+    opacity: 1;
+  }
+}
+
+.cursor-blink {
+  animation: cursor-blink 0.8s ease-in-out infinite;
+}
+
+.typing-wave {
+  animation: typing-wave 1.2s ease-in-out infinite;
+}
+
+@keyframes scanLine {
+  0%,
+  100% {
+    transform: translateY(0px);
+    opacity: 0.3;
+  }
+  50% {
+    transform: translateY(14px);
+    opacity: 1;
+  }
+}
+
+@keyframes chunkBounce1 {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes chunkBounce2 {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(2px);
+  }
+}
+
+@keyframes chunkBounce3 {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(4px);
+  }
+}
+
+@keyframes neuronPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 1;
+  }
+}
+
+@keyframes neuronLine {
+  0%,
+  100% {
+    stroke-opacity: 0.2;
+  }
+  50% {
+    stroke-opacity: 0.8;
+  }
+}
+
+@keyframes dropIn {
+  0% {
+    transform: translateY(-6px);
+    opacity: 0;
+  }
+  40% {
+    transform: translateY(1px);
+    opacity: 1;
+  }
+  60% {
+    transform: translateY(-2px);
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes dbPulse {
+  0%,
+  100% {
+    fill-opacity: 0.15;
+  }
+  50% {
+    fill-opacity: 0.35;
+  }
+}
+
 @layer base {
   :root {
-    --background:             224 20% 5%;
-    --foreground:             220 20% 97%;
+    --background: 224 20% 5%;
+    --foreground: 220 20% 97%;
 
-    --card:                   224 15% 10%;
-    --card-foreground:        220 20% 97%;
+    --card: 224 15% 10%;
+    --card-foreground: 220 20% 97%;
 
-    --popover:                224 14% 13%;
-    --popover-foreground:     220 20% 97%;
+    --popover: 224 14% 13%;
+    --popover-foreground: 220 20% 97%;
 
-    --primary:                235 85% 58%;
-    --primary-foreground:     0 0% 100%;
+    --primary: 235 85% 58%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary:              224 14% 13%;
-    --secondary-foreground:   220 20% 97%;
+    --secondary: 224 14% 13%;
+    --secondary-foreground: 220 20% 97%;
 
-    --muted:                  224 14% 13%;
-    --muted-foreground:       220 8% 45%;
+    --muted: 224 14% 13%;
+    --muted-foreground: 220 8% 45%;
 
-    --accent:                 224 15% 10%;
-    --accent-foreground:      220 20% 97%;
+    --accent: 224 15% 10%;
+    --accent-foreground: 220 20% 97%;
 
-    --destructive:            4 80% 56%;
+    --destructive: 4 80% 56%;
     --destructive-foreground: 0 0% 100%;
 
-    --border:                 224 14% 18%;
-    --input:                  224 15% 10%;
-    --ring:                   235 85% 58%;
+    --border: 224 14% 18%;
+    --input: 224 15% 10%;
+    --ring: 235 85% 58%;
 
-    --radius:                 0.5rem;
+    --radius: 0.5rem;
 
     --success: 152 70% 42%;
-    --warning:  38 95% 55%;
-    --danger:    4 80% 56%;
+    --warning: 38 95% 55%;
+    --danger: 4 80% 56%;
   }
 
   * {
@@ -45,6 +168,8 @@
 
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
   }
 }

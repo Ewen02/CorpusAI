@@ -40,7 +40,6 @@ export interface ChatInterfaceProps {
   aiAvatar?: string;
   userAvatar?: string;
   className?: string;
-  onSourceClick?: (source: ChatSource) => void;
 }
 
 // ============================================
@@ -52,138 +51,77 @@ interface MessageBubbleProps {
   aiName?: string;
   aiAvatar?: string;
   userAvatar?: string;
-  onSourceClick?: (source: ChatSource) => void;
 }
 
 const MessageBubble = React.memo(function MessageBubble({
   message,
   aiName = 'Assistant',
   aiAvatar,
-  userAvatar,
-  onSourceClick,
 }: MessageBubbleProps) {
   const isUser = message.role === 'user';
+  const formattedTime = message.createdAt.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
-  return (
-    <div className={cn('flex w-full gap-2.5', isUser ? 'flex-row-reverse' : 'flex-row')}>
-      <Avatar className="mt-1 h-6 w-6 shrink-0">
-        <AvatarImage src={isUser ? userAvatar : aiAvatar} />
-        <AvatarFallback
-          className={cn(
-            'text-[10px] font-medium',
-            isUser
-              ? 'text-tx-muted bg-[hsl(var(--surface-3))]'
-              : 'bg-gradient-to-br from-indigo-400/25 to-indigo-600/15 font-semibold text-[hsl(var(--accent-500))]'
-          )}
-        >
-          {isUser ? 'M' : aiName.charAt(0).toUpperCase()}
-        </AvatarFallback>
-      </Avatar>
-
-      <div
-        className={cn('flex max-w-[78%] flex-col gap-1.5', isUser ? 'items-end' : 'items-start')}
-      >
-        <div
-          className={cn(
-            'rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed',
-            isUser
-              ? 'text-tx-primary rounded-tr-sm bg-[hsl(var(--accent-500)/0.12)]'
-              : 'text-tx-primary rounded-tl-sm bg-[hsl(var(--surface-2))]'
-          )}
-        >
-          {message.isStreaming ? (
-            <div className="inline-flex items-start gap-1">
-              <MarkdownRenderer content={message.content} />
-              <span
-                className="text-tx-muted animate-pulse"
-                aria-label="Réponse en cours"
-                role="status"
-              >
-                ▊
-              </span>
-            </div>
-          ) : isUser ? (
-            <span className="whitespace-pre-wrap">{message.content}</span>
-          ) : (
-            <MarkdownRenderer content={message.content} />
-          )}
+  if (isUser) {
+    return (
+      <div className="group relative flex justify-end pb-5">
+        <div className="text-tx-primary max-w-[75%] rounded-2xl rounded-tr-sm bg-[hsl(var(--accent-500)/0.12)] px-3.5 py-2.5 text-sm leading-relaxed">
+          <span className="whitespace-pre-wrap">{message.content}</span>
         </div>
-
-        {/* Sources as small chips */}
-        {message.sources && message.sources.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {message.sources.map((source, index) => (
-              <button
-                key={`${source.documentId}-${index}`}
-                onClick={() => onSourceClick?.(source)}
-                className="text-tx-muted flex items-center gap-1 rounded-full border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-2))] px-2 py-0.5 text-[11px] transition-colors hover:border-[hsl(var(--accent-500)/0.3)] hover:bg-[hsl(var(--accent-500)/0.06)] hover:text-[hsl(var(--accent-500))] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--accent-500)/0.5)]"
-              >
-                <FileIcon className="h-2.5 w-2.5 shrink-0" />
-                <span className="max-w-[120px] truncate">{source.documentName}</span>
-                {source.pageNumber && (
-                  <span className="text-tx-disabled">p.{source.pageNumber}</span>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Confidence badge */}
-        {!isUser &&
-          message.confidence &&
-          !message.isStreaming &&
-          message.sources &&
-          message.sources.length > 0 && (
-            <span
-              className={cn(
-                'rounded-full border px-2 py-0.5 text-[10px] font-medium',
-                message.confidence === 'HIGH' &&
-                  'border-[hsl(var(--success)/0.25)] bg-[hsl(var(--success)/0.08)] text-[hsl(var(--success)/0.8)]',
-                message.confidence === 'MEDIUM' &&
-                  'border-[hsl(var(--warning)/0.25)] bg-[hsl(var(--warning)/0.08)] text-[hsl(var(--warning)/0.8)]',
-                message.confidence === 'LOW' &&
-                  'border-[hsl(var(--danger)/0.25)] bg-[hsl(var(--danger)/0.08)] text-[hsl(var(--danger)/0.8)]'
-              )}
-            >
-              {message.confidence === 'HIGH' && '● Confiance élevée'}
-              {message.confidence === 'MEDIUM' && '● Confiance moyenne'}
-              {message.confidence === 'LOW' && '● Confiance faible'}
-            </span>
-          )}
-
-        <span className="text-tx-disabled text-[10px]">
-          {message.createdAt.toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
+        <span className="text-tx-disabled absolute bottom-0 right-0 text-[10px] opacity-0 transition-opacity group-hover:opacity-100">
+          {formattedTime}
         </span>
       </div>
-    </div>
-  );
-});
+    );
+  }
 
-const TypingIndicator = React.memo(function TypingIndicator({
-  aiName = 'Assistant',
-}: {
-  aiName?: string;
-}) {
   return (
-    <div className="flex w-full gap-2.5">
-      <Avatar className="mt-1 h-6 w-6 shrink-0">
+    <div className="group relative flex gap-3 pb-5">
+      <Avatar className="mt-0.5 h-6 w-6 shrink-0">
+        <AvatarImage src={aiAvatar} />
         <AvatarFallback className="bg-gradient-to-br from-indigo-400/25 to-indigo-600/15 text-[10px] font-semibold text-[hsl(var(--accent-500))]">
           {aiName.charAt(0).toUpperCase()}
         </AvatarFallback>
       </Avatar>
-      <div className="flex items-center gap-1 rounded-2xl rounded-tl-sm px-3.5 py-3">
-        <span className="bg-tx-muted/40 h-1.5 w-1.5 animate-bounce rounded-full" />
-        <span
-          className="bg-tx-muted/40 h-1.5 w-1.5 animate-bounce rounded-full"
-          style={{ animationDelay: '0.15s' }}
-        />
-        <span
-          className="bg-tx-muted/40 h-1.5 w-1.5 animate-bounce rounded-full"
-          style={{ animationDelay: '0.3s' }}
-        />
+
+      <div className="min-w-0 flex-1 space-y-2">
+        <div className="text-tx-primary text-sm leading-relaxed">
+          {message.isStreaming ? (
+            <div className="inline">
+              <MarkdownRenderer content={message.content} />
+              <span
+                className="cursor-blink ml-0.5 inline-block h-[1em] w-0.5 translate-y-0.5 rounded-sm bg-[hsl(var(--accent-400))] align-middle"
+                aria-label="Réponse en cours"
+                role="status"
+              />
+            </div>
+          ) : (
+            <MarkdownRenderer content={message.content} />
+          )}
+        </div>
+      </div>
+
+      <span className="text-tx-disabled absolute bottom-0 left-9 text-[10px] opacity-0 transition-opacity group-hover:opacity-100">
+        {formattedTime}
+      </span>
+    </div>
+  );
+});
+
+const TypingIndicator = React.memo(function TypingIndicator() {
+  return (
+    <div className="flex gap-3">
+      <div className="mt-0.5 h-6 w-6 shrink-0" />
+      <div className="flex items-center gap-1 py-3 pl-1">
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className="typing-wave bg-tx-muted/50 h-1.5 w-1.5 rounded-full"
+            style={{ animationDelay: `${i * 0.15}s` }}
+          />
+        ))}
       </div>
     </div>
   );
@@ -198,7 +136,6 @@ const WelcomeMessage = React.memo(function WelcomeMessage({
 }) {
   return (
     <div className="flex h-full flex-col items-center justify-center py-16">
-      {/* Avatar gradient */}
       <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-400/20 to-indigo-600/10 ring-1 ring-[hsl(var(--accent-500)/0.25)]">
         <span className="text-2xl font-bold text-[hsl(var(--accent-500))]">
           {aiName?.charAt(0)?.toUpperCase() || 'A'}
@@ -209,7 +146,6 @@ const WelcomeMessage = React.memo(function WelcomeMessage({
       </h3>
       <p className="text-tx-muted max-w-xs text-center text-[13px] leading-relaxed">{message}</p>
 
-      {/* Footer "Propulsé par" */}
       <div className="text-tx-disabled mt-10 flex items-center gap-2 text-[11px]">
         <div className="h-px w-8 bg-gradient-to-r from-transparent to-[hsl(var(--border-default))]" />
         <span>Propulsé par CorpusAI</span>
@@ -241,24 +177,6 @@ function SendIcon({ className }: { className?: string }) {
   );
 }
 
-function FileIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-      <polyline points="14 2 14 8 20 8" />
-    </svg>
-  );
-}
-
 // ============================================
 // Main Component
 // ============================================
@@ -273,7 +191,6 @@ export function ChatInterface({
   aiAvatar,
   userAvatar,
   className,
-  onSourceClick,
 }: ChatInterfaceProps) {
   const [input, setInput] = React.useState('');
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
@@ -318,7 +235,7 @@ export function ChatInterface({
   return (
     <div className={cn('flex h-full flex-col', className)}>
       {/* Messages Area */}
-      <div className="flex-1 space-y-5 overflow-y-auto px-4 py-5">
+      <div className="flex-1 overflow-y-auto px-4 py-5">
         {messages.length === 0 && welcomeMessage && (
           <WelcomeMessage message={welcomeMessage} aiName={aiName} />
         )}
@@ -330,17 +247,16 @@ export function ChatInterface({
             aiName={aiName}
             aiAvatar={aiAvatar}
             userAvatar={userAvatar}
-            onSourceClick={onSourceClick}
           />
         ))}
 
-        {isLoading && !messages.some((m) => m.isStreaming) && <TypingIndicator aiName={aiName} />}
+        {isLoading && !messages.some((m) => m.isStreaming) && <TypingIndicator />}
 
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-[hsl(var(--border-subtle))] p-3">
+      <div className="px-3 pb-3 pt-2">
         <form onSubmit={handleSubmit}>
           <div className="flex items-end gap-2 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] px-3 py-2 transition-colors focus-within:border-[hsl(var(--accent-500)/0.4)] focus-within:ring-1 focus-within:ring-[hsl(var(--accent-500)/0.15)]">
             <textarea
@@ -357,20 +273,18 @@ export function ChatInterface({
             <button
               type="submit"
               disabled={!input.trim() || isLoading}
+              title="Envoyer (Entrée)"
               className={cn(
-                'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent-500)/0.5)]',
+                'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent-500)/0.5)]',
                 input.trim() && !isLoading
                   ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-[0_2px_8px_hsl(var(--accent-500)/0.35)] hover:opacity-90'
                   : 'text-tx-disabled bg-[hsl(var(--surface-2))]'
               )}
             >
-              <SendIcon className="h-3.5 w-3.5" />
+              <SendIcon className="h-4 w-4" />
               <span className="sr-only">Envoyer</span>
             </button>
           </div>
-          <p className="text-tx-disabled mt-1.5 text-center text-[10px]">
-            Shift + Entrée pour un saut de ligne
-          </p>
         </form>
       </div>
     </div>
@@ -392,7 +306,7 @@ export function ChatInterfaceSkeleton() {
           </div>
         ))}
       </div>
-      <div className="border-t border-[hsl(var(--border-subtle))] p-3">
+      <div className="px-3 pb-3 pt-2">
         <Skeleton className="h-11 w-full rounded-xl" />
       </div>
     </div>
