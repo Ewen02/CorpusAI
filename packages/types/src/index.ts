@@ -17,6 +17,7 @@ export {
   DocumentStatus,
   MessageRole,
   ConfidenceLevel,
+  AccessStatus,
 } from './enums';
 
 // Entity types
@@ -30,6 +31,7 @@ export type {
   Message,
   MessageSource,
   EndUser,
+  AIAccessGrant,
   SourceReference,
 } from './entities';
 
@@ -59,4 +61,9 @@ export type {
   StreamDoneEvent,
   StreamErrorEvent,
   StreamEvent,
+  // Access control
+  MagicLinkRequest,
+  AccessTokenResponse,
+  InviteMemberRequest,
+  SetAccessCodeRequest,
 } from './api';

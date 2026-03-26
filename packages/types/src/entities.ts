@@ -54,6 +54,7 @@ export interface AI {
   systemPrompt?: string | null;
   status: AIStatus;
   isPublic: boolean;
+  inviteOnly: boolean;
   category: AICategory;
   welcomeMessage?: string | null;
   primaryColor: string;
@@ -155,10 +156,24 @@ export interface Message {
 
 export interface EndUser {
   id: string;
-  email?: string | null;
+  email: string;
   name?: string | null;
-  sessionId?: string | null;
+  emailVerified: boolean;
   createdAt: string;
+}
+
+// ============================================
+// AI ACCESS GRANT
+// ============================================
+
+export interface AIAccessGrant {
+  id: string;
+  aiId: string;
+  endUserId: string;
+  status: 'ACTIVE' | 'REVOKED' | 'EXPIRED';
+  expiresAt?: string | null;
+  createdAt: string;
+  endUser?: EndUser;
 }
 
 // ============================================

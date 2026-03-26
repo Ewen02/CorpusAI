@@ -2,7 +2,7 @@
  * API request/response types shared between backend and frontend.
  */
 
-import type { AI, Conversation, Document, Message, MessageSource } from "./entities";
+import type { AI, Conversation, Document, Message, MessageSource } from './entities';
 
 // ============================================
 // AI API
@@ -85,17 +85,17 @@ export type MessageListResponse = Message[];
 // ============================================
 
 export interface StreamTokenEvent {
-  type: "token";
+  type: 'token';
   data: { token: string };
 }
 
 export interface StreamSourcesEvent {
-  type: "sources";
+  type: 'sources';
   data: { sources: MessageSource[] };
 }
 
 export interface StreamDoneEvent {
-  type: "done";
+  type: 'done';
   data: {
     userMessage: {
       id: string;
@@ -115,7 +115,7 @@ export interface StreamDoneEvent {
 }
 
 export interface StreamErrorEvent {
-  type: "error";
+  type: 'error';
   data: { message: string };
 }
 
@@ -124,3 +124,26 @@ export type StreamEvent =
   | StreamSourcesEvent
   | StreamDoneEvent
   | StreamErrorEvent;
+
+// ============================================
+// ACCESS CONTROL API
+// ============================================
+
+export interface MagicLinkRequest {
+  email: string;
+  aiSlug?: string;
+}
+
+export interface AccessTokenResponse {
+  token: string;
+  url: string;
+}
+
+export interface InviteMemberRequest {
+  email: string;
+  name?: string;
+}
+
+export interface SetAccessCodeRequest {
+  code: string;
+}

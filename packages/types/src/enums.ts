@@ -90,3 +90,15 @@ export const ConfidenceLevel = {
 } as const;
 
 export type ConfidenceLevel = (typeof ConfidenceLevel)[keyof typeof ConfidenceLevel];
+
+// ============================================
+// ACCESS CONTROL
+// ============================================
+
+export const AccessStatus = {
+  ACTIVE: 'ACTIVE',
+  REVOKED: 'REVOKED',
+  EXPIRED: 'EXPIRED',
+} as const;
+
+export type AccessStatus = (typeof AccessStatus)[keyof typeof AccessStatus];
