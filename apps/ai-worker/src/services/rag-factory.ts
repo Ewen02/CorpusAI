@@ -1,21 +1,23 @@
 import Redis from 'ioredis';
 import {
   OpenAIEmbeddingService,
+  SparseVectorGenerator,
   QdrantVectorStore,
   ParentChildChunker,
+  CHUNKER_DEFAULTS,
   RAGPipelineImpl,
-  HybridReranker,
   CohereReranker,
   CachedEmbeddingService,
   type EmbeddingService,
   type CacheService,
-  type Reranker,
   type AsyncReranker,
 } from '@corpusai/corpus';
 
 let embeddingService: EmbeddingService;
+let sparseGenerator: SparseVectorGenerator;
+let vectorStore: QdrantVectorStore;
 let chunker: ParentChildChunker;
-let reranker: Reranker | AsyncReranker;
+let reranker: AsyncReranker | undefined;
 let redisClient: Redis | null = null;
 let initialized = false;
 
@@ -25,11 +27,14 @@ function init(): void {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error('OPENAI_API_KEY required');
 
+  // Embedding service: 512d Matryoshka
   const baseEmbeddings = new OpenAIEmbeddingService({
     apiKey,
     model: 'text-embedding-3-small',
+    dimensions: 512,
   });
 
+  // Redis cache (optional)
   const redisUrl = process.env.REDIS_URL;
   if (redisUrl) {
     redisClient = new Redis(redisUrl, {
@@ -66,38 +71,38 @@ function init(): void {
     embeddingService = baseEmbeddings;
   }
 
-  chunker = new ParentChildChunker({
-    childSizeTokens: 128,
-    parentSizeTokens: 512,
-    childOverlapTokens: 32,
+  // Sparse vector generator for BM25 hybrid search
+  sparseGenerator = new SparseVectorGenerator();
+
+  // Global vector store (single collection, multi-tenant)
+  vectorStore = new QdrantVectorStore({
+    url: process.env.QDRANT_URL || 'http://localhost:6333',
+    apiKey: process.env.QDRANT_API_KEY,
   });
 
+  // Chunker: centralized defaults
+  chunker = new ParentChildChunker(CHUNKER_DEFAULTS);
+
+  // CohereReranker (optional, applied after RRF fusion)
   const cohereApiKey = process.env.COHERE_API_KEY;
   if (cohereApiKey) {
     reranker = new CohereReranker({ apiKey: cohereApiKey });
-    console.log('Cohere cross-encoder reranker enabled (rerank-multilingual-v3.0)');
+    console.log('Cohere cross-encoder reranker enabled (post-RRF)');
   } else {
-    reranker = new HybridReranker();
-    console.log(
-      'Hybrid reranker enabled (60% semantic + 40% BM25) — set COHERE_API_KEY for cross-encoder'
-    );
+    console.log('No Cohere API key — using Qdrant native RRF hybrid search only');
   }
+
   initialized = true;
 }
 
 export function createPipelineForAI(aiId: string): RAGPipelineImpl {
   init();
 
-  const qdrantUrl = process.env.QDRANT_URL || 'http://localhost:6333';
-  const vectorStore = new QdrantVectorStore({
-    url: qdrantUrl,
-    collectionName: `ai_${aiId}`,
-    vectorSize: embeddingService.dimensions,
-  });
-
   return new RAGPipelineImpl(
+    aiId,
     embeddingService,
     vectorStore,
+    sparseGenerator,
     chunker,
     {
       apiKey: process.env.LLM_API_KEY || process.env.OPENAI_API_KEY!,
@@ -117,6 +122,9 @@ export async function disposeRagFactory(): Promise<void> {
   }
   if (chunker) {
     chunker.dispose();
+  }
+  if (sparseGenerator) {
+    sparseGenerator.dispose();
   }
   initialized = false;
 }
