@@ -1,6 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RagPipelineFactory } from './rag-pipeline.factory';
-import type { LLMConfig, RAGResponse, IndexResult, ProgressCallback, CacheMetrics } from '@corpusai/corpus';
+import type {
+  LLMConfig,
+  RAGResponse,
+  IndexResult,
+  ProgressCallback,
+  CacheMetrics,
+} from '@corpusai/corpus';
 
 export interface DocumentToIndex {
   id: string;
@@ -76,9 +82,7 @@ export class RagService {
       { onProgress: options?.onProgress }
     );
 
-    this.logger.log(
-      `Indexed document ${document.id}: ${result.chunksCreated} chunks created`
-    );
+    this.logger.log(`Indexed document ${document.id}: ${result.chunksCreated} chunks created`);
 
     return result;
   }
@@ -148,29 +152,25 @@ export class RagService {
   async deleteDocumentVectors(aiId: string, documentId: string): Promise<void> {
     this.logger.log(`Deleting vectors for document ${documentId} from AI ${aiId}`);
 
-    const vectorStore = this.factory.createVectorStoreForAI(aiId);
-
-    await vectorStore.delete({
-      must: [{ key: 'documentId', match: { value: documentId } }],
-    });
+    const vectorStore = this.factory.getVectorStore();
+    await vectorStore.deleteByDocument(aiId, documentId);
 
     this.logger.log(`Vectors deleted for document ${documentId}`);
   }
 
   /**
-   * Supprime toute la collection Qdrant d'une AI.
+   * Supprime tous les vecteurs d'une AI dans la collection globale.
    */
-  async deleteAICollection(aiId: string): Promise<void> {
-    this.logger.log(`Deleting entire collection for AI ${aiId}`);
+  async deleteAIVectors(aiId: string): Promise<void> {
+    this.logger.log(`Deleting all vectors for AI ${aiId}`);
 
-    const vectorStore = this.factory.createVectorStoreForAI(aiId);
+    const vectorStore = this.factory.getVectorStore();
 
     try {
-      await vectorStore.deleteCollection();
-      this.logger.log(`Collection deleted for AI ${aiId}`);
+      await vectorStore.deleteByAI(aiId);
+      this.logger.log(`Vectors deleted for AI ${aiId}`);
     } catch (error) {
-      // Collection might not exist, that's okay
-      this.logger.warn(`Could not delete collection for AI ${aiId}: ${error}`);
+      this.logger.warn(`Could not delete vectors for AI ${aiId}: ${error}`);
     }
   }
 
@@ -202,15 +202,16 @@ export class RagService {
     const threshold = options?.scoreThreshold ?? 0.6;
     const topK = options?.topK ?? 5;
 
-    // Embed la question
+    // Embed the question + generate sparse vector
     const embeddingService = this.factory.getEmbeddingService();
     const questionEmbedding = await embeddingService.embed(question);
+    const sparseVector = this.factory.getSparseGenerator().generate(question);
 
-    // Recherche vectorielle
-    const vectorStore = this.factory.createVectorStoreForAI(aiId);
-    const results = await vectorStore.search(questionEmbedding, {
+    // Hybrid search via global collection
+    const vectorStore = this.factory.getVectorStore();
+    const results = await vectorStore.hybridSearch(questionEmbedding, sparseVector, aiId, {
       limit: topK,
-      scoreThreshold: 0.0, // Pas de filtre pour voir tous les résultats
+      scoreThreshold: 0.0, // No filter to see all results in debug
       withPayload: true,
     });
 
@@ -251,7 +252,9 @@ export class RagService {
     // Log détaillé pour debug
     this.logger.log(`Debug query details for "${question.slice(0, 30)}...":`);
     formattedResults.forEach((r) => {
-      this.logger.log(`  #${r.rank} score=${r.score.toFixed(4)} source="${r.source}" excerpt="${r.excerpt.slice(0, 100)}..."`);
+      this.logger.log(
+        `  #${r.rank} score=${r.score.toFixed(4)} source="${r.source}" excerpt="${r.excerpt.slice(0, 100)}..."`
+      );
     });
 
     return {

@@ -3,35 +3,38 @@ import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import {
   OpenAIEmbeddingService,
+  SparseVectorGenerator,
   QdrantVectorStore,
   ParentChildChunker,
+  CHUNKER_DEFAULTS,
   RAGPipelineImpl,
-  HybridReranker,
   CohereReranker,
   CachedEmbeddingService,
   type LLMConfig,
   type EmbeddingService,
   type CacheService,
   type CacheMetrics,
-  type Reranker,
   type AsyncReranker,
 } from '@corpusai/corpus';
 
 /**
  * Factory pour créer des pipelines RAG par AI.
- * Chaque AI a sa propre collection Qdrant (isolation des données).
  *
- * Fonctionnalités:
- * - ParentChildChunker: child chunks pour retrieval précis, parent pour contexte LLM
- * - HybridReranker: reranking BM25 + sémantique
- * - CachedEmbeddingService: cache Redis des embeddings (optionnel)
+ * Architecture:
+ * - Collection globale unique "corpus_vectors" avec multi-tenancy via filtre ai_id
+ * - Embeddings 512d Matryoshka (text-embedding-3-small)
+ * - Hybrid search: dense + sparse (BM25 IDF natif Qdrant) avec RRF fusion
+ * - CohereReranker optionnel comme post-processing
+ * - Scalar quantization int8 + HNSW per-tenant
  */
 @Injectable()
 export class RagPipelineFactory implements OnModuleDestroy {
   private readonly logger = new Logger(RagPipelineFactory.name);
   private embeddingService: EmbeddingService;
+  private sparseGenerator: SparseVectorGenerator;
+  private vectorStore: QdrantVectorStore;
   private chunker: ParentChildChunker;
-  private reranker: Reranker | AsyncReranker;
+  private reranker?: AsyncReranker;
   private redis?: Redis;
   private readonly llmApiKey: string;
   private readonly llmBaseURL?: string;
@@ -48,13 +51,14 @@ export class RagPipelineFactory implements OnModuleDestroy {
     this.llmBaseURL = this.configService.get<string>('LLM_BASE_URL');
     this.llmModel = this.configService.get<string>('LLM_MODEL') || 'gpt-4o-mini';
 
-    // Service d'embedding de base
+    // Embedding service: 512d Matryoshka (3x less memory, same recall)
     const baseEmbeddingService = new OpenAIEmbeddingService({
       apiKey,
       model: 'text-embedding-3-small',
+      dimensions: 512,
     });
 
-    // Cache Redis si configuré
+    // Redis cache (optional)
     const redisUrl = this.configService.get<string>('REDIS_URL');
     if (redisUrl) {
       this.logger.log('Redis configured, enabling embedding cache');
@@ -78,29 +82,34 @@ export class RagPipelineFactory implements OnModuleDestroy {
       this.embeddingService = baseEmbeddingService;
     }
 
-    // ParentChildChunker: child chunks (150t) pour la précision de retrieval,
-    // parent chunks (512t) pour la richesse du contexte LLM
-    this.chunker = new ParentChildChunker({
-      childSizeTokens: 150,
-      parentSizeTokens: 512,
-      childOverlapTokens: 50,
+    // Sparse vector generator for BM25 hybrid search (Qdrant applies IDF server-side)
+    this.sparseGenerator = new SparseVectorGenerator();
+
+    // Global vector store (single collection, multi-tenant)
+    const qdrantUrl = this.configService.get<string>('QDRANT_URL');
+    if (!qdrantUrl && process.env.NODE_ENV === 'production') {
+      throw new Error('QDRANT_URL is required in production');
+    }
+    this.vectorStore = new QdrantVectorStore({
+      url: qdrantUrl || 'http://localhost:6333',
+      apiKey: this.configService.get<string>('QDRANT_API_KEY'),
     });
 
-    // Reranker : Cohere cross-encoder si COHERE_API_KEY disponible, hybride sinon
+    // Chunker: centralized defaults (child 128t, parent 512t, overlap 32t)
+    this.chunker = new ParentChildChunker(CHUNKER_DEFAULTS);
+
+    // CohereReranker (optional, applied after RRF fusion)
     const cohereApiKey = this.configService.get<string>('COHERE_API_KEY');
     if (cohereApiKey) {
       this.reranker = new CohereReranker({ apiKey: cohereApiKey });
-      this.logger.log('Cohere cross-encoder reranker enabled (rerank-multilingual-v3.0)');
+      this.logger.log('Cohere cross-encoder reranker enabled (post-RRF)');
     } else {
-      this.reranker = new HybridReranker();
-      this.logger.log(
-        'Hybrid reranker enabled (60% semantic + 40% BM25) — set COHERE_API_KEY for cross-encoder'
-      );
+      this.logger.log('No Cohere API key — using Qdrant native RRF hybrid search only');
     }
   }
 
   /**
-   * Crée une interface CacheService compatible avec Redis.
+   * Creates a Redis-backed CacheService.
    */
   private createRedisCache(): CacheService {
     const redis = this.redis!;
@@ -142,25 +151,25 @@ export class RagPipelineFactory implements OnModuleDestroy {
     };
   }
 
-  /**
-   * Libère les ressources.
-   */
   onModuleDestroy(): void {
     this.chunker.dispose();
+    this.sparseGenerator.dispose();
     this.redis?.disconnect();
     this.logger.log('Resources released');
   }
 
   /**
-   * Crée un pipeline RAG complet pour une AI spécifique.
+   * Creates a RAG pipeline for a specific AI.
+   * Uses the shared global collection with ai_id tenant filtering.
    */
   createForAI(aiId: string, llmConfig?: Partial<LLMConfig>): RAGPipelineImpl {
     this.validateAiId(aiId);
-    const vectorStore = this.createVectorStoreForAI(aiId);
 
     return new RAGPipelineImpl(
+      aiId,
       this.embeddingService,
-      vectorStore,
+      this.vectorStore,
+      this.sparseGenerator,
       this.chunker,
       {
         apiKey: this.llmApiKey,
@@ -174,13 +183,8 @@ export class RagPipelineFactory implements OnModuleDestroy {
     );
   }
 
-  /** Regex pour valider les aiId (alphanumeric, underscore, hyphen) */
   private static readonly AI_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 
-  /**
-   * Valide le format d'un aiId pour éviter les injections dans les noms de collection.
-   * @throws Error si le format est invalide
-   */
   private validateAiId(aiId: string): void {
     if (!aiId || !RagPipelineFactory.AI_ID_PATTERN.test(aiId)) {
       throw new Error(
@@ -190,41 +194,27 @@ export class RagPipelineFactory implements OnModuleDestroy {
   }
 
   /**
-   * Crée un vector store pour une AI (pour opérations de cleanup).
-   * @throws Error si aiId contient des caractères non autorisés
+   * Returns the shared vector store (for delete and debug operations).
    */
-  createVectorStoreForAI(aiId: string): QdrantVectorStore {
-    this.validateAiId(aiId);
-    const qdrantUrl = this.configService.get<string>('QDRANT_URL');
-    if (!qdrantUrl && process.env.NODE_ENV === 'production') {
-      throw new Error('QDRANT_URL is required in production');
-    }
-
-    return new QdrantVectorStore({
-      url: qdrantUrl || 'http://localhost:6333',
-      collectionName: `ai_${aiId}`,
-      vectorSize: this.embeddingService.dimensions,
-    });
+  getVectorStore(): QdrantVectorStore {
+    return this.vectorStore;
   }
 
   /**
-   * Retourne les dimensions des embeddings.
+   * Returns the shared sparse vector generator.
    */
+  getSparseGenerator(): SparseVectorGenerator {
+    return this.sparseGenerator;
+  }
+
   get embeddingDimensions(): number {
     return this.embeddingService.dimensions;
   }
 
-  /**
-   * Indique si le cache Redis est actif.
-   */
   get isCacheEnabled(): boolean {
     return !!this.redis;
   }
 
-  /**
-   * Retourne les métriques du cache d'embeddings.
-   * @returns CacheMetrics si le cache est actif, null sinon
-   */
   getCacheMetrics(): CacheMetrics | null {
     if (this.embeddingService instanceof CachedEmbeddingService) {
       return this.embeddingService.getMetrics();
@@ -232,9 +222,6 @@ export class RagPipelineFactory implements OnModuleDestroy {
     return null;
   }
 
-  /**
-   * Retourne le service d'embedding (pour debug query).
-   */
   getEmbeddingService(): EmbeddingService {
     return this.embeddingService;
   }

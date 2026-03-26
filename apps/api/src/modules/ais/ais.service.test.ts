@@ -39,7 +39,7 @@ const mockUser = prisma.user as unknown as { findUnique: ReturnType<typeof vi.fn
 
 describe('AIsService', () => {
   let service: AIsService;
-  const mockRagService = { deleteAICollection: vi.fn() };
+  const mockRagService = { deleteAIVectors: vi.fn() };
   const mockTextGenerationService = { generateAISuggestions: vi.fn() };
 
   beforeEach(() => {
@@ -172,12 +172,12 @@ describe('AIsService', () => {
 
       const result = await service.delete('user-1', 'ai-1');
       expect(result).toEqual({ success: true });
-      expect(mockRagService.deleteAICollection).toHaveBeenCalledWith('ai-1');
+      expect(mockRagService.deleteAIVectors).toHaveBeenCalledWith('ai-1');
     });
 
     it('should still delete even if Qdrant cleanup fails', async () => {
       mockAI.findFirst.mockResolvedValue({ id: 'ai-1' });
-      mockRagService.deleteAICollection.mockRejectedValue(new Error('qdrant down'));
+      mockRagService.deleteAIVectors.mockRejectedValue(new Error('qdrant down'));
       mockAI.delete.mockResolvedValue({});
 
       const result = await service.delete('user-1', 'ai-1');

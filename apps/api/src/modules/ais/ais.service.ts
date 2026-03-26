@@ -195,11 +195,11 @@ export class AIsService {
       throw new NotFoundException('AI not found');
     }
 
-    // Clean up Qdrant collection before deleting DB records
+    // Clean up Qdrant vectors before deleting DB records
     try {
-      await this.ragService.deleteAICollection(aiId);
+      await this.ragService.deleteAIVectors(aiId);
     } catch (error) {
-      this.logger.warn(`Failed to delete Qdrant collection for AI ${aiId}: ${error}`);
+      this.logger.warn(`Failed to delete Qdrant vectors for AI ${aiId}: ${error}`);
     }
 
     await prisma.aI.delete({
