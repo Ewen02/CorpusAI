@@ -27,6 +27,10 @@ export {
   Key as KeyIcon,
   Smartphone as DeviceIcon,
 
+  // Quality & Engagement
+  Sparkles as SparklesIcon,
+  AlertTriangle as AlertIcon,
+
   // Analytics
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,

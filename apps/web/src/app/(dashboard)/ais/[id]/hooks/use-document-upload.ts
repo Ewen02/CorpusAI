@@ -1,14 +1,24 @@
 'use client';
 
 import * as React from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { type QueryClient, useQueryClient } from '@tanstack/react-query';
 import type { UploadedFile } from '@corpusai/ui';
 import { apiClient, API_URL } from '@/lib/api-client';
 import { documentKeys, useDeleteDocument, useRetryDocument } from '@/lib/queries';
 
 interface UseDocumentUploadOptions {
   aiId: string;
+  documents?: { id: string; filename: string; size: number; status: string }[];
 }
+
+interface StepTimerState {
+  lastStepAt: number;
+  pendingSteps: string[];
+  timer: ReturnType<typeof setTimeout> | null;
+  onDoneCallback: (() => void) | null;
+}
+
+const MIN_STEP_DISPLAY_MS = 5000;
 
 function subscribeToProgress(
   aiId: string,
@@ -59,7 +69,6 @@ function subscribeToProgress(
             closed = true;
             onError();
           } else {
-            // Still processing — reconnect after short delay
             setTimeout(connect, 3000);
           }
         })
@@ -76,29 +85,204 @@ function subscribeToProgress(
   };
 }
 
+// Handles a progress SSE event: updates progress and queues step transitions.
+function handleProgressEvent(
+  fileId: string,
+  event: { progress: number; step: string | null },
+  stepTimersRef: React.RefObject<Map<string, StepTimerState>>,
+  setUploadedFiles: React.Dispatch<React.SetStateAction<UploadedFile[]>>,
+  scheduleNextStep: (id: string) => void
+) {
+  let stepState = stepTimersRef.current.get(fileId);
+  if (!stepState) {
+    stepState = { lastStepAt: 0, pendingSteps: [], timer: null, onDoneCallback: null };
+    stepTimersRef.current.set(fileId, stepState);
+  }
+  setUploadedFiles((prev) =>
+    prev.map((f) => (f.id === fileId ? { ...f, progress: Math.max(10, event.progress) } : f))
+  );
+  if (event.step !== null) {
+    const now = Date.now();
+    const elapsed = now - stepState.lastStepAt;
+    if (stepState.lastStepAt === 0 || elapsed >= MIN_STEP_DISPLAY_MS) {
+      if (stepState.timer) clearTimeout(stepState.timer);
+      stepState.pendingSteps = [];
+      stepState.lastStepAt = now;
+      setUploadedFiles((prev) =>
+        prev.map((f) => (f.id === fileId ? { ...f, currentStep: event.step } : f))
+      );
+    } else {
+      if (!stepState.pendingSteps.includes(event.step)) stepState.pendingSteps.push(event.step);
+      if (!stepState.timer) scheduleNextStep(fileId);
+    }
+  }
+}
+
+// Returns the onDone callback for a subscription: waits for step queue to drain, then finalizes.
+function buildFinalizeHandler(
+  fileId: string,
+  aiId: string,
+  stepTimersRef: React.RefObject<Map<string, StepTimerState>>,
+  setUploadedFiles: React.Dispatch<React.SetStateAction<UploadedFile[]>>,
+  queryClient: QueryClient
+): () => void {
+  const finalize = () => {
+    stepTimersRef.current.delete(fileId);
+    setUploadedFiles((prev) =>
+      prev.map((f) => (f.id === fileId ? { ...f, status: 'success' as const, progress: 100 } : f))
+    );
+    queryClient.invalidateQueries({ queryKey: documentKeys.listByAI(aiId) });
+  };
+  return () => {
+    const stepState = stepTimersRef.current.get(fileId);
+    if (!stepState || (stepState.pendingSteps.length === 0 && !stepState.timer)) {
+      if (stepState) {
+        const remaining = Math.max(0, MIN_STEP_DISPLAY_MS - (Date.now() - stepState.lastStepAt));
+        if (remaining > 0) {
+          stepState.timer = setTimeout(finalize, remaining);
+          return;
+        }
+      }
+      finalize();
+      return;
+    }
+    stepState.onDoneCallback = finalize;
+  };
+}
+
 /**
- * Custom hook to manage document upload state and operations.
- * Handles file upload, deletion, and retry logic with real-time SSE progress.
+ * Manages document upload state with real-time SSE progress and reconnection on page return.
  */
-export function useDocumentUpload({ aiId }: UseDocumentUploadOptions) {
+export function useDocumentUpload({ aiId, documents }: UseDocumentUploadOptions) {
   const [uploadedFiles, setUploadedFiles] = React.useState<UploadedFile[]>([]);
   const queryClient = useQueryClient();
   const deleteDocument = useDeleteDocument();
   const retryDocument = useRetryDocument();
 
-  // Track active SSE subscriptions for cleanup on unmount
-  const unsubscribersRef = React.useRef<Array<() => void>>([]);
+  const unsubscribersRef = React.useRef<Set<() => void>>(new Set());
+  const stepTimersRef = React.useRef<Map<string, StepTimerState>>(new Map());
+  const subscribedDocIdsRef = React.useRef<Set<string>>(new Set());
 
   React.useEffect(() => {
     return () => {
-      for (const unsub of unsubscribersRef.current) {
-        unsub();
+      for (const unsub of unsubscribersRef.current) unsub();
+      unsubscribersRef.current.clear();
+      for (const state of stepTimersRef.current.values()) {
+        if (state.timer) clearTimeout(state.timer);
       }
-      unsubscribersRef.current = [];
+      stepTimersRef.current.clear();
     };
   }, []);
 
-  // Handle file upload
+  const scheduleNextStep = React.useCallback((fileId: string) => {
+    const state = stepTimersRef.current.get(fileId);
+    if (!state) return;
+
+    const remaining = Math.max(0, MIN_STEP_DISPLAY_MS - (Date.now() - state.lastStepAt));
+
+    state.timer = setTimeout(() => {
+      const s = stepTimersRef.current.get(fileId);
+      if (!s) return;
+      s.timer = null;
+
+      const nextStep = s.pendingSteps.shift();
+      if (nextStep) {
+        s.lastStepAt = Date.now();
+        setUploadedFiles((prev) =>
+          prev.map((f) => (f.id === fileId ? { ...f, currentStep: nextStep } : f))
+        );
+        if (s.pendingSteps.length > 0) {
+          scheduleNextStep(fileId);
+        } else if (s.onDoneCallback) {
+          const cb = s.onDoneCallback;
+          s.onDoneCallback = null;
+          s.timer = setTimeout(cb, MIN_STEP_DISPLAY_MS);
+        }
+      } else if (s.onDoneCallback) {
+        const cb = s.onDoneCallback;
+        s.onDoneCallback = null;
+        cb();
+      }
+    }, remaining);
+  }, []);
+
+  // Reconnects to documents already in PROCESSING/PENDING when returning to the page.
+  // Pre-fetches current step from REST before injecting the synthetic file to avoid a race
+  // condition where the first SSE event arrives before the React state update has flushed.
+  React.useEffect(() => {
+    if (!documents) return;
+    for (const doc of documents) {
+      if (doc.status !== 'PROCESSING' && doc.status !== 'PENDING') continue;
+      if (subscribedDocIdsRef.current.has(doc.id)) continue;
+
+      subscribedDocIdsRef.current.add(doc.id);
+      const fileId = `doc-${doc.id}`;
+
+      apiClient
+        .get<{ status: string; progress: number; step: string | null }>(
+          `/ais/${aiId}/documents/${doc.id}/progress`
+        )
+        .then((initial) => {
+          if (initial.status === 'INDEXED' || initial.status === 'FAILED') {
+            subscribedDocIdsRef.current.delete(doc.id);
+            queryClient.invalidateQueries({ queryKey: documentKeys.listByAI(aiId) });
+            return;
+          }
+
+          stepTimersRef.current.set(fileId, {
+            lastStepAt: initial.step ? Date.now() : 0,
+            pendingSteps: [],
+            timer: null,
+            onDoneCallback: null,
+          });
+
+          setUploadedFiles((prev) => {
+            if (prev.some((f) => f.id === fileId)) return prev;
+            return [
+              ...prev,
+              {
+                id: fileId,
+                file: new File([], doc.filename, { type: 'application/octet-stream' }),
+                status: 'processing' as const,
+                progress: Math.max(10, initial.progress),
+                currentStep: initial.step ?? undefined,
+              },
+            ];
+          });
+
+          const unsubscribe = subscribeToProgress(
+            aiId,
+            doc.id,
+            (event) =>
+              handleProgressEvent(fileId, event, stepTimersRef, setUploadedFiles, scheduleNextStep),
+            () => {
+              unsubscribersRef.current.delete(unsubscribe);
+              subscribedDocIdsRef.current.delete(doc.id);
+              buildFinalizeHandler(fileId, aiId, stepTimersRef, setUploadedFiles, queryClient)();
+            },
+            () => {
+              unsubscribersRef.current.delete(unsubscribe);
+              subscribedDocIdsRef.current.delete(doc.id);
+              const stepState = stepTimersRef.current.get(fileId);
+              if (stepState?.timer) clearTimeout(stepState.timer);
+              stepTimersRef.current.delete(fileId);
+              setUploadedFiles((prev) =>
+                prev.map((f) =>
+                  f.id === fileId
+                    ? { ...f, status: 'error' as const, error: "Echec de l'indexation" }
+                    : f
+                )
+              );
+            }
+          );
+          unsubscribersRef.current.add(unsubscribe);
+        })
+        .catch(() => {
+          subscribedDocIdsRef.current.delete(doc.id);
+        });
+    }
+  }, [aiId, documents, scheduleNextStep, queryClient]);
+
   const uploadFiles = React.useCallback(
     async (files: File[]) => {
       const newFiles: UploadedFile[] = files.map((file) => ({
@@ -140,46 +324,42 @@ export function useDocumentUpload({ aiId }: UseDocumentUploadOptions) {
             doc = await apiClient.upload<{ id: string }>(`/ais/${aiId}/documents/upload`, formData);
           }
 
-          // Subscribe to real-time progress via SSE
           setUploadedFiles((prev) =>
             prev.map((f) =>
               f.id === uploadedFile.id ? { ...f, status: 'processing' as const, progress: 10 } : f
             )
           );
 
+          queryClient.invalidateQueries({ queryKey: documentKeys.listByAI(aiId) });
+          subscribedDocIdsRef.current.add(doc.id);
+
+          const fileId = uploadedFile.id;
           const unsubscribe = subscribeToProgress(
             aiId,
             doc.id,
-            (event) => {
-              setUploadedFiles((prev) =>
-                prev.map((f) =>
-                  f.id === uploadedFile.id ? { ...f, progress: Math.max(10, event.progress) } : f
-                )
-              );
+            (event) =>
+              handleProgressEvent(fileId, event, stepTimersRef, setUploadedFiles, scheduleNextStep),
+            () => {
+              unsubscribersRef.current.delete(unsubscribe);
+              subscribedDocIdsRef.current.delete(doc.id);
+              buildFinalizeHandler(fileId, aiId, stepTimersRef, setUploadedFiles, queryClient)();
             },
             () => {
-              unsubscribersRef.current = unsubscribersRef.current.filter((u) => u !== unsubscribe);
+              unsubscribersRef.current.delete(unsubscribe);
+              subscribedDocIdsRef.current.delete(doc.id);
+              const stepState = stepTimersRef.current.get(fileId);
+              if (stepState?.timer) clearTimeout(stepState.timer);
+              stepTimersRef.current.delete(fileId);
               setUploadedFiles((prev) =>
                 prev.map((f) =>
-                  f.id === uploadedFile.id ? { ...f, status: 'success' as const, progress: 100 } : f
-                )
-              );
-              queryClient.invalidateQueries({
-                queryKey: documentKeys.listByAI(aiId),
-              });
-            },
-            () => {
-              unsubscribersRef.current = unsubscribersRef.current.filter((u) => u !== unsubscribe);
-              setUploadedFiles((prev) =>
-                prev.map((f) =>
-                  f.id === uploadedFile.id
+                  f.id === fileId
                     ? { ...f, status: 'error' as const, error: "Echec de l'indexation" }
                     : f
                 )
               );
             }
           );
-          unsubscribersRef.current.push(unsubscribe);
+          unsubscribersRef.current.add(unsubscribe);
         } catch (error) {
           console.error('Upload error:', error);
           setUploadedFiles((prev) =>
@@ -192,15 +372,13 @@ export function useDocumentUpload({ aiId }: UseDocumentUploadOptions) {
         }
       }
     },
-    [aiId, queryClient]
+    [aiId, queryClient, scheduleNextStep]
   );
 
-  // Remove file from list
   const removeFile = React.useCallback((fileId: string) => {
     setUploadedFiles((prev) => prev.filter((f) => f.id !== fileId));
   }, []);
 
-  // Delete an indexed document
   const deleteIndexedDocument = React.useCallback(
     (documentId: string) => {
       deleteDocument.mutate({ aiId, id: documentId });
@@ -208,13 +386,27 @@ export function useDocumentUpload({ aiId }: UseDocumentUploadOptions) {
     [aiId, deleteDocument]
   );
 
-  // Retry failed document indexing
   const retryFailedDocument = React.useCallback(
     (documentId: string) => {
       retryDocument.mutate({ aiId, id: documentId });
     },
     [aiId, retryDocument]
   );
+
+  const activeFiles = uploadedFiles.filter(
+    (f) => f.status === 'uploading' || f.status === 'processing'
+  );
+  const indexingProgress =
+    uploadedFiles.length === 0
+      ? 0
+      : activeFiles.length > 0
+        ? activeFiles.reduce((sum, f) => sum + (f.progress ?? 0), 0) / activeFiles.length
+        : uploadedFiles.every((f) => f.status === 'success' || f.status === 'error')
+          ? 100
+          : 0;
+  const allIndexed =
+    uploadedFiles.length > 0 &&
+    uploadedFiles.every((f) => f.status === 'success' || f.status === 'error');
 
   return {
     uploadedFiles,
@@ -224,5 +416,7 @@ export function useDocumentUpload({ aiId }: UseDocumentUploadOptions) {
     retryFailedDocument,
     isDeleting: deleteDocument.isPending,
     isRetrying: retryDocument.isPending,
+    indexingProgress,
+    allIndexed,
   };
 }

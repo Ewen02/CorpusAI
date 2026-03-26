@@ -25,7 +25,7 @@ interface EmbedConfig {
 // Hooks
 // ============================================
 
-function useEmbedConfig(): EmbedConfig {
+function useEmbedConfig(): EmbedConfig & { accessToken?: string; accessCode?: string } {
   const searchParams = useSearchParams();
 
   return React.useMemo(() => {
@@ -41,6 +41,8 @@ function useEmbedConfig(): EmbedConfig {
       hideHeader: hideHeader === 'true' || hideHeader === '1',
       hideFooter: hideFooter === 'true' || hideFooter === '1',
       primaryColor: primaryColor || undefined,
+      accessToken: searchParams.get('token') ?? undefined,
+      accessCode: searchParams.get('code') ?? undefined,
     };
   }, [searchParams]);
 }
@@ -69,16 +71,6 @@ export default function EmbedPage() {
       try {
         const data = await apiClient.get<AIPublicInfo>(`/chat/${slug}/info`);
 
-        if (!data.isPublic) {
-          setError("Cet assistant n'est pas accessible publiquement.");
-          return;
-        }
-
-        if (data.status !== 'ACTIVE') {
-          setError("Cet assistant n'est pas disponible actuellement.");
-          return;
-        }
-
         setAI(data);
       } catch (err) {
         console.error('Failed to fetch AI:', err);
@@ -99,8 +91,15 @@ export default function EmbedPage() {
       if (!ai) return;
 
       try {
-        const _sessionId = getOrCreateSessionId();
-        const response = await apiClient.post<StartConversationResponse>(`/chat/${slug}/start`, {});
+        const headers: Record<string, string> = { 'x-conversation-source': 'WIDGET' };
+        if (config.accessToken) headers['x-access-token'] = config.accessToken;
+        if (config.accessCode) headers['x-access-code'] = config.accessCode;
+
+        const response = await apiClient.post<StartConversationResponse>(
+          `/chat/${slug}/start`,
+          undefined,
+          { headers }
+        );
         setConversationId(response.id);
       } catch (err) {
         console.error('Failed to start conversation:', err);
@@ -109,7 +108,7 @@ export default function EmbedPage() {
     }
 
     startConversation();
-  }, [ai, slug]);
+  }, [ai, slug, config.accessToken, config.accessCode]);
 
   const handleSendMessage = React.useCallback(
     async (content: string) => {

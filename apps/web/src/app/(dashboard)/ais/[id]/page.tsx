@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import {
   Button,
   Skeleton,
@@ -13,31 +13,48 @@ import {
   CardContent,
   TooltipProvider,
   ShareModal,
+  NotificationBar,
+  type NotificationBarItem,
   type Conversation,
 } from '@corpusai/ui';
+import dynamic from 'next/dynamic';
 import { useAI, useConversations, useDocuments } from '@/lib/queries';
 import { useNavigation } from '@/lib/hooks';
 import { useChatState, useDocumentUpload } from './hooks';
-import {
-  AIHeader,
-  ChatTab,
-  DocumentsTab,
-  ConversationsTab,
-  AnalyticsTab,
-  DebugTab,
-  IntegrationTab,
-} from './components';
+import { AIHeader, ChatTab, ConversationsTab } from './components';
+
+const DocumentsTab = dynamic(() =>
+  import('./components/documents-tab').then((m) => ({ default: m.DocumentsTab }))
+);
+const AnalyticsTab = dynamic(() =>
+  import('./components/analytics-tab').then((m) => ({ default: m.AnalyticsTab }))
+);
+const DebugTab = dynamic(() =>
+  import('./components/debug-tab').then((m) => ({ default: m.DebugTab }))
+);
+const IntegrationTab = dynamic(() =>
+  import('./components/integration-tab').then((m) => ({ default: m.IntegrationTab }))
+);
 import type { AI } from '@corpusai/types';
 import { PageWrapper } from '@/components/page-wrapper';
 
 export default function AIDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const aiId = params.id as string;
   const { goToAIList, goToAISettings } = useNavigation();
 
+  const [showChecklist, setShowChecklist] = React.useState(
+    searchParams.get('fromOnboarding') === 'true'
+  );
+  const [activeTab, setActiveTab] = React.useState('chat');
+
   // Data fetching
   const { data: ai, isLoading: isLoadingAI } = useAI(aiId);
-  const { data: conversationsData, isLoading: isLoadingConversations } = useConversations(aiId);
+  const { data: conversationsData, isLoading: isLoadingConversations } = useConversations(
+    aiId,
+    'DASHBOARD'
+  );
   const { data: documents, isLoading: isLoadingDocuments } = useDocuments(aiId);
 
   const aiData = ai as AI | undefined;
@@ -54,19 +71,21 @@ export default function AIDetailPage() {
 
   // Document upload management
   const { uploadedFiles, uploadFiles, removeFile, deleteIndexedDocument, retryFailedDocument } =
-    useDocumentUpload({ aiId });
+    useDocumentUpload({ aiId, documents });
 
   // Transform conversations data to UI format
   const conversations: Conversation[] = React.useMemo(() => {
     if (!conversationsData) return [];
-    return conversationsData.map((conv) => ({
-      id: conv.id,
-      title: conv.title || 'Nouvelle conversation',
-      lastMessage: conv.lastMessage || '',
-      messageCount: conv.messageCount,
-      createdAt: new Date(conv.createdAt),
-      updatedAt: new Date(conv.updatedAt),
-    }));
+    return conversationsData
+      .filter((conv) => conv.messageCount > 0)
+      .map((conv) => ({
+        id: conv.id,
+        title: conv.title || 'Nouvelle conversation',
+        lastMessage: conv.lastMessage || '',
+        messageCount: conv.messageCount,
+        createdAt: new Date(conv.createdAt),
+        updatedAt: new Date(conv.updatedAt),
+      }));
   }, [conversationsData]);
 
   // Generate dynamic welcome message from indexed documents
@@ -101,6 +120,32 @@ export default function AIDetailPage() {
   const handleSettings = React.useCallback(() => {
     goToAISettings(aiId);
   }, [aiId, goToAISettings]);
+
+  const checklistItems = React.useMemo((): NotificationBarItem[] => {
+    const documentCount = (aiData as AI | undefined)?.documentCount ?? 0;
+    return [
+      { icon: 'check', label: 'IA créée' },
+      documentCount > 0
+        ? { icon: 'check', label: 'Documents indexés' }
+        : {
+            icon: 'arrow',
+            label: 'Ajoutez des documents',
+            onClick: () => {
+              setActiveTab('documents');
+              setShowChecklist(false);
+            },
+          },
+      { icon: 'arrow', label: 'Comportement', onClick: () => goToAISettings(aiId) },
+      {
+        icon: 'arrow',
+        label: 'Intégration',
+        onClick: () => {
+          setActiveTab('integration');
+          setShowChecklist(false);
+        },
+      },
+    ];
+  }, [(aiData as AI | undefined)?.documentCount, aiId, goToAISettings]);
 
   const handleShare = React.useCallback(() => {
     setShareOpen(true);
@@ -140,6 +185,15 @@ export default function AIDetailPage() {
       <PageWrapper className="container py-8">
         <AIHeader ai={aiData} onSettings={handleSettings} onShare={handleShare} />
 
+        {showChecklist && (
+          <NotificationBar
+            title="Votre assistant est prêt !"
+            items={checklistItems}
+            onClose={() => setShowChecklist(false)}
+            className="mb-2 mt-4"
+          />
+        )}
+
         <ShareModal
           open={shareOpen}
           onOpenChange={setShareOpen}
@@ -150,7 +204,7 @@ export default function AIDetailPage() {
           }}
         />
 
-        <Tabs defaultValue="chat" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="chat">Chat</TabsTrigger>
             <TabsTrigger value="documents">Documents</TabsTrigger>
@@ -171,7 +225,7 @@ export default function AIDetailPage() {
               welcomeMessage={welcomeMessage}
               onSendMessage={sendMessage}
               onSelectConversation={handleConversationSelect}
-              onNewConversation={startNewConversation}
+              onNewConversation={currentConversationId !== null ? startNewConversation : undefined}
             />
           </TabsContent>
 
@@ -194,16 +248,12 @@ export default function AIDetailPage() {
               currentConversationId={currentConversationId}
               isLoading={isLoadingConversations}
               onSelectConversation={handleConversationSelect}
-              onNewConversation={startNewConversation}
+              onNewConversation={currentConversationId !== null ? startNewConversation : undefined}
             />
           </TabsContent>
 
           <TabsContent value="analytics">
-            <AnalyticsTab
-              conversationCount={aiData.conversationCount}
-              questionCount={aiData.questionCount}
-              documentCount={aiData.documentCount}
-            />
+            <AnalyticsTab aiId={aiId} />
           </TabsContent>
 
           <TabsContent value="integration">

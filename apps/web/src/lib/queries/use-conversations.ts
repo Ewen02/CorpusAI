@@ -10,10 +10,13 @@ export const conversationKeys = {
   detail: (id: string) => [...conversationKeys.details(), id] as const,
 };
 
-export function useConversations(aiId: string) {
+export function useConversations(aiId: string, source?: 'DASHBOARD' | 'WIDGET' | 'PUBLIC') {
   return useQuery({
-    queryKey: conversationKeys.listByAI(aiId),
-    queryFn: () => apiClient.get<Conversation[]>(`/ais/${aiId}/conversations`),
+    queryKey: [...conversationKeys.listByAI(aiId), source],
+    queryFn: () =>
+      apiClient.get<Conversation[]>(
+        `/ais/${aiId}/conversations${source ? `?source=${source}` : ''}`
+      ),
     enabled: !!aiId,
   });
 }
@@ -31,7 +34,9 @@ export function useStartConversation() {
 
   return useMutation({
     mutationFn: (aiSlug: string) =>
-      apiClient.post<StartConversationResponse>(`/chat/${aiSlug}/start`),
+      apiClient.post<StartConversationResponse>(`/chat/${aiSlug}/start`, undefined, {
+        headers: { 'x-conversation-source': 'DASHBOARD' },
+      }),
     onSuccess: () => {
       // We need the aiId to invalidate, but we can invalidate all lists
       queryClient.invalidateQueries({ queryKey: conversationKeys.lists() });

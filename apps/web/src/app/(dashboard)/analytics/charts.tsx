@@ -15,9 +15,7 @@ import {
   Bar,
 } from 'recharts';
 import { formatDateShort, formatDateDay, formatDateLong } from '@/lib/utils';
-
-const AXIS_STYLE = { fill: 'hsl(var(--tx-muted))', fontSize: 11 };
-const GRID_STROKE = 'hsl(var(--border-subtle))';
+import { AXIS_STYLE, GRID_STROKE } from '@/lib/constants/charts';
 
 const formatLabelLong = formatDateLong;
 

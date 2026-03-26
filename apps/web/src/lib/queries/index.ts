@@ -10,6 +10,8 @@ export {
   useCreateAI,
   useUpdateAI,
   useDeleteAI,
+  useGenerateSuggestions,
+  type AISuggestions,
 } from './use-ai';
 
 // Conversation hooks
@@ -50,7 +52,9 @@ export {
 export {
   analyticsKeys,
   useAnalytics,
+  useAIAnalytics,
   type AnalyticsData,
+  type AIAnalyticsData,
   type AnalyticsPeriod,
   type DailyDataPoint,
   type Trend,
@@ -115,3 +119,32 @@ export {
   type CreatorProfile,
   type ExploreParams,
 } from './use-explore';
+
+// Portal hooks
+export {
+  portalKeys,
+  usePortalMe,
+  usePortalConversations,
+  usePortalConversation,
+  useSendMagicLink,
+  usePortalSignOut,
+  type PortalEndUser,
+  type PortalAI,
+  type PortalConversation,
+  type PortalMessage,
+  type PortalConversationDetail,
+} from './use-portal';
+
+// AI access hooks
+export {
+  aiAccessKeys,
+  useAIMembers,
+  useGenerateAccessToken,
+  useDeleteAccessToken,
+  useSetAccessCode,
+  useDeleteAccessCode,
+  useUpdateInviteOnly,
+  useInviteMember,
+  useRevokeMember,
+  type AIAccessGrant,
+} from './use-ai-access';

@@ -51,6 +51,7 @@ export default function AnalyticsPage() {
             <button
               key={option.value}
               onClick={() => setPeriod(option.value)}
+              aria-current={period === option.value ? 'page' : undefined}
               className={cn(
                 'rounded-md px-3 py-1.5 text-[13px] font-medium transition-all duration-150',
                 period === option.value
@@ -69,19 +70,19 @@ export default function AnalyticsPage() {
         <StatCard
           title="Documents"
           value={data.totals.documents}
-          trend={data.trends.documents}
+          trend={data.trends.documents ?? undefined}
           icon={FileIcon}
         />
         <StatCard
           title="Conversations"
           value={data.totals.conversations}
-          trend={data.trends.conversations}
+          trend={data.trends.conversations ?? undefined}
           icon={MessageIcon}
         />
         <StatCard
           title="Questions"
           value={data.totals.questions}
-          trend={data.trends.questions}
+          trend={data.trends.questions ?? undefined}
           icon={MessageIcon}
         />
       </div>

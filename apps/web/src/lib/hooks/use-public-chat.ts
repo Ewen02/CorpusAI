@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { apiClient, type StreamDoneData } from '@/lib/api-client';
+import { apiClient, ApiError, type StreamDoneData } from '@/lib/api-client';
 import type { ChatMessage } from '@corpusai/ui';
 import type { AIPublicInfo, StartConversationResponse } from '@corpusai/types';
 import { mapSourcesToChat } from '@/lib/utils/chat-session';
@@ -9,11 +9,15 @@ import { mapSourcesToChat } from '@/lib/utils/chat-session';
 export { getOrCreateSessionId, mapSourcesToChat } from '@/lib/utils/chat-session';
 
 // ============================================
-// Hook
+// Types
 // ============================================
+
+export type AccessDeniedReason = 'access_token' | 'access_code' | 'invite_only' | 'ai_inactive';
 
 interface UsePublicChatOptions {
   slug: string;
+  /** Secret token from URL ?t= param */
+  accessToken?: string;
 }
 
 interface UsePublicChatReturn {
@@ -22,35 +26,45 @@ interface UsePublicChatReturn {
   isStreaming: boolean;
   isLoading: boolean;
   error: string | null;
-  sendMessage: (content: string) => void;
+  accessDeniedReason: AccessDeniedReason | null;
+  showSaveBanner: boolean;
+  sendMessage: (content: string, accessCode?: string) => void;
+  dismissSaveBanner: () => void;
 }
 
-export function usePublicChat({ slug }: UsePublicChatOptions): UsePublicChatReturn {
+// ============================================
+// Hook
+// ============================================
+
+export function usePublicChat({ slug, accessToken }: UsePublicChatOptions): UsePublicChatReturn {
   const [ai, setAI] = React.useState<AIPublicInfo | null>(null);
   const [conversationId, setConversationId] = React.useState<string | null>(null);
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [accessDeniedReason, setAccessDeniedReason] = React.useState<AccessDeniedReason | null>(
+    null
+  );
+  const [sentMessageCount, setSentMessageCount] = React.useState(0);
+  const [showSaveBanner, setShowSaveBanner] = React.useState(false);
+  const [bannerDismissed, setBannerDismissed] = React.useState(false);
 
   const abortControllerRef = React.useRef<AbortController | null>(null);
+
+  // Show save banner after 3 messages (if no eu_session cookie)
+  React.useEffect(() => {
+    if (sentMessageCount >= 3 && !bannerDismissed) {
+      // Check if eu_session cookie is present (can't read httpOnly from JS — rely on count only)
+      setShowSaveBanner(true);
+    }
+  }, [sentMessageCount, bannerDismissed]);
 
   // Fetch AI info
   React.useEffect(() => {
     async function fetchAI() {
       try {
         const data = await apiClient.get<AIPublicInfo>(`/chat/${slug}/info`);
-
-        if (!data.isPublic) {
-          setError("Cet assistant n'est pas accessible publiquement.");
-          return;
-        }
-
-        if (data.status !== 'ACTIVE') {
-          setError("Cet assistant n'est pas disponible actuellement.");
-          return;
-        }
-
         setAI(data);
       } catch {
         setError('Assistant introuvable.');
@@ -68,19 +82,132 @@ export function usePublicChat({ slug }: UsePublicChatOptions): UsePublicChatRetu
       if (!ai) return;
 
       try {
-        const response = await apiClient.post<StartConversationResponse>(`/chat/${slug}/start`, {});
+        const headers: Record<string, string> = { 'x-conversation-source': 'PUBLIC' };
+        if (accessToken) headers['x-access-token'] = accessToken;
+
+        const response = await apiClient.post<StartConversationResponse>(
+          `/chat/${slug}/start`,
+          undefined,
+          { headers }
+        );
         setConversationId(response.id);
-      } catch {
-        setError('Impossible de demarrer la conversation.');
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) {
+          const reason = (err.data as { reason?: string } | undefined)?.reason as
+            | AccessDeniedReason
+            | undefined;
+          setAccessDeniedReason(reason ?? null);
+          if (reason === 'access_code') {
+            // Don't set error — caller shows modal
+            setIsLoading(false);
+          } else if (reason === 'access_token') {
+            setError('Lien invalide ou expiré.');
+          } else if (reason === 'invite_only') {
+            setError('Accès sur invitation uniquement.');
+          } else {
+            setError('Accès refusé.');
+          }
+        } else {
+          setError('Impossible de démarrer la conversation.');
+        }
+        setIsLoading(false);
       }
     }
 
-    startConversation();
-  }, [ai, slug]);
+    if (ai) startConversation();
+  }, [ai, slug, accessToken]);
 
   const sendMessage = React.useCallback(
-    async (content: string) => {
-      if (!conversationId || isStreaming) return;
+    async (content: string, accessCode?: string) => {
+      if (!conversationId && !accessCode) return;
+      if (isStreaming) return;
+
+      // If we have an access code but no conversation yet, retry starting the conversation
+      if (!conversationId && accessCode && ai) {
+        try {
+          const headers: Record<string, string> = {
+            'x-conversation-source': 'PUBLIC',
+            'x-access-code': accessCode,
+          };
+          if (accessToken) headers['x-access-token'] = accessToken;
+
+          const response = await apiClient.post<StartConversationResponse>(
+            `/chat/${slug}/start`,
+            undefined,
+            { headers }
+          );
+          setConversationId(response.id);
+          setAccessDeniedReason(null);
+          // Continue to send the message below
+          const newConvId = response.id;
+
+          const userMessage: ChatMessage = {
+            id: `user_${Date.now()}`,
+            role: 'user',
+            content,
+            createdAt: new Date(),
+          };
+          setMessages((prev) => [...prev, userMessage]);
+          const assistantId = `assistant_${Date.now()}`;
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: assistantId,
+              role: 'assistant',
+              content: '',
+              createdAt: new Date(),
+              isStreaming: true,
+            },
+          ]);
+          setIsStreaming(true);
+
+          abortControllerRef.current?.abort();
+          abortControllerRef.current = apiClient.streamMessage(newConvId, content, {
+            onToken: (token) => {
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantId ? { ...msg, content: msg.content + token } : msg
+                )
+              );
+            },
+            onSources: (sources) => {
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantId ? { ...msg, sources: mapSourcesToChat(sources) } : msg
+                )
+              );
+            },
+            onDone: () => {
+              setMessages((prev) =>
+                prev.map((msg) => (msg.id === assistantId ? { ...msg, isStreaming: false } : msg))
+              );
+              setIsStreaming(false);
+              setSentMessageCount((c) => c + 1);
+            },
+            onError: () => {
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantId
+                    ? { ...msg, content: "Désolé, une erreur s'est produite.", isStreaming: false }
+                    : msg
+                )
+              );
+              setIsStreaming(false);
+            },
+          });
+          return;
+        } catch (err) {
+          if (err instanceof ApiError && err.status === 401) {
+            const reason = (err.data as { reason?: string } | undefined)?.reason as
+              | AccessDeniedReason
+              | undefined;
+            setAccessDeniedReason(reason ?? 'access_code');
+          }
+          return;
+        }
+      }
+
+      if (!conversationId) return;
 
       const userMessage: ChatMessage = {
         id: `user_${Date.now()}`,
@@ -91,18 +218,19 @@ export function usePublicChat({ slug }: UsePublicChatOptions): UsePublicChatRetu
       setMessages((prev) => [...prev, userMessage]);
 
       const assistantId = `assistant_${Date.now()}`;
-      const assistantMessage: ChatMessage = {
-        id: assistantId,
-        role: 'assistant',
-        content: '',
-        createdAt: new Date(),
-        isStreaming: true,
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: assistantId,
+          role: 'assistant',
+          content: '',
+          createdAt: new Date(),
+          isStreaming: true,
+        },
+      ]);
       setIsStreaming(true);
 
       abortControllerRef.current?.abort();
-
       abortControllerRef.current = apiClient.streamMessage(conversationId, content, {
         onToken: (token) => {
           setMessages((prev) =>
@@ -123,12 +251,13 @@ export function usePublicChat({ slug }: UsePublicChatOptions): UsePublicChatRetu
             prev.map((msg) => (msg.id === assistantId ? { ...msg, isStreaming: false } : msg))
           );
           setIsStreaming(false);
+          setSentMessageCount((c) => c + 1);
         },
         onError: () => {
           setMessages((prev) =>
             prev.map((msg) =>
               msg.id === assistantId
-                ? { ...msg, content: "Desole, une erreur s'est produite.", isStreaming: false }
+                ? { ...msg, content: "Désolé, une erreur s'est produite.", isStreaming: false }
                 : msg
             )
           );
@@ -136,8 +265,13 @@ export function usePublicChat({ slug }: UsePublicChatOptions): UsePublicChatRetu
         },
       });
     },
-    [conversationId, isStreaming]
+    [conversationId, isStreaming, ai, slug, accessToken]
   );
+
+  const dismissSaveBanner = React.useCallback(() => {
+    setShowSaveBanner(false);
+    setBannerDismissed(true);
+  }, []);
 
   // Cleanup
   React.useEffect(() => {
@@ -146,5 +280,15 @@ export function usePublicChat({ slug }: UsePublicChatOptions): UsePublicChatRetu
     };
   }, []);
 
-  return { ai, messages, isStreaming, isLoading, error, sendMessage };
+  return {
+    ai,
+    messages,
+    isStreaming,
+    isLoading,
+    error,
+    accessDeniedReason,
+    showSaveBanner,
+    sendMessage,
+    dismissSaveBanner,
+  };
 }

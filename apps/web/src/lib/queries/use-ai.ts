@@ -92,3 +92,16 @@ export function useDeleteAI() {
     },
   });
 }
+
+export interface AISuggestions {
+  description: string;
+  systemPrompt: string;
+  welcomeMessage: string;
+}
+
+export function useGenerateSuggestions() {
+  return useMutation({
+    mutationFn: (aiId: string) =>
+      apiClient.post<AISuggestions>(`/ais/${aiId}/generate-suggestions`),
+  });
+}

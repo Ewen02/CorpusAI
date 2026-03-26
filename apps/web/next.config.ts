@@ -4,6 +4,9 @@ import { withSentryConfig } from '@sentry/nextjs';
 const nextConfig: NextConfig = {
   output: 'standalone',
   transpilePackages: ['@corpusai/types', '@corpusai/subscription', '@corpusai/ui'],
+  experimental: {
+    turbo: {},
+  },
 };
 
 export default withSentryConfig(nextConfig, {

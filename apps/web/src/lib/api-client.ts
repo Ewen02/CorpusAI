@@ -1,10 +1,10 @@
-import type { MessageSource, StreamEvent, StreamDoneEvent } from "@corpusai/types";
+import type { MessageSource, StreamEvent, StreamDoneEvent } from '@corpusai/types';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 // Re-export types for backward compatibility
-export type { MessageSource } from "@corpusai/types";
-export type StreamDoneData = StreamDoneEvent["data"];
+export type { MessageSource } from '@corpusai/types';
+export type StreamDoneData = StreamDoneEvent['data'];
 
 export class ApiError extends Error {
   constructor(
@@ -13,18 +13,14 @@ export class ApiError extends Error {
     public data?: unknown
   ) {
     super(message);
-    this.name = "ApiError";
+    this.name = 'ApiError';
   }
 }
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
-    throw new ApiError(
-      response.status,
-      data.message || `HTTP ${response.status}`,
-      data
-    );
+    throw new ApiError(response.status, data.message || `HTTP ${response.status}`, data);
   }
 
   // Handle empty responses
@@ -37,16 +33,20 @@ async function handleResponse<T>(response: Response): Promise<T> {
 export const apiClient = {
   async get<T>(path: string): Promise<T> {
     const response = await fetch(`${API_URL}${path}`, {
-      credentials: "include",
+      credentials: 'include',
     });
     return handleResponse<T>(response);
   },
 
-  async post<T>(path: string, body?: unknown): Promise<T> {
+  async post<T>(
+    path: string,
+    body?: unknown,
+    options?: { headers?: Record<string, string> }
+  ): Promise<T> {
     const response = await fetch(`${API_URL}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...options?.headers },
+      credentials: 'include',
       body: body ? JSON.stringify(body) : undefined,
     });
     return handleResponse<T>(response);
@@ -54,9 +54,9 @@ export const apiClient = {
 
   async put<T>(path: string, body?: unknown): Promise<T> {
     const response = await fetch(`${API_URL}${path}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: body ? JSON.stringify(body) : undefined,
     });
     return handleResponse<T>(response);
@@ -64,9 +64,9 @@ export const apiClient = {
 
   async patch<T>(path: string, body?: unknown): Promise<T> {
     const response = await fetch(`${API_URL}${path}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: body ? JSON.stringify(body) : undefined,
     });
     return handleResponse<T>(response);
@@ -74,16 +74,16 @@ export const apiClient = {
 
   async delete<T>(path: string): Promise<T> {
     const response = await fetch(`${API_URL}${path}`, {
-      method: "DELETE",
-      credentials: "include",
+      method: 'DELETE',
+      credentials: 'include',
     });
     return handleResponse<T>(response);
   },
 
   async upload<T>(path: string, formData: FormData): Promise<T> {
     const response = await fetch(`${API_URL}${path}`, {
-      method: "POST",
-      credentials: "include",
+      method: 'POST',
+      credentials: 'include',
       body: formData,
     });
     return handleResponse<T>(response);
@@ -110,9 +110,9 @@ export const apiClient = {
         const response = await fetch(
           `${API_URL}/chat/conversations/${conversationId}/messages/stream`,
           {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ content }),
             signal: controller.signal,
           }
@@ -120,20 +120,16 @@ export const apiClient = {
 
         if (!response.ok) {
           const data = await response.json().catch(() => ({}));
-          throw new ApiError(
-            response.status,
-            data.message || `HTTP ${response.status}`,
-            data
-          );
+          throw new ApiError(response.status, data.message || `HTTP ${response.status}`, data);
         }
 
         const reader = response.body?.getReader();
         if (!reader) {
-          throw new Error("No response body");
+          throw new Error('No response body');
         }
 
         const decoder = new TextDecoder();
-        let buffer = "";
+        let buffer = '';
 
         while (true) {
           const { done, value } = await reader.read();
@@ -142,25 +138,25 @@ export const apiClient = {
           buffer += decoder.decode(value, { stream: true });
 
           // Parse SSE events from buffer
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || ""; // Keep incomplete line in buffer
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || ''; // Keep incomplete line in buffer
 
           for (const line of lines) {
-            if (line.startsWith("data: ")) {
+            if (line.startsWith('data: ')) {
               try {
                 const event = JSON.parse(line.slice(6)) as StreamEvent;
 
                 switch (event.type) {
-                  case "token":
+                  case 'token':
                     callbacks.onToken((event.data as { token: string }).token);
                     break;
-                  case "sources":
+                  case 'sources':
                     callbacks.onSources((event.data as { sources: MessageSource[] }).sources);
                     break;
-                  case "done":
+                  case 'done':
                     callbacks.onDone(event.data as StreamDoneData);
                     break;
-                  case "error":
+                  case 'error':
                     callbacks.onError(new Error((event.data as { message: string }).message));
                     break;
                 }
@@ -171,8 +167,8 @@ export const apiClient = {
           }
         }
       } catch (error) {
-        if ((error as Error).name !== "AbortError") {
-          callbacks.onError(error instanceof Error ? error : new Error("Unknown error"));
+        if ((error as Error).name !== 'AbortError') {
+          callbacks.onError(error instanceof Error ? error : new Error('Unknown error'));
         }
       }
     })();

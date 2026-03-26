@@ -2,14 +2,9 @@
 
 import * as React from 'react';
 import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
   ConversationList,
   ConversationListSkeleton,
-  ChatIcon,
+  Skeleton,
   type Conversation,
 } from '@corpusai/ui';
 
@@ -32,40 +27,24 @@ export const ConversationsTab = React.memo(function ConversationsTab({
   onNewConversation,
 }: ConversationsTabProps) {
   if (isLoading) {
-    return <ConversationListSkeleton />;
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-4 w-32" />
+        <ConversationListSkeleton />
+      </div>
+    );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Historique des conversations</CardTitle>
-        <CardDescription>{conversations.length} conversation(s)</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {conversations.length === 0 ? (
-          <EmptyConversationsState />
-        ) : (
-          <ConversationList
-            conversations={conversations}
-            selectedId={currentConversationId || undefined}
-            onSelect={onSelectConversation}
-            onNewConversation={onNewConversation}
-          />
-        )}
-      </CardContent>
-    </Card>
-  );
-});
-
-/**
- * Empty state for conversations list.
- */
-const EmptyConversationsState = React.memo(function EmptyConversationsState() {
-  return (
-    <div className="text-center py-8 text-muted-foreground">
-      <ChatIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-      <p>Aucune conversation</p>
-      <p className="text-sm">Les conversations apparaitront ici.</p>
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">{conversations.length} conversation(s)</p>
+      <ConversationList
+        conversations={conversations}
+        selectedId={currentConversationId || undefined}
+        onSelect={onSelectConversation}
+        onNewConversation={onNewConversation}
+        className="rounded-lg border bg-card"
+      />
     </div>
   );
 });
