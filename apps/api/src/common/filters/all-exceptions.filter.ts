@@ -35,6 +35,17 @@ export class AllExceptionsFilter implements ExceptionFilter {
       response.setHeader('Retry-After', '1');
     }
 
+    // Preserve custom fields from HttpException response (e.g. { reason: 'access_code' })
+    const exceptionResponse = exception instanceof HttpException ? exception.getResponse() : null;
+    const customFields: Record<string, unknown> =
+      typeof exceptionResponse === 'object' && exceptionResponse !== null
+        ? Object.fromEntries(
+            Object.entries(exceptionResponse as Record<string, unknown>).filter(
+              ([k]) => !['statusCode', 'message', 'error'].includes(k)
+            )
+          )
+        : {};
+
     response.status(status).json({
       statusCode: status,
       message,
@@ -42,6 +53,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       path: request.url,
       ...(correlationId ? { correlationId } : {}),
       ...(isDev && exception instanceof Error ? { stack: exception.stack } : {}),
+      ...customFields,
     });
   }
 }

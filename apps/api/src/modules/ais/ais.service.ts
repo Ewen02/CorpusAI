@@ -78,7 +78,12 @@ export class AIsService {
       throw new NotFoundException('AI not found');
     }
 
-    return ai;
+    const { accessToken, accessCode, ...rest } = ai;
+    return {
+      ...rest,
+      hasAccessToken: !!accessToken,
+      hasAccessCode: !!accessCode,
+    };
   }
 
   async findBySlug(slug: string) {
