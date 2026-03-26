@@ -16,8 +16,9 @@ model User {
   email         String    @unique
   name          String?
   image         String?
-  emailVerified Boolean   @default(false)
-  role          UserRole  @default(USER)
+  emailVerified    Boolean  @default(false)
+  twoFactorEnabled Boolean  @default(false)
+  role             UserRole @default(USER)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -132,6 +133,11 @@ model AI {
   price      Float?
   isPublic   Boolean    @default(false)
 
+  // Access control
+  accessToken String?  @unique
+  accessCode  String?
+  inviteOnly  Boolean  @default(false)
+
   // Stats
   documentCount     Int @default(0)
   conversationCount Int @default(0)
@@ -141,10 +147,11 @@ model AI {
   deletedAt DateTime?
 
   // Relations
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   documents     Document[]
   conversations Conversation[]
   dailyStats    DailyStats[]
+  accessGrants  AIAccessGrant[]
 
   @@unique([userId, slug])
   @@index([userId])
@@ -226,18 +233,33 @@ model Chunk {
 
 model EndUser {
   id        String   @id @default(cuid())
-  email     String?
+  email     String   @unique
   name      String?
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  // Session tracking
-  sessionId String?
+  // Auth magic link
+  emailVerified    Boolean   @default(false)
+  magicLinkToken   String?   @unique
+  magicLinkExpires DateTime?
+
+  // Session server-side
+  sessionToken   String?   @unique
+  sessionExpires DateTime?
 
   // Relations
   conversations Conversation[]
+  accessGrants  AIAccessGrant[]
 
   @@index([email])
-  @@index([sessionId])
+  @@index([magicLinkToken])
+  @@index([sessionToken])
+}
+
+enum ConversationSource {
+  DASHBOARD
+  WIDGET
+  PUBLIC
 }
 
 model Conversation {
@@ -248,7 +270,8 @@ model Conversation {
   updatedAt DateTime @updatedAt
 
   title        String?
-  messageCount Int     @default(0)
+  messageCount Int                @default(0)
+  source       ConversationSource @default(DASHBOARD)
 
   // Relations
   ai       AI        @relation(fields: [aiId], references: [id], onDelete: Cascade)
@@ -285,8 +308,34 @@ model Message {
 }
 
 // ============================================
+// ACCESS GRANTS
+// ============================================
+
+model AIAccessGrant {
+  id        String       @id @default(cuid())
+  aiId      String
+  endUserId String
+  status    AccessStatus @default(ACTIVE)
+  expiresAt DateTime?
+  createdAt DateTime     @default(now())
+
+  ai      AI      @relation(fields: [aiId], references: [id], onDelete: Cascade)
+  endUser EndUser @relation(fields: [endUserId], references: [id], onDelete: Cascade)
+
+  @@unique([aiId, endUserId])
+  @@index([aiId])
+  @@index([endUserId])
+}
+
+// ============================================
 // ENUMS
 // ============================================
+
+enum AccessStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
 
 enum SubscriptionPlan {
   FREE

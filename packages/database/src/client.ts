@@ -17,10 +17,8 @@ function softDeleteQueries(base: PrismaClient, modelName: string) {
       args.where = addDeletedAtFilter(args.where);
       return query(args);
     },
-    async findUnique({ args, query }: { args: any; query: any }) {
-      args.where = addDeletedAtFilter(args.where);
-      return query(args);
-    },
+    // findUnique intentionally excluded: Prisma requires where to contain only @unique fields;
+    // adding deletedAt (non-unique) would cause a runtime error.
     async count({ args, query }: { args: any; query: any }) {
       args.where = addDeletedAtFilter(args.where);
       return query(args);

@@ -11,6 +11,7 @@ export type {
   Document,
   Chunk,
   EndUser,
+  AIAccessGrant,
   Conversation,
   Message,
 } from '@prisma/client';
@@ -22,9 +23,11 @@ export {
   AIStatus,
   AICategory,
   AccessType,
+  AccessStatus,
   DocumentStatus,
   ProcessingStep,
   MessageRole,
   ConfidenceLevel,
+  ConversationSource,
   UserRole,
 } from '@prisma/client';
