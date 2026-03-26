@@ -29,7 +29,8 @@ interface UsePublicChatReturn {
   accessDeniedReason: AccessDeniedReason | null;
   isCodeInvalid: boolean;
   showSaveBanner: boolean;
-  sendMessage: (content: string, accessCode?: string) => void;
+  unlockWithCode: (code: string) => Promise<boolean>;
+  sendMessage: (content: string) => void;
   dismissSaveBanner: () => void;
 }
 
@@ -119,99 +120,42 @@ export function usePublicChat({ slug, accessToken }: UsePublicChatOptions): UseP
     if (ai) startConversation();
   }, [ai, slug, accessToken]);
 
-  const sendMessage = React.useCallback(
-    async (content: string, accessCode?: string) => {
-      if (!conversationId && !accessCode) return;
-      if (isStreaming) return;
-
-      // If we have an access code but no conversation yet, retry starting the conversation
-      if (!conversationId && accessCode && ai) {
-        setIsCodeInvalid(false);
-        try {
-          const headers: Record<string, string> = {
-            'x-conversation-source': 'PUBLIC',
-            'x-access-code': accessCode,
-          };
-          if (accessToken) headers['x-access-token'] = accessToken;
-
-          const response = await apiClient.post<StartConversationResponse>(
-            `/chat/${slug}/start`,
-            undefined,
-            { headers }
-          );
-          setConversationId(response.id);
-          setAccessDeniedReason(null);
-          // Continue to send the message below
-          const newConvId = response.id;
-
-          const userMessage: ChatMessage = {
-            id: `user_${Date.now()}`,
-            role: 'user',
-            content,
-            createdAt: new Date(),
-          };
-          setMessages((prev) => [...prev, userMessage]);
-          const assistantId = `assistant_${Date.now()}`;
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: assistantId,
-              role: 'assistant',
-              content: '',
-              createdAt: new Date(),
-              isStreaming: true,
-            },
-          ]);
-          setIsStreaming(true);
-
-          abortControllerRef.current?.abort();
-          abortControllerRef.current = apiClient.streamMessage(newConvId, content, {
-            onToken: (token) => {
-              setMessages((prev) =>
-                prev.map((msg) =>
-                  msg.id === assistantId ? { ...msg, content: msg.content + token } : msg
-                )
-              );
-            },
-            onSources: (sources) => {
-              setMessages((prev) =>
-                prev.map((msg) =>
-                  msg.id === assistantId ? { ...msg, sources: mapSourcesToChat(sources) } : msg
-                )
-              );
-            },
-            onDone: () => {
-              setMessages((prev) =>
-                prev.map((msg) => (msg.id === assistantId ? { ...msg, isStreaming: false } : msg))
-              );
-              setIsStreaming(false);
-              setSentMessageCount((c) => c + 1);
-            },
-            onError: () => {
-              setMessages((prev) =>
-                prev.map((msg) =>
-                  msg.id === assistantId
-                    ? { ...msg, content: "Désolé, une erreur s'est produite.", isStreaming: false }
-                    : msg
-                )
-              );
-              setIsStreaming(false);
-            },
-          });
-          return;
-        } catch (err) {
-          if (err instanceof ApiError && err.status === 401) {
-            const reason = (err.data as { reason?: string } | undefined)?.reason as
-              | AccessDeniedReason
-              | undefined;
-            if (reason === 'access_code') setIsCodeInvalid(true);
-            setAccessDeniedReason(reason ?? 'access_code');
-          }
-          return;
+  const unlockWithCode = React.useCallback(
+    async (code: string): Promise<boolean> => {
+      if (!ai) return false;
+      setIsCodeInvalid(false);
+      try {
+        const headers: Record<string, string> = {
+          'x-conversation-source': 'PUBLIC',
+          'x-access-code': code,
+        };
+        if (accessToken) headers['x-access-token'] = accessToken;
+        const response = await apiClient.post<StartConversationResponse>(
+          `/chat/${slug}/start`,
+          undefined,
+          { headers }
+        );
+        setConversationId(response.id);
+        setAccessDeniedReason(null);
+        return true;
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) {
+          const reason = (err.data as { reason?: string } | undefined)?.reason as
+            | AccessDeniedReason
+            | undefined;
+          if (reason === 'access_code') setIsCodeInvalid(true);
+          setAccessDeniedReason(reason ?? 'access_code');
         }
+        return false;
       }
+    },
+    [ai, slug, accessToken]
+  );
 
+  const sendMessage = React.useCallback(
+    async (content: string) => {
       if (!conversationId) return;
+      if (isStreaming) return;
 
       const userMessage: ChatMessage = {
         id: `user_${Date.now()}`,
@@ -269,7 +213,7 @@ export function usePublicChat({ slug, accessToken }: UsePublicChatOptions): UseP
         },
       });
     },
-    [conversationId, isStreaming, ai, slug, accessToken]
+    [conversationId, isStreaming]
   );
 
   const dismissSaveBanner = React.useCallback(() => {
@@ -293,6 +237,7 @@ export function usePublicChat({ slug, accessToken }: UsePublicChatOptions): UseP
     accessDeniedReason,
     isCodeInvalid,
     showSaveBanner,
+    unlockWithCode,
     sendMessage,
     dismissSaveBanner,
   };

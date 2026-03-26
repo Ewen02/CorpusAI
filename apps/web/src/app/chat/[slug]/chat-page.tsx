@@ -22,6 +22,7 @@ export default function ChatPage() {
     accessDeniedReason,
     isCodeInvalid,
     showSaveBanner,
+    unlockWithCode,
     sendMessage,
     dismissSaveBanner,
   } = usePublicChat({ slug, accessToken });
@@ -38,13 +39,15 @@ export default function ChatPage() {
     }
   };
 
-  const handleCodeSubmit = (e: React.FormEvent) => {
+  const handleCodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!accessCode.trim()) return;
     setCodeError('');
-    const messageToSend = pendingMessage || ' ';
-    sendMessage(messageToSend, accessCode);
-    setPendingMessage('');
+    const ok = await unlockWithCode(accessCode);
+    if (ok && pendingMessage) {
+      sendMessage(pendingMessage);
+      setPendingMessage('');
+    }
   };
 
   // Loading state
