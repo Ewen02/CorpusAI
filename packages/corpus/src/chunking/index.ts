@@ -11,3 +11,4 @@ export { RecursiveChunker } from './recursive';
 export { MarkdownChunker } from './markdown';
 export { TokenChunker } from './token-chunker';
 export { ParentChildChunker } from './parent-child-chunker';
+export { CHUNKER_DEFAULTS } from './defaults';

@@ -4,10 +4,13 @@
 
 // Embeddings
 export type { EmbeddingService, OpenAIEmbeddingConfig } from './embeddings';
-export { OpenAIEmbeddingService } from './embeddings';
+export { OpenAIEmbeddingService, SparseVectorGenerator } from './embeddings';
 
 // Vector Store
 export type {
+  SparseVector,
+  ChunkPayload,
+  HybridVectorPoint,
   VectorStoreService,
   VectorPoint,
   SearchResult,
@@ -28,7 +31,13 @@ export type {
   TokenChunkerOptions,
   ParentChildChunkerOptions,
 } from './chunking';
-export { RecursiveChunker, MarkdownChunker, TokenChunker, ParentChildChunker } from './chunking';
+export {
+  RecursiveChunker,
+  MarkdownChunker,
+  TokenChunker,
+  ParentChildChunker,
+  CHUNKER_DEFAULTS,
+} from './chunking';
 
 // RAG Pipeline
 export type {
@@ -71,7 +80,7 @@ export type {
   ScoredResult,
   CohereRerankerConfig,
 } from './reranking';
-export { BM25, HybridReranker, CohereReranker } from './reranking';
+export { BM25, CohereReranker } from './reranking';
 
 // Cache
 export type { CacheService, CachedEmbeddingConfig, CacheMetrics } from './cache';

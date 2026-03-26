@@ -2,9 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vite
 import { RAGPipelineImpl } from './pipeline';
 import { CohereReranker } from '../reranking/cohere-reranker';
 import type { EmbeddingService } from '../embeddings/types';
+import type { SparseVectorGenerator } from '../embeddings/sparse';
 import type { VectorStoreService, SearchResult } from '../vector-store/types';
 import type { ChunkingService, Chunk, ChunkMetadata } from '../chunking/types';
-import type { Reranker, ScoredResult } from '../reranking/types';
+import type { ScoredResult } from '../reranking/types';
 import type { Document, LLMConfig, ProgressCallback, ProcessingStage } from './types';
 
 // Shared mock for OpenAI create function
@@ -23,10 +24,16 @@ vi.mock('openai', () => {
   };
 });
 
-// Helper to create mock embedding (1536 dimensions)
+// Helper to create mock embedding (512 dimensions — Matryoshka)
 const createMockEmbedding = (seed: number = 0): number[] => {
-  return Array.from({ length: 1536 }, (_, i) => Math.sin(seed + i) * 0.5);
+  return Array.from({ length: 512 }, (_, i) => Math.sin(seed + i) * 0.5);
 };
+
+// Helper to create mock sparse vector
+const createMockSparseVector = () => ({
+  indices: [1, 2, 3],
+  values: [0.5, 0.3, 0.2],
+});
 
 // Helper to create mock chunks
 const createMockChunks = (count: number, docId: string, source: string): Chunk[] => {
@@ -58,9 +65,9 @@ const createMockSearchResults = (count: number): SearchResult[] => {
 
 describe('RAGPipelineImpl', () => {
   let mockEmbeddingService: EmbeddingService;
+  let mockSparseGenerator: SparseVectorGenerator;
   let mockVectorStore: VectorStoreService;
   let mockChunker: ChunkingService;
-  let mockReranker: Reranker;
   let llmConfig: LLMConfig;
   let pipeline: RAGPipelineImpl;
 
@@ -72,9 +79,9 @@ describe('RAGPipelineImpl', () => {
       choices: [{ message: { content: 'This is a mocked LLM response.' } }],
     });
 
-    // Setup mock embedding service
+    // Setup mock embedding service (512d Matryoshka)
     mockEmbeddingService = {
-      dimensions: 1536,
+      dimensions: 512,
       model: 'text-embedding-3-small',
       embed: vi.fn().mockResolvedValue(createMockEmbedding(1)),
       embedBatch: vi
@@ -84,15 +91,23 @@ describe('RAGPipelineImpl', () => {
         ),
     };
 
-    // Setup mock vector store
+    // Setup mock sparse vector generator
+    mockSparseGenerator = {
+      generate: vi.fn().mockReturnValue(createMockSparseVector()),
+      generateBatch: vi
+        .fn()
+        .mockImplementation((texts: string[]) => texts.map(() => createMockSparseVector())),
+      dispose: vi.fn(),
+    } as unknown as SparseVectorGenerator;
+
+    // Setup mock vector store (global collection with hybrid search)
     mockVectorStore = {
-      collectionName: 'test_collection',
+      collectionName: 'corpus_vectors',
       ensureCollection: vi.fn().mockResolvedValue(undefined),
       upsert: vi.fn().mockResolvedValue(undefined),
-      search: vi.fn().mockResolvedValue(createMockSearchResults(3)),
-      delete: vi.fn().mockResolvedValue(undefined),
-      deleteByIds: vi.fn().mockResolvedValue(undefined),
-      deleteCollection: vi.fn().mockResolvedValue(undefined),
+      hybridSearch: vi.fn().mockResolvedValue(createMockSearchResults(3)),
+      deleteByDocument: vi.fn().mockResolvedValue(undefined),
+      deleteByAI: vi.fn().mockResolvedValue(undefined),
     };
 
     // Setup mock chunker
@@ -100,18 +115,6 @@ describe('RAGPipelineImpl', () => {
       strategy: 'mock',
       chunk: vi.fn().mockImplementation((text: string, metadata: ChunkMetadata) => {
         return createMockChunks(3, metadata.documentId, metadata.source);
-      }),
-    };
-
-    // Setup mock reranker
-    mockReranker = {
-      rerank: vi.fn().mockImplementation((results: SearchResult[]) => {
-        return results.map((r) => ({
-          ...r,
-          semanticScore: r.score,
-          bm25Score: r.score * 0.8,
-          finalScore: r.score * 0.9,
-        })) as ScoredResult[];
       }),
     };
 
@@ -123,13 +126,14 @@ describe('RAGPipelineImpl', () => {
       maxTokens: 1000,
     };
 
-    // Create pipeline
+    // Create pipeline (aiId, embeddings, vectorStore, sparseGenerator, chunker, llmConfig)
     pipeline = new RAGPipelineImpl(
+      'test-ai-id',
       mockEmbeddingService,
       mockVectorStore,
+      mockSparseGenerator,
       mockChunker,
-      llmConfig,
-      mockReranker
+      llmConfig
     );
   });
 
@@ -423,8 +427,10 @@ describe('RAGPipelineImpl', () => {
       expect(mockEmbeddingService.embed).toHaveBeenCalledWith('What is TypeScript?');
 
       // Verify vector search
-      expect(mockVectorStore.search).toHaveBeenCalledWith(
+      expect(mockVectorStore.hybridSearch).toHaveBeenCalledWith(
         expect.any(Array),
+        expect.objectContaining({ indices: expect.any(Array), values: expect.any(Array) }),
+        'test-ai-id',
         expect.objectContaining({
           limit: 5,
           scoreThreshold: 0.6,
@@ -432,8 +438,7 @@ describe('RAGPipelineImpl', () => {
         })
       );
 
-      // Verify reranker was called
-      expect(mockReranker.rerank).toHaveBeenCalled();
+      // RRF fusion is done server-side in Qdrant, no client-side reranker call
 
       // Verify LLM was called
       expect(mockOpenAICreate).toHaveBeenCalledWith(
@@ -452,7 +457,7 @@ describe('RAGPipelineImpl', () => {
     });
 
     it('should call LLM even when no results found', async () => {
-      (mockVectorStore.search as Mock).mockResolvedValue([]);
+      (mockVectorStore.hybridSearch as Mock).mockResolvedValue([]);
 
       const response = await pipeline.query('Unknown question', { useHyde: false });
 
@@ -490,16 +495,16 @@ describe('RAGPipelineImpl', () => {
     it('should work without reranker', async () => {
       // Create pipeline without reranker
       const pipelineNoRerank = new RAGPipelineImpl(
+        'test-ai-id',
         mockEmbeddingService,
         mockVectorStore,
+        mockSparseGenerator,
         mockChunker,
         llmConfig
         // No reranker
       );
 
       const response = await pipelineNoRerank.query('Test question', { useHyde: false });
-
-      expect(mockReranker.rerank).not.toHaveBeenCalled();
       expect(response.answer).toBe('This is a mocked LLM response.');
       expect(response.sources).toHaveLength(3);
     });
@@ -512,8 +517,10 @@ describe('RAGPipelineImpl', () => {
         useHyde: false,
       });
 
-      expect(mockVectorStore.search).toHaveBeenCalledWith(
+      expect(mockVectorStore.hybridSearch).toHaveBeenCalledWith(
         expect.any(Array),
+        expect.objectContaining({ indices: expect.any(Array), values: expect.any(Array) }),
+        'test-ai-id',
         expect.objectContaining({
           limit: 10,
           scoreThreshold: 0.7,
@@ -534,11 +541,12 @@ describe('RAGPipelineImpl', () => {
       };
 
       const customPipeline = new RAGPipelineImpl(
+        'test-ai-id',
         mockEmbeddingService,
         mockVectorStore,
+        mockSparseGenerator,
         mockChunker,
-        customConfig,
-        mockReranker
+        customConfig
       );
 
       await customPipeline.query('How to make pasta?', { useHyde: false });
@@ -591,7 +599,7 @@ describe('RAGPipelineImpl', () => {
     });
 
     it('should stream LLM response even when no results found', async () => {
-      (mockVectorStore.search as Mock).mockResolvedValue([]);
+      (mockVectorStore.hybridSearch as Mock).mockResolvedValue([]);
 
       const mockStream = {
         [Symbol.asyncIterator]: async function* () {
@@ -654,24 +662,18 @@ describe('RAGPipelineImpl', () => {
     it('should delete documents by their IDs', async () => {
       await pipeline.deleteDocuments(['doc1', 'doc2', 'doc3']);
 
-      expect(mockVectorStore.delete).toHaveBeenCalledTimes(3);
+      expect(mockVectorStore.deleteByDocument).toHaveBeenCalledTimes(3);
 
-      // Verify filter format for each document
-      expect(mockVectorStore.delete).toHaveBeenCalledWith({
-        must: [{ key: 'documentId', match: { value: 'doc1' } }],
-      });
-      expect(mockVectorStore.delete).toHaveBeenCalledWith({
-        must: [{ key: 'documentId', match: { value: 'doc2' } }],
-      });
-      expect(mockVectorStore.delete).toHaveBeenCalledWith({
-        must: [{ key: 'documentId', match: { value: 'doc3' } }],
-      });
+      // Verify each call includes aiId and documentId
+      expect(mockVectorStore.deleteByDocument).toHaveBeenCalledWith('test-ai-id', 'doc1');
+      expect(mockVectorStore.deleteByDocument).toHaveBeenCalledWith('test-ai-id', 'doc2');
+      expect(mockVectorStore.deleteByDocument).toHaveBeenCalledWith('test-ai-id', 'doc3');
     });
 
     it('should handle empty document list', async () => {
       await pipeline.deleteDocuments([]);
 
-      expect(mockVectorStore.delete).not.toHaveBeenCalled();
+      expect(mockVectorStore.deleteByDocument).not.toHaveBeenCalled();
     });
   });
 
@@ -693,15 +695,7 @@ describe('RAGPipelineImpl', () => {
         },
       ];
 
-      (mockVectorStore.search as Mock).mockResolvedValue(customResults);
-      (mockReranker.rerank as Mock).mockImplementation((results: SearchResult[]) =>
-        results.map((r) => ({
-          ...r,
-          semanticScore: r.score,
-          bm25Score: r.score * 0.8,
-          finalScore: r.score,
-        }))
-      );
+      (mockVectorStore.hybridSearch as Mock).mockResolvedValue(customResults);
 
       const response = await pipeline.query('Test', { useHyde: false });
 
@@ -747,11 +741,13 @@ describe('RAGPipelineImpl', () => {
     });
 
     it('should use topK=5 default without CohereReranker', async () => {
-      // pipeline uses HybridReranker (mockReranker) — topK should default to 5
+      // Pipeline without CohereReranker — topK should default to 5
       await pipeline.query('Test question', { useHyde: false });
 
-      expect(mockVectorStore.search).toHaveBeenCalledWith(
+      expect(mockVectorStore.hybridSearch).toHaveBeenCalledWith(
         expect.any(Array),
+        expect.objectContaining({ indices: expect.any(Array), values: expect.any(Array) }),
+        'test-ai-id',
         expect.objectContaining({ limit: 5 })
       );
     });
@@ -772,11 +768,13 @@ describe('RAGPipelineImpl', () => {
       );
 
       const cohereResults = createMockSearchResults(10);
-      (mockVectorStore.search as Mock).mockResolvedValue(cohereResults);
+      (mockVectorStore.hybridSearch as Mock).mockResolvedValue(cohereResults);
 
       const coherePipeline = new RAGPipelineImpl(
+        'test-ai-id',
         mockEmbeddingService,
         mockVectorStore,
+        mockSparseGenerator,
         mockChunker,
         llmConfig,
         new CohereReranker({ apiKey: 'test-cohere-key' })
@@ -784,8 +782,10 @@ describe('RAGPipelineImpl', () => {
 
       await coherePipeline.query('Test question');
 
-      expect(mockVectorStore.search).toHaveBeenCalledWith(
+      expect(mockVectorStore.hybridSearch).toHaveBeenCalledWith(
         expect.any(Array),
+        expect.objectContaining({ indices: expect.any(Array), values: expect.any(Array) }),
+        'test-ai-id',
         expect.objectContaining({ limit: 10 })
       );
 
@@ -819,8 +819,10 @@ describe('RAGPipelineImpl', () => {
 
     it('should call Cohere API with correct payload', async () => {
       const coherePipeline = new RAGPipelineImpl(
+        'test-ai-id',
         mockEmbeddingService,
         mockVectorStore,
+        mockSparseGenerator,
         mockChunker,
         llmConfig,
         new CohereReranker({ apiKey: 'test-cohere-key', topN: 3 })
@@ -843,11 +845,13 @@ describe('RAGPipelineImpl', () => {
 
     it('should rerank results using Cohere scores and return top N', async () => {
       const searchResults = createMockSearchResults(3);
-      (mockVectorStore.search as Mock).mockResolvedValue(searchResults);
+      (mockVectorStore.hybridSearch as Mock).mockResolvedValue(searchResults);
 
       const coherePipeline = new RAGPipelineImpl(
+        'test-ai-id',
         mockEmbeddingService,
         mockVectorStore,
+        mockSparseGenerator,
         mockChunker,
         llmConfig,
         new CohereReranker({ apiKey: 'test-cohere-key', topN: 3 })
@@ -866,13 +870,15 @@ describe('RAGPipelineImpl', () => {
       mockFetch.mockRejectedValue(new Error('Network error'));
 
       const searchResults = createMockSearchResults(3);
-      (mockVectorStore.search as Mock).mockResolvedValue(searchResults);
+      (mockVectorStore.hybridSearch as Mock).mockResolvedValue(searchResults);
 
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       const coherePipeline = new RAGPipelineImpl(
+        'test-ai-id',
         mockEmbeddingService,
         mockVectorStore,
+        mockSparseGenerator,
         mockChunker,
         llmConfig,
         new CohereReranker({ apiKey: 'test-cohere-key' })
@@ -904,8 +910,10 @@ describe('RAGPipelineImpl', () => {
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       const coherePipeline = new RAGPipelineImpl(
+        'test-ai-id',
         mockEmbeddingService,
         mockVectorStore,
+        mockSparseGenerator,
         mockChunker,
         llmConfig,
         new CohereReranker({ apiKey: 'test-cohere-key' })
@@ -925,11 +933,13 @@ describe('RAGPipelineImpl', () => {
 
     it('should respect topN option and slice results to topN', async () => {
       const searchResults = createMockSearchResults(3);
-      (mockVectorStore.search as Mock).mockResolvedValue(searchResults);
+      (mockVectorStore.hybridSearch as Mock).mockResolvedValue(searchResults);
 
       const coherePipeline = new RAGPipelineImpl(
+        'test-ai-id',
         mockEmbeddingService,
         mockVectorStore,
+        mockSparseGenerator,
         mockChunker,
         llmConfig,
         new CohereReranker({ apiKey: 'test-cohere-key', topN: 3 })
@@ -948,15 +958,7 @@ describe('RAGPipelineImpl', () => {
         { id: 'chunk1', score: 0.9, payload: {} }, // Missing text and source
       ];
 
-      (mockVectorStore.search as Mock).mockResolvedValue(incompleteResults);
-      (mockReranker.rerank as Mock).mockImplementation((results: SearchResult[]) =>
-        results.map((r) => ({
-          ...r,
-          semanticScore: r.score,
-          bm25Score: 0.5,
-          finalScore: r.score,
-        }))
-      );
+      (mockVectorStore.hybridSearch as Mock).mockResolvedValue(incompleteResults);
 
       const response = await pipeline.query('Test', { useHyde: false });
 
@@ -986,7 +988,7 @@ describe('RAGPipelineImpl', () => {
       // embed called twice (question + hypothetical doc)
       expect(mockEmbeddingService.embed).toHaveBeenCalledTimes(2);
       // search called twice (one per vector)
-      expect(mockVectorStore.search).toHaveBeenCalledTimes(2);
+      expect(mockVectorStore.hybridSearch).toHaveBeenCalledTimes(2);
     });
 
     it('should NOT activate HyDE for question with specific keyword', async () => {
@@ -995,7 +997,7 @@ describe('RAGPipelineImpl', () => {
 
       // embed called once, search called once
       expect(mockEmbeddingService.embed).toHaveBeenCalledTimes(1);
-      expect(mockVectorStore.search).toHaveBeenCalledTimes(1);
+      expect(mockVectorStore.hybridSearch).toHaveBeenCalledTimes(1);
     });
 
     it('should NOT activate HyDE for short question WITH keyword', async () => {
@@ -1003,7 +1005,7 @@ describe('RAGPipelineImpl', () => {
       await pipeline.query('Pourquoi TypeScript');
 
       expect(mockEmbeddingService.embed).toHaveBeenCalledTimes(1);
-      expect(mockVectorStore.search).toHaveBeenCalledTimes(1);
+      expect(mockVectorStore.hybridSearch).toHaveBeenCalledTimes(1);
     });
 
     it('should force HyDE when useHyde=true, even for long specific question', async () => {
@@ -1022,7 +1024,7 @@ describe('RAGPipelineImpl', () => {
 
       // HyDE forced: embed x2, search x2
       expect(mockEmbeddingService.embed).toHaveBeenCalledTimes(2);
-      expect(mockVectorStore.search).toHaveBeenCalledTimes(2);
+      expect(mockVectorStore.hybridSearch).toHaveBeenCalledTimes(2);
     });
 
     it('should skip HyDE when useHyde=false, even for short question', async () => {
@@ -1030,7 +1032,7 @@ describe('RAGPipelineImpl', () => {
 
       // Standard path: embed x1, search x1
       expect(mockEmbeddingService.embed).toHaveBeenCalledTimes(1);
-      expect(mockVectorStore.search).toHaveBeenCalledTimes(1);
+      expect(mockVectorStore.hybridSearch).toHaveBeenCalledTimes(1);
     });
 
     it('should deduplicate results keeping best score', async () => {
@@ -1062,7 +1064,7 @@ describe('RAGPipelineImpl', () => {
         },
       ];
 
-      (mockVectorStore.search as Mock)
+      (mockVectorStore.hybridSearch as Mock)
         .mockResolvedValueOnce(questionResults)
         .mockResolvedValueOnce(hypoResults);
 
@@ -1076,8 +1078,10 @@ describe('RAGPipelineImpl', () => {
 
       // Force HyDE, disable reranker
       const pipelineNoRerank = new RAGPipelineImpl(
+        'test-ai-id',
         mockEmbeddingService,
         mockVectorStore,
+        mockSparseGenerator,
         mockChunker,
         llmConfig
       );
@@ -1107,7 +1111,7 @@ describe('RAGPipelineImpl', () => {
 
       // Fallback: embed x1, search x1
       expect(mockEmbeddingService.embed).toHaveBeenCalledTimes(1);
-      expect(mockVectorStore.search).toHaveBeenCalledTimes(1);
+      expect(mockVectorStore.hybridSearch).toHaveBeenCalledTimes(1);
       expect(response.answer).toBe('This is a mocked LLM response.');
 
       consoleSpy.mockRestore();

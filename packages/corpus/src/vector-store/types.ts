@@ -1,12 +1,35 @@
 /**
  * Types pour le service de stockage vectoriel.
+ *
+ * Architecture: collection globale unique "corpus_vectors" avec multi-tenancy
+ * via filtre payload `ai_id` + is_tenant index. Hybrid search dense + sparse.
  */
+
+// ---------------------------------------------------------------------------
+// Sparse vectors (BM25 native Qdrant)
+// ---------------------------------------------------------------------------
+
+/**
+ * Sparse vector representation for hybrid search.
+ * Indices are token IDs, values are term weights (log-TF).
+ * Qdrant applies IDF server-side via the `idf` modifier.
+ */
+export interface SparseVector {
+  indices: number[];
+  values: number[];
+}
+
+// ---------------------------------------------------------------------------
+// Payloads
+// ---------------------------------------------------------------------------
 
 /**
  * Typed payload for chunk vectors stored in the vector store.
  * This is the standard payload structure used by the RAG pipeline.
  */
 export interface ChunkPayload {
+  /** AI identifier (tenant key for multi-tenancy filtering) */
+  ai_id: string;
   /** The chunk text content (child chunk for parent-child indexed docs) */
   text: string;
   /** Source document name/path */
@@ -22,14 +45,32 @@ export interface ChunkPayload {
   [key: string]: unknown;
 }
 
+// ---------------------------------------------------------------------------
+// Vector points
+// ---------------------------------------------------------------------------
+
 /**
- * Un point vectoriel à stocker
+ * A hybrid vector point containing both dense and sparse vectors.
+ */
+export interface HybridVectorPoint {
+  id: string;
+  denseVector: number[];
+  sparseVector: SparseVector;
+  payload: ChunkPayload;
+}
+
+/**
+ * Legacy single-vector point (kept for backward compatibility).
  */
 export interface VectorPoint<TPayload = Record<string, unknown>> {
   id: string;
   vector: number[];
   payload: TPayload;
 }
+
+// ---------------------------------------------------------------------------
+// Search
+// ---------------------------------------------------------------------------
 
 /**
  * Résultat d'une recherche vectorielle
@@ -48,11 +89,15 @@ export interface SearchOptions {
   limit: number;
   /** Score minimum de similarité (0-1) */
   scoreThreshold?: number;
-  /** Filtres sur les payloads */
+  /** Filtres additionnels sur les payloads (en plus du filtre tenant) */
   filter?: FilterCondition;
   /** Inclure les payloads dans les résultats */
   withPayload?: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// Filters
+// ---------------------------------------------------------------------------
 
 /**
  * Condition de filtre Qdrant
@@ -72,40 +117,46 @@ export interface FilterClause {
   range?: { gte?: number; lte?: number; gt?: number; lt?: number };
 }
 
+// ---------------------------------------------------------------------------
+// Service interface
+// ---------------------------------------------------------------------------
+
 /**
  * Interface abstraite pour un service de stockage vectoriel.
- * Permet de changer de provider (Qdrant, Pinecone, etc.) sans modifier le code.
+ * Supports hybrid search (dense + sparse) with multi-tenant filtering.
  */
 export interface VectorStoreService {
   /**
-   * Insère ou met à jour des points vectoriels
+   * Insère ou met à jour des points vectoriels hybrides (dense + sparse).
+   * @param isLastBatch - Si true, attend la persistence sur disque (wait: true)
    */
-  upsert(points: VectorPoint[]): Promise<void>;
+  upsert(points: HybridVectorPoint[], isLastBatch?: boolean): Promise<void>;
 
   /**
-   * Recherche les vecteurs les plus similaires
+   * Recherche hybride combinant dense et sparse vectors avec RRF fusion.
+   * Filtre automatiquement par tenant (aiId).
    */
-  search(vector: number[], options: SearchOptions): Promise<SearchResult[]>;
+  hybridSearch(
+    denseVector: number[],
+    sparseVector: SparseVector,
+    aiId: string,
+    options: SearchOptions
+  ): Promise<SearchResult[]>;
 
   /**
-   * Supprime des points selon un filtre
+   * Supprime tous les points d'un document spécifique.
    */
-  delete(filter: FilterCondition): Promise<void>;
+  deleteByDocument(aiId: string, documentId: string): Promise<void>;
 
   /**
-   * Supprime des points par IDs
+   * Supprime tous les points d'un AI (tenant).
    */
-  deleteByIds(ids: string[]): Promise<void>;
+  deleteByAI(aiId: string): Promise<void>;
 
   /**
-   * S'assure que la collection existe (la crée si nécessaire)
+   * S'assure que la collection globale existe avec indexes.
    */
   ensureCollection(): Promise<void>;
-
-  /**
-   * Supprime la collection
-   */
-  deleteCollection(): Promise<void>;
 
   /**
    * Nom de la collection
@@ -113,16 +164,22 @@ export interface VectorStoreService {
   readonly collectionName: string;
 }
 
+// ---------------------------------------------------------------------------
+// Configuration
+// ---------------------------------------------------------------------------
+
 /**
  * Configuration pour Qdrant
  */
 export interface QdrantConfig {
   /** URL du serveur Qdrant */
   url: string;
-  /** Nom de la collection */
-  collectionName: string;
-  /** Nombre de dimensions des vecteurs */
-  vectorSize: number;
+  /** Nom de la collection (défaut: 'corpus_vectors') */
+  collectionName?: string;
+  /** Nombre de dimensions des vecteurs dense (défaut: 512) */
+  vectorSize?: number;
   /** Clé API (optionnel, pour Qdrant Cloud) */
   apiKey?: string;
+  /** Timeout en ms (défaut: 30000) */
+  timeout?: number;
 }

@@ -1,9 +1,10 @@
 import OpenAI from 'openai';
 import { buildSystemPrompt, buildContextSection } from '@corpusai/ai-rules';
 import type { EmbeddingService } from '../embeddings/types';
-import type { VectorStoreService, SearchResult, FilterCondition } from '../vector-store/types';
+import type { SparseVectorGenerator } from '../embeddings/sparse';
+import type { VectorStoreService, SearchResult } from '../vector-store/types';
 import type { ChunkingService, Chunk } from '../chunking/types';
-import type { Reranker, AsyncReranker, ScoredResult } from '../reranking/types';
+import type { AsyncReranker, ScoredResult } from '../reranking/types';
 import { CohereReranker } from '../reranking/cohere-reranker';
 import type {
   RAGPipeline,
@@ -112,11 +113,13 @@ export class RAGPipelineImpl implements RAGPipeline {
   private debug: boolean;
 
   constructor(
+    private readonly aiId: string,
     private embeddings: EmbeddingService,
     private vectorStore: VectorStoreService,
+    private sparseGenerator: SparseVectorGenerator,
     private chunker: ChunkingService,
     private llmConfig: LLMConfig,
-    private reranker?: Reranker | AsyncReranker
+    private reranker?: AsyncReranker
   ) {
     this.openai = new OpenAI({
       apiKey: llmConfig.apiKey,
@@ -165,9 +168,7 @@ export class RAGPipelineImpl implements RAGPipeline {
 
     // Clean existing vectors for these documents (idempotent retry)
     for (const doc of documents) {
-      await this.vectorStore.delete({
-        must: [{ key: 'documentId', match: { value: doc.id } }],
-      });
+      await this.vectorStore.deleteByDocument(this.aiId, doc.id);
     }
 
     // === PHASE 1: CHUNKING (0-10%) ===
@@ -231,14 +232,17 @@ export class RAGPipelineImpl implements RAGPipeline {
       // Use enriched text for embedding if available, otherwise original chunk text
       const batchTexts = batchChunks.map((c, i) => enrichedTexts?.[start + i] ?? c.text);
 
-      // Embed this batch with retry logic
+      // Embed dense vectors with retry logic
       const batchEmbeddings = await this.embedWithRetry(batchTexts);
 
-      // Prepare and store points for this batch immediately
-      // IMPORTANT: payload always stores the original chunk.text, never the enriched text
+      // Generate sparse vectors for BM25 hybrid search
+      const batchSparseVectors = this.sparseGenerator.generateBatch(batchChunks.map((c) => c.text));
+
+      // Prepare hybrid points (dense + sparse + payload with ai_id)
+      const isLastBatch = batchIndex === totalBatches - 1;
       const batchPoints = batchChunks.map((chunk, i) => {
-        const vector = batchEmbeddings[i];
-        if (!vector) {
+        const denseVector = batchEmbeddings[i];
+        if (!denseVector) {
           throw new Error(`No embedding for chunk ${chunk.id}`);
         }
         chunkIds.push(chunk.id);
@@ -250,19 +254,23 @@ export class RAGPipelineImpl implements RAGPipeline {
         });
         return {
           id: chunk.id,
-          vector,
+          denseVector,
+          sparseVector: batchSparseVectors[i]!,
           payload: {
+            ai_id: this.aiId,
             text: chunk.text,
-            source: chunk.metadata.source,
-            documentId: chunk.metadata.documentId,
-            chunkIndex: chunk.metadata.chunkIndex,
-            ...(chunk.metadata.parentContent && { parent_content: chunk.metadata.parentContent }),
+            source: chunk.metadata.source as string,
+            documentId: chunk.metadata.documentId as string,
+            chunkIndex: chunk.metadata.chunkIndex as number,
+            ...(chunk.metadata.parentContent && {
+              parent_content: chunk.metadata.parentContent as string,
+            }),
           },
         };
       });
 
-      // Store this batch immediately (don't accumulate embeddings in memory)
-      await this.vectorStore.upsert(batchPoints);
+      // Store this batch immediately (wait only on last batch for throughput)
+      await this.vectorStore.upsert(batchPoints, isLastBatch);
 
       // Progress: embeddingStart-100% for combined embedding + storing
       const progress =
@@ -323,7 +331,6 @@ export class RAGPipelineImpl implements RAGPipeline {
       const { results: hydeResults, hydeMs } = await this.hydeSearch(question, {
         limit: topK,
         scoreThreshold,
-        filter,
       });
       results = hydeResults;
       metrics.hydeMs = hydeMs;
@@ -331,18 +338,20 @@ export class RAGPipelineImpl implements RAGPipeline {
       metrics.searchMs = 0;
       this.log(`[RAG] HyDE search: ${results.length} results in ${hydeMs}ms`);
     } else {
-      const questionEmbedding = await this.embeddings.embed(question);
+      const [questionEmbedding, questionSparse] = await Promise.all([
+        this.embeddings.embed(question),
+        Promise.resolve(this.sparseGenerator.generate(question)),
+      ]);
       metrics.embeddingMs = Date.now() - embedStart;
       this.log(`[RAG] Embedding: ${metrics.embeddingMs}ms`);
       const searchStart = Date.now();
-      results = await this.vectorStore.search(questionEmbedding, {
+      results = await this.vectorStore.hybridSearch(questionEmbedding, questionSparse, this.aiId, {
         limit: topK,
         scoreThreshold,
-        filter,
         withPayload: true,
       });
       metrics.searchMs = Date.now() - searchStart;
-      this.log(`[RAG] Search: ${results.length} results in ${metrics.searchMs}ms`);
+      this.log(`[RAG] Hybrid search: ${results.length} results in ${metrics.searchMs}ms`);
     }
 
     // Log each result with score
@@ -478,18 +487,19 @@ export class RAGPipelineImpl implements RAGPipeline {
       const { results: hydeResults, hydeMs } = await this.hydeSearch(question, {
         limit: topK,
         scoreThreshold,
-        filter,
       });
       results = hydeResults;
       this.log(`[RAG-STREAM] HyDE search: ${results.length} results in ${hydeMs}ms`);
     } else {
       const embStart = Date.now();
-      const questionEmbedding = await this.embeddings.embed(question);
+      const [questionEmbedding, questionSparse] = await Promise.all([
+        this.embeddings.embed(question),
+        Promise.resolve(this.sparseGenerator.generate(question)),
+      ]);
       metrics.embeddingMs = Date.now() - embStart;
-      results = await this.vectorStore.search(questionEmbedding, {
+      results = await this.vectorStore.hybridSearch(questionEmbedding, questionSparse, this.aiId, {
         limit: topK,
         scoreThreshold,
-        filter,
         withPayload: true,
       });
     }
@@ -596,9 +606,7 @@ export class RAGPipelineImpl implements RAGPipeline {
    */
   async deleteDocuments(documentIds: string[]): Promise<void> {
     for (const docId of documentIds) {
-      await this.vectorStore.delete({
-        must: [{ key: 'documentId', match: { value: docId } }],
-      });
+      await this.vectorStore.deleteByDocument(this.aiId, docId);
     }
   }
 
@@ -621,11 +629,7 @@ export class RAGPipelineImpl implements RAGPipeline {
     if (!this.reranker || results.length === 0) {
       return results;
     }
-    if (this.reranker instanceof CohereReranker) {
-      return await this.reranker.rerank(results, query, config);
-    }
-    // Sync reranker (HybridReranker)
-    return (this.reranker as Reranker).rerank(results, query, config);
+    return await this.reranker.rerank(results, query, config);
   }
 
   /**
@@ -672,27 +676,29 @@ export class RAGPipelineImpl implements RAGPipeline {
    */
   private async hydeSearch(
     question: string,
-    options: { limit: number; scoreThreshold: number; filter?: FilterCondition }
+    options: { limit: number; scoreThreshold: number }
   ): Promise<{ results: SearchResult[]; hydeMs: number }> {
     const hydeStart = Date.now();
     try {
       const hypotheticalDoc = await this.generateHypotheticalDoc(question);
       this.log(`[RAG] HyDE hypothetical doc: "${hypotheticalDoc.slice(0, 100)}..."`);
 
-      // Embed en parallèle
+      // Embed dense + sparse in parallel for both question and hypothetical doc
       const [questionVec, hypoVec] = await Promise.all([
         this.embeddings.embed(question),
         this.embeddings.embed(hypotheticalDoc),
       ]);
+      const questionSparse = this.sparseGenerator.generate(question);
+      const hypoSparse = this.sparseGenerator.generate(hypotheticalDoc);
 
-      // Recherche en parallèle
+      // Hybrid search in parallel
       const searchOptions = { ...options, withPayload: true };
       const [resultsQ, resultsHypo] = await Promise.all([
-        this.vectorStore.search(questionVec, searchOptions),
-        this.vectorStore.search(hypoVec, searchOptions),
+        this.vectorStore.hybridSearch(questionVec, questionSparse, this.aiId, searchOptions),
+        this.vectorStore.hybridSearch(hypoVec, hypoSparse, this.aiId, searchOptions),
       ]);
 
-      // Merger + déduper : garder le meilleur score par id
+      // Merge + dedup: keep best score per id
       const merged = new Map<string, SearchResult>();
       for (const r of [...resultsQ, ...resultsHypo]) {
         const existing = merged.get(r.id);
@@ -701,7 +707,6 @@ export class RAGPipelineImpl implements RAGPipeline {
         }
       }
 
-      // Trier par score décroissant, puis garder topK
       const results = [...merged.values()]
         .sort((a, b) => b.score - a.score)
         .slice(0, options.limit);
@@ -711,7 +716,8 @@ export class RAGPipelineImpl implements RAGPipeline {
       const msg = error instanceof Error ? error.message : String(error);
       console.warn('[RAG] HyDE failed, falling back to standard search:', msg);
       const questionVec = await this.embeddings.embed(question);
-      const results = await this.vectorStore.search(questionVec, {
+      const questionSparse = this.sparseGenerator.generate(question);
+      const results = await this.vectorStore.hybridSearch(questionVec, questionSparse, this.aiId, {
         ...options,
         withPayload: true,
       });

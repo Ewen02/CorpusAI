@@ -454,13 +454,18 @@ describeCompat('RAGPipeline backwards-compat: no parent_content in payload', () 
     ];
 
     const mockVectorStore: VectorStoreService = {
-      collectionName: 'ai_test',
+      collectionName: 'corpus_vectors',
       ensureCollection: vi.fn().mockResolvedValue(undefined),
       upsert: vi.fn().mockResolvedValue(undefined),
-      search: vi.fn().mockResolvedValue(oldResults),
-      delete: vi.fn().mockResolvedValue(undefined),
-      deleteByIds: vi.fn().mockResolvedValue(undefined),
-      deleteCollection: vi.fn().mockResolvedValue(undefined),
+      hybridSearch: vi.fn().mockResolvedValue(oldResults),
+      deleteByDocument: vi.fn().mockResolvedValue(undefined),
+      deleteByAI: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const mockSparseGenerator = {
+      generate: vi.fn().mockReturnValue({ indices: [1], values: [0.5] }),
+      generateBatch: vi.fn().mockReturnValue([{ indices: [1], values: [0.5] }]),
+      dispose: vi.fn(),
     };
 
     const mockChunker: ChunkingService = {
@@ -475,7 +480,14 @@ describeCompat('RAGPipeline backwards-compat: no parent_content in payload', () 
       maxTokens: 1000,
     };
 
-    pipeline = new RAGPipelineImpl(mockEmbedding, mockVectorStore, mockChunker, llmConfig);
+    pipeline = new RAGPipelineImpl(
+      'test-ai-id',
+      mockEmbedding,
+      mockVectorStore,
+      mockSparseGenerator as any,
+      mockChunker,
+      llmConfig
+    );
   });
 
   itCompat(
@@ -547,19 +559,23 @@ describeCompat('RAGPipeline backwards-compat: no parent_content in payload', () 
     // Get the mock vector store and update search
     const response = await (async () => {
       const mockEmbedding: EmbeddingService = {
-        dimensions: 1536,
+        dimensions: 512,
         model: 'text-embedding-3-small',
-        embed: vi.fn().mockResolvedValue(new Array(1536).fill(0.1)),
-        embedBatch: vi.fn().mockResolvedValue([new Array(1536).fill(0.1)]),
+        embed: vi.fn().mockResolvedValue(new Array(512).fill(0.1)),
+        embedBatch: vi.fn().mockResolvedValue([new Array(512).fill(0.1)]),
+      };
+      const mockSG = {
+        generate: vi.fn().mockReturnValue({ indices: [1], values: [0.5] }),
+        generateBatch: vi.fn().mockReturnValue([{ indices: [1], values: [0.5] }]),
+        dispose: vi.fn(),
       };
       const mockVS: VectorStoreService = {
-        collectionName: 'ai_new',
+        collectionName: 'corpus_vectors',
         ensureCollection: vi.fn().mockResolvedValue(undefined),
         upsert: vi.fn().mockResolvedValue(undefined),
-        search: vi.fn().mockResolvedValue(newResults),
-        delete: vi.fn().mockResolvedValue(undefined),
-        deleteByIds: vi.fn().mockResolvedValue(undefined),
-        deleteCollection: vi.fn().mockResolvedValue(undefined),
+        hybridSearch: vi.fn().mockResolvedValue(newResults),
+        deleteByDocument: vi.fn().mockResolvedValue(undefined),
+        deleteByAI: vi.fn().mockResolvedValue(undefined),
       };
       const mockChunker: ChunkingService = {
         strategy: 'parent-child',
@@ -571,7 +587,14 @@ describeCompat('RAGPipeline backwards-compat: no parent_content in payload', () 
         temperature: 0.2,
         maxTokens: 1000,
       };
-      const p = new RAGPipelineImpl(mockEmbedding, mockVS, mockChunker, llmConfig);
+      const p = new RAGPipelineImpl(
+        'test-ai-id',
+        mockEmbedding,
+        mockVS,
+        mockSG as any,
+        mockChunker,
+        llmConfig
+      );
       return p.query('Tell me about the new document.', { useHyde: false });
     })();
 

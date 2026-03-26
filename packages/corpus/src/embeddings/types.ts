@@ -31,4 +31,6 @@ export interface EmbeddingService {
 export interface OpenAIEmbeddingConfig {
   apiKey: string;
   model?: 'text-embedding-3-small' | 'text-embedding-3-large' | 'text-embedding-ada-002';
+  /** Matryoshka dimension reduction. Defaults to 512 for text-embedding-3-small. */
+  dimensions?: number;
 }

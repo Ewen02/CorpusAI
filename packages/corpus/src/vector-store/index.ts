@@ -1,4 +1,7 @@
 export type {
+  SparseVector,
+  ChunkPayload,
+  HybridVectorPoint,
   VectorStoreService,
   VectorPoint,
   SearchResult,

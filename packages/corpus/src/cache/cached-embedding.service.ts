@@ -107,11 +107,12 @@ export class CachedEmbeddingService implements EmbeddingService {
 
   /**
    * Génère une clé de cache à partir du texte.
-   * Utilise SHA-256 pour une distribution uniforme.
+   * Includes dimensions in the key to invalidate cache when switching
+   * embedding dimensions (e.g. 1536d → 512d Matryoshka migration).
    */
   private hashText(text: string): string {
     const hash = createHash('sha256').update(text).digest('hex');
-    return `${this.prefix}${hash}`;
+    return `${this.prefix}${this.dimensions}:${hash}`;
   }
 
   /**
