@@ -6,6 +6,7 @@ import {
   type SubscriptionPlanType,
 } from '@corpusai/subscription';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { getStartDateForPeriod, getDaysForPeriod } from '../../shared/date-utils';
 
 @Injectable()
 export class UsersService {
@@ -120,11 +121,8 @@ export class UsersService {
   }
 
   async getAnalytics(userId: string, period: '7d' | '30d' | '90d' = '30d') {
-    const days = period === '7d' ? 7 : period === '90d' ? 90 : 30;
-
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
-    startDate.setHours(0, 0, 0, 0);
+    const days = getDaysForPeriod(period);
+    const startDate = getStartDateForPeriod(period);
 
     // Query global DailyStats (aiId = null) for the period
     const stats = await prisma.dailyStats.findMany({

@@ -28,12 +28,32 @@ export const auth = betterAuth({
       clientSecret: process.env.GITHUB_CLIENT_SECRET || '',
     },
   },
+  rateLimit: {
+    window: 60 * 60, // 1 hour
+    max: 5,
+    customRules: {
+      '/sign-in/email': { window: 60 * 60, max: 5 },
+      '/sign-up/email': { window: 60 * 60, max: 10 },
+      '/forgot-password': { window: 60 * 60, max: 3 },
+    },
+  },
   session: {
     expiresIn: 60 * 60 * 24 * 7, // 7 days
     updateAge: 60 * 60 * 24, // Update session every 24 hours
     cookieCache: {
       enabled: true,
       maxAge: 60 * 5, // 5 minutes
+    },
+  },
+  advanced: {
+    cookies: {
+      session_token: {
+        attributes: {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax' as const,
+        },
+      },
     },
   },
   user: {

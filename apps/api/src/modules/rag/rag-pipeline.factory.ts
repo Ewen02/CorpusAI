@@ -155,6 +155,7 @@ export class RagPipelineFactory implements OnModuleDestroy {
    * Crée un pipeline RAG complet pour une AI spécifique.
    */
   createForAI(aiId: string, llmConfig?: Partial<LLMConfig>): RAGPipelineImpl {
+    this.validateAiId(aiId);
     const vectorStore = this.createVectorStoreForAI(aiId);
 
     return new RAGPipelineImpl(

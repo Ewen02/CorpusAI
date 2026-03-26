@@ -17,6 +17,9 @@ import { BillingModule } from './modules/billing/billing.module';
 import { AdminModule } from './modules/admin';
 import { PublicApiModule } from './modules/public-api';
 import { ExploreModule } from './modules/explore';
+import { MailModule } from './modules/mail/mail.module';
+import { EndUserAuthModule } from './modules/end-user-auth/end-user-auth.module';
+import { PortalModule } from './modules/portal/portal.module';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middleware';
 
@@ -35,6 +38,8 @@ import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middle
         STRIPE_SECRET_KEY: Joi.string().optional().allow(''),
         STRIPE_WEBHOOK_SECRET: Joi.string().optional().allow(''),
         SENTRY_DSN: Joi.string().optional().allow(''),
+        RESEND_API_KEY: Joi.string().optional().allow(''),
+        RESEND_FROM_EMAIL: Joi.string().optional().allow(''),
         NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
         PORT: Joi.number().default(3001),
       }),
@@ -82,6 +87,9 @@ import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middle
     AdminModule,
     PublicApiModule,
     ExploreModule,
+    MailModule,
+    EndUserAuthModule,
+    PortalModule,
   ],
   controllers: [AppController],
   providers: [

@@ -33,13 +33,14 @@ export class BillingService {
 
     if (!user) throw new NotFoundException('User not found');
 
-    // Get or create Stripe customer
+    // Get or create Stripe customer.
+    // Idempotency key ensures repeated calls (e.g. retry after DB failure) return the same customer.
     let customerId = user.stripeCustomerId;
     if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: user.email,
-        metadata: { userId },
-      });
+      const customer = await stripe.customers.create(
+        { email: user.email, metadata: { userId } },
+        { idempotencyKey: `create-customer-${userId}` }
+      );
       customerId = customer.id;
       await prisma.user.update({
         where: { id: userId },

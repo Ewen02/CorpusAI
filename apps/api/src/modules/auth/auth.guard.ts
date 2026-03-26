@@ -6,6 +6,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { auth, type Session, type User } from '../../lib/auth';
+import { fromNodeHeaders } from 'better-auth/node';
 import type { Request } from 'express';
 
 export interface AuthenticatedRequest extends Request {
@@ -21,7 +22,7 @@ export class AuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
 
     const session = await auth.api.getSession({
-      headers: request.headers as unknown as Headers,
+      headers: fromNodeHeaders(request.headers),
     });
 
     if (!session) {

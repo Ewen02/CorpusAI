@@ -1,16 +1,42 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiResponse } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+} from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
 import { AIsService } from './ais.service';
+import { MailService } from '../mail/mail.service';
 import { AuthGuard, CurrentUser, type CurrentUserData } from '../auth';
 import { CreateAIDto } from './dto/create-ai.dto';
 import { UpdateAIDto } from './dto/update-ai.dto';
+import { SetAccessCodeDto, UpdateInviteOnlyDto, InviteMemberDto } from './dto/access.dto';
 
 @ApiTags('ais')
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
 @Controller('ais')
 export class AIsController {
-  constructor(private readonly aisService: AIsService) {}
+  constructor(
+    private readonly aisService: AIsService,
+    private readonly mailService: MailService,
+    private readonly config: ConfigService
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'List all AIs for current user' })
@@ -30,6 +56,17 @@ export class AIsController {
     return this.aisService.findOne(user.id, id);
   }
 
+  @Post(':id/generate-suggestions')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Generate AI field suggestions from indexed documents' })
+  @ApiParam({ name: 'id', description: 'AI ID' })
+  @ApiResponse({ status: 200, description: 'Suggestions generated successfully' })
+  @ApiResponse({ status: 400, description: 'No indexed documents found' })
+  @ApiResponse({ status: 404, description: 'AI not found' })
+  async generateSuggestions(@CurrentUser() user: CurrentUserData, @Param('id') id: string) {
+    return this.aisService.generateSuggestions(user.id, id);
+  }
+
   @Get(':id/stats')
   @ApiOperation({ summary: 'Get AI statistics' })
   @ApiParam({ name: 'id', description: 'AI ID' })
@@ -38,6 +75,20 @@ export class AIsController {
   @ApiResponse({ status: 404, description: 'AI not found' })
   async getStats(@CurrentUser() user: CurrentUserData, @Param('id') id: string) {
     return this.aisService.getStats(user.id, id);
+  }
+
+  @Get(':id/analytics')
+  @ApiOperation({ summary: 'Get analytics for a specific AI' })
+  @ApiParam({ name: 'id', description: 'AI ID' })
+  @ApiQuery({ name: 'period', enum: ['7d', '30d', '90d'], required: false })
+  @ApiResponse({ status: 200, description: 'Analytics data returned' })
+  @ApiResponse({ status: 404, description: 'AI not found' })
+  async getAnalytics(
+    @CurrentUser() user: CurrentUserData,
+    @Param('id') id: string,
+    @Query('period') period?: '7d' | '30d' | '90d'
+  ) {
+    return this.aisService.getAnalytics(user.id, id, period);
   }
 
   @Post()
@@ -72,5 +123,95 @@ export class AIsController {
   @ApiResponse({ status: 404, description: 'AI not found' })
   async delete(@CurrentUser() user: CurrentUserData, @Param('id') id: string) {
     return this.aisService.delete(user.id, id);
+  }
+
+  // ============================================
+  // Access control endpoints
+  // ============================================
+
+  @Post(':id/access/token')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Generate a secret access token for this AI' })
+  @ApiParam({ name: 'id', description: 'AI ID' })
+  async generateAccessToken(@CurrentUser() user: CurrentUserData, @Param('id') id: string) {
+    const frontendUrl = this.config.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    return this.aisService.generateAccessToken(user.id, id, frontendUrl);
+  }
+
+  @Delete(':id/access/token')
+  @ApiOperation({ summary: 'Delete the secret access token' })
+  @ApiParam({ name: 'id', description: 'AI ID' })
+  async deleteAccessToken(@CurrentUser() user: CurrentUserData, @Param('id') id: string) {
+    return this.aisService.deleteAccessToken(user.id, id);
+  }
+
+  @Post(':id/access/code')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Set an access code for this AI' })
+  @ApiParam({ name: 'id', description: 'AI ID' })
+  async setAccessCode(
+    @CurrentUser() user: CurrentUserData,
+    @Param('id') id: string,
+    @Body() dto: SetAccessCodeDto
+  ) {
+    return this.aisService.setAccessCode(user.id, id, dto.code);
+  }
+
+  @Delete(':id/access/code')
+  @ApiOperation({ summary: 'Remove the access code' })
+  @ApiParam({ name: 'id', description: 'AI ID' })
+  async deleteAccessCode(@CurrentUser() user: CurrentUserData, @Param('id') id: string) {
+    return this.aisService.deleteAccessCode(user.id, id);
+  }
+
+  @Patch(':id/access/invite')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Toggle invite-only mode' })
+  @ApiParam({ name: 'id', description: 'AI ID' })
+  async updateInviteOnly(
+    @CurrentUser() user: CurrentUserData,
+    @Param('id') id: string,
+    @Body() dto: UpdateInviteOnlyDto
+  ) {
+    return this.aisService.updateInviteOnly(user.id, id, dto.inviteOnly);
+  }
+
+  @Get(':id/members')
+  @ApiOperation({ summary: 'List members with active access grants' })
+  @ApiParam({ name: 'id', description: 'AI ID' })
+  async getMembers(@CurrentUser() user: CurrentUserData, @Param('id') id: string) {
+    return this.aisService.getMembers(user.id, id);
+  }
+
+  @Post(':id/members')
+  @ApiOperation({ summary: 'Invite a member to access this AI' })
+  @ApiParam({ name: 'id', description: 'AI ID' })
+  async inviteMember(
+    @CurrentUser() user: CurrentUserData,
+    @Param('id') id: string,
+    @Body() dto: InviteMemberDto
+  ) {
+    const frontendUrl = this.config.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    return this.aisService.inviteMember(
+      user.id,
+      id,
+      dto.email,
+      dto.name,
+      this.mailService,
+      frontendUrl,
+      user.name || user.email
+    );
+  }
+
+  @Delete(':id/members/:endUserId')
+  @ApiOperation({ summary: 'Revoke a member access' })
+  @ApiParam({ name: 'id', description: 'AI ID' })
+  @ApiParam({ name: 'endUserId', description: 'EndUser ID' })
+  async revokeMember(
+    @CurrentUser() user: CurrentUserData,
+    @Param('id') id: string,
+    @Param('endUserId') endUserId: string
+  ) {
+    return this.aisService.revokeMember(user.id, id, endUserId);
   }
 }

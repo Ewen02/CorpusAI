@@ -1,17 +1,18 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
-import { auth } from "../../lib/auth";
-import { prisma } from "@corpusai/database";
-import type { Request } from "express";
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { auth } from '../../lib/auth';
+import { fromNodeHeaders } from 'better-auth/node';
+import { prisma } from '@corpusai/database';
+import type { Request } from 'express';
 
 @Injectable()
 export class AuthService {
   async validateSession(request: Request) {
     const session = await auth.api.getSession({
-      headers: request.headers as unknown as Headers,
+      headers: fromNodeHeaders(request.headers),
     });
 
     if (!session) {
-      throw new UnauthorizedException("Invalid or expired session");
+      throw new UnauthorizedException('Invalid or expired session');
     }
 
     return session;

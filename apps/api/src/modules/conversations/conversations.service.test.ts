@@ -103,7 +103,7 @@ describe('ConversationsService', () => {
 
       const result = await service.getAIPublicInfo('test-ai');
       expect(result.avatar).toBe('logo.png');
-      expect(result.isPublic).toBe(true);
+      expect(result.id).toBe('ai-1');
     });
 
     it('should throw when AI not found', async () => {

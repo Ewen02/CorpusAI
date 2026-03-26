@@ -40,9 +40,10 @@ const mockUser = prisma.user as unknown as { findUnique: ReturnType<typeof vi.fn
 describe('AIsService', () => {
   let service: AIsService;
   const mockRagService = { deleteAICollection: vi.fn() };
+  const mockTextGenerationService = { generateAISuggestions: vi.fn() };
 
   beforeEach(() => {
-    service = new AIsService(mockRagService as any);
+    service = new AIsService(mockRagService as any, mockTextGenerationService as any);
     vi.clearAllMocks();
     (canCreateAI as ReturnType<typeof vi.fn>).mockReturnValue(true);
   });

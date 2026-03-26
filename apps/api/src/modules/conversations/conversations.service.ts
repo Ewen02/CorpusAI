@@ -1,11 +1,22 @@
-import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  UnauthorizedException,
+  Logger,
+} from '@nestjs/common';
 import {
   prisma,
   MessageRole,
   AIStatus,
+  AccessStatus,
   ConfidenceLevel,
+  ConversationSource,
   type TransactionClient,
+  type AI,
+  type EndUser,
 } from '@corpusai/database';
+import * as bcrypt from 'bcryptjs';
 import { canAskQuestion, type SubscriptionPlanType } from '@corpusai/subscription';
 import { determineConfidence, buildSystemPrompt } from '@corpusai/ai-rules';
 import type { RAGResponse } from '@corpusai/corpus';
@@ -18,19 +29,53 @@ export class ConversationsService {
 
   constructor(private ragService: RagService) {}
 
+  private async checkAIAccess(
+    ai: AI,
+    accessToken?: string,
+    accessCode?: string,
+    endUser?: EndUser | null
+  ): Promise<void> {
+    // Token secret check
+    if (ai.accessToken && accessToken !== ai.accessToken) {
+      throw new UnauthorizedException({ reason: 'access_token' });
+    }
+
+    // Access code check (bcrypt)
+    if (ai.accessCode) {
+      const valid = !!accessCode && (await bcrypt.compare(accessCode, ai.accessCode));
+      if (!valid) {
+        throw new UnauthorizedException({ reason: 'access_code' });
+      }
+    }
+
+    // Invite-only check
+    if (ai.inviteOnly) {
+      if (!endUser) {
+        throw new UnauthorizedException({ reason: 'invite_only' });
+      }
+      const grant = await prisma.aIAccessGrant.findFirst({
+        where: { aiId: ai.id, endUserId: endUser.id, status: AccessStatus.ACTIVE },
+      });
+      if (!grant || (grant.expiresAt && grant.expiresAt < new Date())) {
+        throw new UnauthorizedException({ reason: 'invite_only' });
+      }
+    }
+  }
+
   private async checkDailyRateLimit(aiId: string, plan: SubscriptionPlanType): Promise<void> {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    const todayQuestions = await prisma.message.count({
-      where: {
-        conversation: { aiId },
-        role: MessageRole.USER,
-        createdAt: { gte: todayStart },
-      },
-    });
+    const [{ count }] = await prisma.$queryRaw<[{ count: bigint }]>`
+      SELECT COUNT(*) as count
+      FROM "Message" m
+      JOIN "Conversation" c ON c.id = m."conversationId"
+      WHERE c."aiId" = ${aiId}
+        AND m.role = 'USER'
+        AND m."createdAt" >= ${todayStart}
+    `;
 
-    if (!canAskQuestion(plan, todayQuestions)) {
+    if (!canAskQuestion(plan, Number(count))) {
       throw new ForbiddenException('Daily question limit reached for this AI');
     }
   }
@@ -79,20 +124,26 @@ export class ConversationsService {
       },
     });
 
-    if (!ai) {
+    if (!ai || !ai.isPublic || ai.status !== AIStatus.ACTIVE) {
       throw new NotFoundException('AI not found');
     }
 
     return {
-      ...ai,
+      id: ai.id,
+      slug: ai.slug,
+      name: ai.name,
+      description: ai.description,
+      welcomeMessage: ai.welcomeMessage,
+      primaryColor: ai.primaryColor,
       avatar: ai.logo,
     };
   }
 
-  async findAllByAI(userId: string, aiId: string) {
+  async findAllByAI(userId: string, aiId: string, source?: ConversationSource) {
     // Verify ownership
     const ai = await prisma.aI.findFirst({
       where: { id: aiId, userId },
+      select: { id: true },
     });
 
     if (!ai) {
@@ -100,12 +151,13 @@ export class ConversationsService {
     }
 
     return prisma.conversation.findMany({
-      where: { aiId },
+      where: { aiId, ...(source ? { source } : {}) },
       orderBy: { updatedAt: 'desc' },
       select: {
         id: true,
         title: true,
         messageCount: true,
+        source: true,
         createdAt: true,
         updatedAt: true,
         endUser: {
@@ -183,7 +235,13 @@ export class ConversationsService {
     });
   }
 
-  async create(aiSlug: string, endUserSessionId?: string) {
+  async create(
+    aiSlug: string,
+    endUserSessionToken?: string,
+    source: ConversationSource = ConversationSource.DASHBOARD,
+    accessToken?: string,
+    accessCode?: string
+  ) {
     const ai = await prisma.aI.findUnique({
       where: { slug: aiSlug },
     });
@@ -193,21 +251,18 @@ export class ConversationsService {
       throw new NotFoundException('AI not found or not active');
     }
 
-    // Find or create end user
-    let endUserId: string | undefined;
-    if (endUserSessionId) {
-      let endUser = await prisma.endUser.findFirst({
-        where: { sessionId: endUserSessionId },
+    // Resolve authenticated end-user from session token (cookie eu_session)
+    let endUser: EndUser | null = null;
+    if (endUserSessionToken) {
+      endUser = await prisma.endUser.findFirst({
+        where: { sessionToken: endUserSessionToken, sessionExpires: { gt: new Date() } },
       });
-
-      if (!endUser) {
-        endUser = await prisma.endUser.create({
-          data: { sessionId: endUserSessionId },
-        });
-      }
-
-      endUserId = endUser.id;
     }
+
+    // Check access control
+    await this.checkAIAccess(ai, accessToken, accessCode, endUser);
+
+    const endUserId = endUser?.id;
 
     // Use transaction to ensure conversation creation and counter update are atomic
     const conversation = await prisma.$transaction(async (tx: TransactionClient) => {
@@ -215,6 +270,7 @@ export class ConversationsService {
         data: {
           aiId: ai.id,
           endUserId,
+          source,
         },
         include: {
           ai: {

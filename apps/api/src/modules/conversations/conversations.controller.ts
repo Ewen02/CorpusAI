@@ -5,11 +5,13 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   Req,
   UseGuards,
   Headers,
   Res,
 } from '@nestjs/common';
+import { ConversationSource } from '@corpusai/database';
 import {
   ApiTags,
   ApiOperation,
@@ -41,8 +43,13 @@ export class ConversationsController {
   @ApiResponse({ status: 200, description: 'List of conversations returned' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'AI not found' })
-  async findAllByAI(@CurrentUser() user: CurrentUserData, @Param('aiId') aiId: string) {
-    return this.conversationsService.findAllByAI(user.id, aiId);
+  async findAllByAI(
+    @CurrentUser() user: CurrentUserData,
+    @Param('aiId') aiId: string,
+    @Query('source') source?: string
+  ) {
+    const conversationSource = source ? (source as ConversationSource) : undefined;
+    return this.conversationsService.findAllByAI(user.id, aiId, conversationSource);
   }
 
   @Delete('conversations/:id')
@@ -73,14 +80,34 @@ export class ConversationsController {
   @Post('chat/:aiSlug/start')
   @ApiOperation({ summary: 'Start a new conversation with an AI' })
   @ApiParam({ name: 'aiSlug', description: 'AI slug' })
-  @ApiHeader({ name: 'x-session-id', required: false, description: 'End user session ID' })
+  @ApiHeader({ name: 'x-access-token', required: false, description: 'Secret link token' })
+  @ApiHeader({ name: 'x-access-code', required: false, description: 'Access code' })
+  @ApiHeader({
+    name: 'x-conversation-source',
+    required: false,
+    description: 'Conversation source: DASHBOARD | WIDGET | PUBLIC',
+  })
   @ApiResponse({ status: 201, description: 'Conversation started' })
+  @ApiResponse({ status: 401, description: 'Access denied' })
   @ApiResponse({ status: 404, description: 'AI not found' })
   async startConversation(
     @Param('aiSlug') aiSlug: string,
-    @Headers('x-session-id') sessionId?: string
+    @Req() req: Request,
+    @Headers('x-access-token') accessToken?: string,
+    @Headers('x-access-code') accessCode?: string,
+    @Headers('x-conversation-source') source?: string
   ) {
-    return this.conversationsService.create(aiSlug, sessionId);
+    const conversationSource = (source as ConversationSource) ?? ConversationSource.DASHBOARD;
+    const euSession = (req as Request & { cookies?: Record<string, string> }).cookies?.[
+      'eu_session'
+    ];
+    return this.conversationsService.create(
+      aiSlug,
+      euSession,
+      conversationSource,
+      accessToken,
+      accessCode
+    );
   }
 
   @Get('chat/conversations/:id')

@@ -257,17 +257,22 @@ export class DocumentsService {
     const filePath = path.join(tmpDir, `${document.id}-${file.originalname}`);
     await fs.writeFile(filePath, file.buffer);
 
-    await this.documentQueue.add(
-      'process',
-      {
-        documentId: document.id,
-        aiId,
-        filename: file.originalname,
-        mimeType: file.mimetype,
-        filePath,
-      },
-      JOB_RETRY_CONFIG
-    );
+    try {
+      await this.documentQueue.add(
+        'process',
+        {
+          documentId: document.id,
+          aiId,
+          filename: file.originalname,
+          mimeType: file.mimetype,
+          filePath,
+        },
+        JOB_RETRY_CONFIG
+      );
+    } catch (error) {
+      await fs.unlink(filePath).catch(() => {});
+      throw error;
+    }
 
     this.logger.log(`Uploaded document ${document.id} queued for processing`);
     return document;

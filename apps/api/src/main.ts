@@ -15,7 +15,27 @@ async function bootstrap() {
   app.useLogger(app.get(PinoLogger));
 
   // Security headers
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", 'data:', 'https:'],
+          connectSrc: ["'self'", 'https://*.sentry.io'],
+          frameSrc: ["'none'"],
+          objectSrc: ["'none'"],
+        },
+      },
+      hsts: {
+        maxAge: 31536000,
+        includeSubDomains: true,
+        preload: true,
+      },
+      crossOriginEmbedderPolicy: false, // Required for Sentry and external resources
+    })
+  );
 
   // Global validation pipe
   app.useGlobalPipes(

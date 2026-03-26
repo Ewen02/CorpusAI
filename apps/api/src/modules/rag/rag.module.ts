@@ -3,11 +3,12 @@ import { ConfigModule } from '@nestjs/config';
 import { RagPipelineFactory } from './rag-pipeline.factory';
 import { RagService } from './rag.service';
 import { RagController } from './rag.controller';
+import { TextGenerationService } from './text-generation.service';
 
 @Module({
   imports: [ConfigModule],
   controllers: [RagController],
-  providers: [RagPipelineFactory, RagService],
-  exports: [RagPipelineFactory, RagService],
+  providers: [RagPipelineFactory, RagService, TextGenerationService],
+  exports: [RagPipelineFactory, RagService, TextGenerationService],
 })
 export class RagModule {}
