@@ -441,6 +441,19 @@ export class AIsService {
     return { success: true };
   }
 
+  async setAccessMode(userId: string, aiId: string, mode: 'open' | 'token' | 'code' | 'invite') {
+    await this.verifyOwnershipForAccess(userId, aiId);
+    await prisma.aI.update({
+      where: { id: aiId },
+      data: {
+        inviteOnly: mode === 'invite',
+        accessToken: mode === 'token' ? undefined : null,
+        accessCode: mode === 'code' ? undefined : null,
+      },
+    });
+    return { success: true };
+  }
+
   async getMembers(userId: string, aiId: string) {
     await this.verifyOwnershipForAccess(userId, aiId);
     return prisma.aIAccessGrant.findMany({

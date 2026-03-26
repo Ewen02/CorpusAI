@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
+
+export class SetAccessModeDto {
+  @ApiProperty({ example: 'code', enum: ['open', 'token', 'code', 'invite'] })
+  @IsIn(['open', 'token', 'code', 'invite'])
+  mode!: 'open' | 'token' | 'code' | 'invite';
+}
 
 export class SetAccessCodeDto {
   @ApiProperty({ example: 'FORMATION2025' })

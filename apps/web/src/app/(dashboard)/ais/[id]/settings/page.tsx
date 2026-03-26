@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Button,
   Input,
@@ -13,11 +14,13 @@ import {
   TabsContent,
   Skeleton,
   Badge,
+  CopyButton,
   cn,
 } from '@corpusai/ui';
 import { Globe, Link2, Lock, Users, Check, RefreshCw, Trash2 } from 'lucide-react';
 import {
   useAI,
+  aiKeys,
   useUpdateAI,
   useDeleteAI,
   useGenerateSuggestions,
@@ -27,7 +30,7 @@ import {
   useDeleteAccessToken,
   useSetAccessCode,
   useDeleteAccessCode,
-  useUpdateInviteOnly,
+  useSetAccessMode,
   useInviteMember,
   useRevokeMember,
 } from '@/lib/queries';
@@ -90,12 +93,13 @@ function AccessTab({
   hasAccessToken: boolean;
   hasAccessCode: boolean;
 }) {
+  const queryClient = useQueryClient();
   const { data: members, isLoading: isLoadingMembers } = useAIMembers(aiId);
   const generateToken = useGenerateAccessToken(aiId);
   const deleteToken = useDeleteAccessToken(aiId);
   const setCode = useSetAccessCode(aiId);
   const deleteCode = useDeleteAccessCode(aiId);
-  const updateInviteOnly = useUpdateInviteOnly(aiId);
+  const setModeMutation = useSetAccessMode(aiId);
   const inviteMember = useInviteMember(aiId);
   const revokeMember = useRevokeMember(aiId);
 
@@ -115,31 +119,21 @@ function AccessTab({
     null
   );
   const [accessCode, setAccessCode] = React.useState('');
+  const [savedCodeValue, setSavedCodeValue] = React.useState<string | null>(null);
   const [codeSaved, setCodeSaved] = React.useState(false);
   const [inviteEmail, setInviteEmail] = React.useState('');
   const [inviteError, setInviteError] = React.useState('');
   const [copied, setCopied] = React.useState(false);
 
   const handleModeChange = async (mode: typeof accessMode) => {
-    if (mode === accessMode) return;
+    if (mode === accessMode || setModeMutation.isPending) return;
+    const prev = accessMode;
     setAccessMode(mode);
-    if (mode === 'open') {
-      await Promise.all([
-        updateInviteOnly.mutateAsync(false),
-        deleteToken.mutateAsync(),
-        deleteCode.mutateAsync(),
-      ]);
-    } else if (mode === 'invite') {
-      await Promise.all([
-        updateInviteOnly.mutateAsync(true),
-        deleteToken.mutateAsync(),
-        deleteCode.mutateAsync(),
-      ]);
-    } else if (mode === 'token') {
-      await Promise.all([updateInviteOnly.mutateAsync(false), deleteCode.mutateAsync()]);
-    } else if (mode === 'code') {
-      await Promise.all([updateInviteOnly.mutateAsync(false), deleteToken.mutateAsync()]);
-      setGeneratedToken(null);
+    try {
+      await setModeMutation.mutateAsync(mode);
+      if (mode !== 'token') setGeneratedToken(null);
+    } catch {
+      setAccessMode(prev);
     }
   };
 
@@ -151,6 +145,7 @@ function AccessTab({
   const handleDeleteToken = async () => {
     await deleteToken.mutateAsync();
     setGeneratedToken(null);
+    queryClient.invalidateQueries({ queryKey: aiKeys.detail(aiId) });
   };
 
   const handleCopyUrl = (url: string) => {
@@ -162,6 +157,7 @@ function AccessTab({
   const handleSaveCode = async () => {
     if (accessCode.length < 4) return;
     await setCode.mutateAsync(accessCode);
+    setSavedCodeValue(accessCode);
     setCodeSaved(true);
     setAccessCode('');
     setTimeout(() => setCodeSaved(false), 2000);
@@ -169,7 +165,9 @@ function AccessTab({
 
   const handleDeleteCode = async () => {
     await deleteCode.mutateAsync();
+    setSavedCodeValue(null);
     setCodeSaved(false);
+    queryClient.invalidateQueries({ queryKey: aiKeys.detail(aiId) });
   };
 
   const handleInvite = async (e: React.FormEvent) => {
@@ -232,11 +230,13 @@ function AccessTab({
               <button
                 key={opt.value}
                 onClick={() => handleModeChange(opt.value)}
+                disabled={setModeMutation.isPending}
                 className={cn(
                   'relative rounded-lg border p-3 text-left transition-colors',
                   isActive
                     ? 'border-[hsl(var(--accent-500)/0.4)] bg-[hsl(var(--accent-500)/0.08)]'
-                    : 'border-[hsl(var(--border-default))] hover:bg-[hsl(var(--surface-2))]'
+                    : 'border-[hsl(var(--border-default))] hover:bg-[hsl(var(--surface-2))]',
+                  setModeMutation.isPending && 'cursor-not-allowed opacity-60'
                 )}
               >
                 {isActive && (
@@ -364,6 +364,12 @@ function AccessTab({
               <p className="text-[12px] text-[hsl(var(--success))]">
                 Un code est actuellement actif
               </p>
+            </div>
+          )}
+          {savedCodeValue && (
+            <div className="mb-3 flex items-center gap-2 rounded-md bg-[hsl(var(--surface-2))] px-3 py-2">
+              <span className="flex-1 font-mono text-sm text-tx-primary">{savedCodeValue}</span>
+              <CopyButton value={savedCodeValue} />
             </div>
           )}
           <div className="flex items-end gap-2">
@@ -498,6 +504,7 @@ export default function AISettingsPage() {
   const deleteAI = useDeleteAI();
   const generateSuggestionsMutation = useGenerateSuggestions();
 
+  const [activeTab, setActiveTab] = React.useState('general');
   const [name, setName] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [systemPrompt, setSystemPrompt] = React.useState('');
@@ -676,7 +683,7 @@ export default function AISettingsPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="general" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="inline-flex items-center gap-0.5 rounded-lg bg-[hsl(var(--surface-2))] p-1">
           <TabsTrigger value="general" className={tabTriggerClass}>
             Général
@@ -1312,8 +1319,12 @@ export default function AISettingsPage() {
           </div>
         </TabsContent>
 
-        {/* Access Tab */}
-        <TabsContent value="access" className="space-y-6">
+        {/* Access Tab — forceMount to prevent unmount/remount which could trigger spurious mutations */}
+        <TabsContent
+          value="access"
+          forceMount
+          className={cn('space-y-6', activeTab !== 'access' && 'hidden')}
+        >
           <AccessTab
             aiId={aiId}
             inviteOnly={ai.inviteOnly}

@@ -26,12 +26,17 @@ import { MailService } from '../mail/mail.service';
 import { AuthGuard, CurrentUser, type CurrentUserData } from '../auth';
 import { CreateAIDto } from './dto/create-ai.dto';
 import { UpdateAIDto } from './dto/update-ai.dto';
-import { SetAccessCodeDto, UpdateInviteOnlyDto, InviteMemberDto } from './dto/access.dto';
+import {
+  SetAccessModeDto,
+  SetAccessCodeDto,
+  UpdateInviteOnlyDto,
+  InviteMemberDto,
+} from './dto/access.dto';
 
 @ApiTags('ais')
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
-@SkipThrottle()
+@SkipThrottle({ short: true, medium: true, long: true })
 @Controller('ais')
 export class AIsController {
   constructor(
@@ -164,6 +169,18 @@ export class AIsController {
   @ApiParam({ name: 'id', description: 'AI ID' })
   async deleteAccessCode(@CurrentUser() user: CurrentUserData, @Param('id') id: string) {
     return this.aisService.deleteAccessCode(user.id, id);
+  }
+
+  @Patch(':id/access/mode')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Switch access mode atomically' })
+  @ApiParam({ name: 'id', description: 'AI ID' })
+  async setAccessMode(
+    @CurrentUser() user: CurrentUserData,
+    @Param('id') id: string,
+    @Body() dto: SetAccessModeDto
+  ) {
+    return this.aisService.setAccessMode(user.id, id, dto.mode);
   }
 
   @Patch(':id/access/invite')

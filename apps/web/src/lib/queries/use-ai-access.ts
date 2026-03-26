@@ -41,12 +41,8 @@ export function useGenerateAccessToken(aiId: string) {
 }
 
 export function useDeleteAccessToken(aiId: string) {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => apiClient.delete<{ success: boolean }>(`/ais/${aiId}/access/token`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: aiKeys.detail(aiId) });
-    },
   });
 }
 
@@ -62,20 +58,23 @@ export function useSetAccessCode(aiId: string) {
 }
 
 export function useDeleteAccessCode(aiId: string) {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => apiClient.delete<{ success: boolean }>(`/ais/${aiId}/access/code`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: aiKeys.detail(aiId) });
-    },
   });
 }
 
 export function useUpdateInviteOnly(aiId: string) {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (inviteOnly: boolean) =>
       apiClient.patch<{ success: boolean }>(`/ais/${aiId}/access/invite`, { inviteOnly }),
+  });
+}
+
+export function useSetAccessMode(aiId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (mode: 'open' | 'token' | 'code' | 'invite') =>
+      apiClient.patch<{ success: boolean }>(`/ais/${aiId}/access/mode`, { mode }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: aiKeys.detail(aiId) });
     },

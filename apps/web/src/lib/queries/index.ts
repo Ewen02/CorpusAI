@@ -144,6 +144,7 @@ export {
   useSetAccessCode,
   useDeleteAccessCode,
   useUpdateInviteOnly,
+  useSetAccessMode,
   useInviteMember,
   useRevokeMember,
   type AIAccessGrant,
