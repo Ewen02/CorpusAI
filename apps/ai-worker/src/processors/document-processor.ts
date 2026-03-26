@@ -165,6 +165,21 @@ export async function processDocument(data: DocumentProcessingJobData): Promise<
     const wordCount =
       metadata.wordCount ?? parsedContent.split(/\s+/).filter((w) => w.length > 0).length;
 
+    // Persist chunks to DB for analytics and text-based features (e.g. AI suggestions)
+    if (result.chunks.length > 0) {
+      await prisma.chunk.createMany({
+        data: result.chunks.map((c) => ({
+          id: c.id,
+          documentId,
+          content: c.text,
+          position: c.position,
+          pageNumber: c.pageNumber ?? null,
+          qdrantPointId: c.id,
+        })),
+        skipDuplicates: true,
+      });
+    }
+
     // Mark as indexed
     await prisma.document.update({
       where: { id: documentId },

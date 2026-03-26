@@ -11,6 +11,7 @@
     "experiment:chunking": "tsx src/experiments/chunking.ts",
     "experiment:rag": "tsx src/experiments/rag-pipeline.ts",
     "experiment:corpus": "tsx src/experiments/corpus-test.ts",
+    "lint": "eslint src/",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -1,6 +1,7 @@
 # apps/ai-worker — BullMQ Document Processing Worker
 
 ## Stack
+
 - BullMQ worker consommant depuis Redis
 - `@corpusai/corpus` pour le pipeline RAG complet
 - `@corpusai/database` pour Prisma
@@ -44,12 +45,12 @@ src/
 
 ## Progress Stages
 
-| Stage | Range | Description |
-|-------|-------|-------------|
-| PARSING | 0-10% | Parse du contenu document |
-| CHUNKING | ~10% | Decoupage en chunks |
-| EMBEDDING | 10-80% | Batch embed avec OpenAI |
-| STORING | 80-100% | Upsert dans Qdrant |
+| Stage     | Range   | Description               |
+| --------- | ------- | ------------------------- |
+| PARSING   | 0-10%   | Parse du contenu document |
+| CHUNKING  | ~10%    | Decoupage en chunks       |
+| EMBEDDING | 10-80%  | Batch embed avec OpenAI   |
+| STORING   | 80-100% | Upsert dans Qdrant        |
 
 ## Queue Config (via @corpusai/queue)
 
@@ -62,19 +63,23 @@ src/
 
 ```bash
 pnpm --filter @corpusai/ai-worker dev              # Dev (tsx watch)
-pnpm --filter ai-worker experiment:embeddings       # Experimenter embeddings
-pnpm --filter ai-worker experiment:qdrant           # Experimenter Qdrant
-pnpm --filter ai-worker experiment:rag              # Experimenter RAG pipeline
+pnpm --filter ai-worker experiment:embeddings       # Tester les embeddings OpenAI (dimensions, coût, latence)
+pnpm --filter ai-worker experiment:qdrant           # Tester Qdrant (indexation, recherche)
+pnpm --filter ai-worker experiment:chunking         # Tester les stratégies de chunking (token counts, overlap)
+pnpm --filter ai-worker experiment:rag              # Pipeline RAG bout-en-bout
+pnpm --filter ai-worker experiment:corpus           # Test complet parsing + indexation corpus
 ```
+
+Tous ces scripts lisent depuis `.env` — variables requises : `OPENAI_API_KEY`, `QDRANT_URL`.
 
 ## Fichiers cles
 
-| Fichier | Role |
-|---------|------|
-| `src/worker.ts` | Creation BullMQ worker et error handling |
-| `src/processors/document-processor.ts` | Pipeline complet de traitement |
-| `src/services/rag-factory.ts` | Cree les instances pipeline par AI |
-| `src/services/progress.service.ts` | Redis pub/sub progress publisher |
+| Fichier                                | Role                                     |
+| -------------------------------------- | ---------------------------------------- |
+| `src/worker.ts`                        | Creation BullMQ worker et error handling |
+| `src/processors/document-processor.ts` | Pipeline complet de traitement           |
+| `src/services/rag-factory.ts`          | Cree les instances pipeline par AI       |
+| `src/services/progress.service.ts`     | Redis pub/sub progress publisher         |
 
 ## Checklist qualite
 
