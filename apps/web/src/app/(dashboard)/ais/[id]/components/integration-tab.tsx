@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { Lock, ExternalLink } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -17,50 +18,12 @@ import {
   Switch,
   CopyButton,
   Badge,
+  AnalyticsCard,
 } from '@corpusai/ui';
 import type { AI } from '@corpusai/types';
 
 interface IntegrationTabProps {
   ai: AI;
-}
-
-// Shared shell classes — same visual pattern as stat cards
-const SECTION_SHELL =
-  'relative overflow-hidden rounded-xl border border-[hsl(var(--accent-500)/0.2)] bg-gradient-to-br from-[hsl(var(--surface-1))] to-[hsl(224_15%_12%)] p-6 shadow-[var(--shadow-accent-sm)]';
-
-function SectionGlow() {
-  return (
-    <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-[radial-gradient(circle,hsl(var(--accent-500)/0.08),transparent_70%)]" />
-  );
-}
-
-function SectionHeader({
-  number,
-  title,
-  description,
-  badge,
-}: {
-  number: number;
-  title: string;
-  description: string;
-  badge?: string;
-}) {
-  return (
-    <div className="relative mb-5 flex items-center gap-3">
-      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[hsl(var(--accent-500)/0.15)] text-xs font-bold text-[hsl(var(--accent-400))]">
-        {number}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-[15px] font-semibold text-tx-primary">{title}</p>
-        <p className="text-[12px] text-tx-muted">{description}</p>
-      </div>
-      {badge && (
-        <Badge variant="secondary" className="shrink-0 text-[10px]">
-          {badge}
-        </Badge>
-      )}
-    </div>
-  );
 }
 
 export function IntegrationTab({ ai }: IntegrationTabProps) {
@@ -105,7 +68,7 @@ export function IntegrationTab({ ai }: IntegrationTabProps) {
       ) : (
         <div className="rounded-lg border border-border/60 bg-muted/30 p-6 text-center">
           <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-            <LockIcon className="h-5 w-5 text-muted-foreground" />
+            <Lock className="h-5 w-5 text-muted-foreground" />
           </div>
           <p className="text-sm font-medium text-foreground">Options de partage verrouillées</p>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -125,14 +88,13 @@ export function IntegrationTab({ ai }: IntegrationTabProps) {
       {isReady && (
         <>
           {/* Section 1: Direct link */}
-          <div className={SECTION_SHELL}>
-            <SectionGlow />
+          <AnalyticsCard>
             <SectionHeader
               number={1}
               title="Lien direct"
               description="Partager un lien direct vers l'assistant"
             />
-            <div className="relative space-y-3">
+            <div className="space-y-3">
               <div className="flex items-center gap-2 rounded-lg bg-[hsl(var(--surface-0))] p-1 pl-3">
                 <span className="flex-1 truncate font-mono text-sm text-tx-secondary">
                   {chatUrl}
@@ -145,15 +107,14 @@ export function IntegrationTab({ ai }: IntegrationTabProps) {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 text-xs text-[hsl(var(--accent-400))] transition-colors hover:text-[hsl(var(--accent-500))]"
               >
-                <ExternalLinkIcon className="h-3.5 w-3.5" />
+                <ExternalLink className="h-3.5 w-3.5" />
                 Ouvrir dans un nouvel onglet
               </a>
             </div>
-          </div>
+          </AnalyticsCard>
 
           {/* Section 2: Embed iframe */}
-          <div className={SECTION_SHELL}>
-            <SectionGlow />
+          <AnalyticsCard>
             <SectionHeader
               number={2}
               title="Intégrer sur ton site"
@@ -162,7 +123,7 @@ export function IntegrationTab({ ai }: IntegrationTabProps) {
             />
 
             {/* Controls + Preview side by side */}
-            <div className="relative grid grid-cols-5 gap-4">
+            <div className="grid grid-cols-5 gap-4">
               {/* Controls */}
               <div className="col-span-2 min-w-0 space-y-4 self-start rounded-lg bg-[hsl(var(--surface-0))] p-4">
                 <div className="space-y-3">
@@ -259,7 +220,7 @@ export function IntegrationTab({ ai }: IntegrationTabProps) {
             </div>
 
             {/* Generated code — full width below */}
-            <div className="relative mt-4 space-y-2">
+            <div className="mt-4 space-y-2">
               <Label className="text-xs text-tx-muted">Code à coller</Label>
               <div className="relative">
                 <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg bg-[hsl(var(--surface-0))] p-4 font-mono text-xs leading-relaxed text-tx-secondary">
@@ -290,7 +251,7 @@ export function IntegrationTab({ ai }: IntegrationTabProps) {
                 </p>
               )}
             </div>
-          </div>
+          </AnalyticsCard>
 
           {/* Section 3: Widget flottant (coming soon) */}
           <div className="relative overflow-hidden rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface-1))] p-6 opacity-60">
@@ -319,39 +280,35 @@ export function IntegrationTab({ ai }: IntegrationTabProps) {
   );
 }
 
-function LockIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-    </svg>
-  );
-}
+// ============================================
+// Local sub-component (specific to this tab)
+// ============================================
 
-function ExternalLinkIcon({ className }: { className?: string }) {
+function SectionHeader({
+  number,
+  title,
+  description,
+  badge,
+}: {
+  number: number;
+  title: string;
+  description: string;
+  badge?: string;
+}) {
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M15 3h6v6" />
-      <path d="M10 14 21 3" />
-      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-    </svg>
+    <div className="mb-5 flex items-center gap-3">
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[hsl(var(--accent-500)/0.15)] text-xs font-bold text-[hsl(var(--accent-400))]">
+        {number}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[15px] font-semibold text-tx-primary">{title}</p>
+        <p className="text-[12px] text-tx-muted">{description}</p>
+      </div>
+      {badge && (
+        <Badge variant="secondary" className="shrink-0 text-[10px]">
+          {badge}
+        </Badge>
+      )}
+    </div>
   );
 }

@@ -2,11 +2,15 @@
 
 import * as React from 'react';
 import dynamic from 'next/dynamic';
-import { StatCard, Skeleton, cn } from '@corpusai/ui';
+import { StatCard, AnalyticsCard, cn } from '@corpusai/ui';
 
 import { useAIAnalytics, type AnalyticsPeriod } from '@/lib/queries';
 import { PERIOD_OPTIONS } from '@/lib/constants';
 import { FileIcon, MessageIcon, SparklesIcon, UsersIcon, AlertIcon, BookIcon } from '@/lib/icons';
+import {
+  AnalyticsTabSkeleton,
+  ChartsSkeleton,
+} from '@/components/skeletons/analytics-tab-skeleton';
 
 const AIAnalyticsCharts = dynamic(() => import('./ai-analytics-charts'), {
   ssr: false,
@@ -73,27 +77,17 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
         />
       </div>
 
-      {/* Row 2: Quality & Engagement stats — same card style with icons */}
+      {/* Row 2: Quality & Engagement stats */}
       <div className="grid gap-4 md:grid-cols-3">
-        {/* Qualité des réponses */}
-        <div className="relative overflow-hidden rounded-lg border border-[hsl(var(--accent-500)/0.2)] bg-gradient-to-br from-[hsl(var(--surface-1))] to-[hsl(224_15%_12%)] p-5 shadow-[var(--shadow-accent-sm)]">
-          <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-[radial-gradient(circle,hsl(var(--accent-500)/0.1),transparent_70%)]" />
-          <div className="relative flex items-start justify-between gap-3">
-            <p className="text-[13px] font-medium text-tx-muted">Qualité des réponses</p>
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-400/20 to-indigo-600/10 ring-1 ring-[hsl(var(--accent-500)/0.2)]">
-              <SparklesIcon className="h-4 w-4 text-indigo-400" />
-            </div>
-          </div>
-          <div className="relative mt-3">
+        <AnalyticsCard title="Qualité des réponses" icon={SparklesIcon}>
+          <div className="mt-3">
             <span className="text-[28px] font-bold leading-none tracking-tight text-tx-primary">
               {satisfactionRate != null ? `${satisfactionRate}%` : '—'}
             </span>
           </div>
-          <p className="relative mt-2 text-[13px] font-medium text-tx-secondary">
-            réponses pertinentes
-          </p>
+          <p className="mt-2 text-[13px] font-medium text-tx-secondary">réponses pertinentes</p>
           {data.satisfaction && data.satisfaction.total > 0 && (
-            <div className="relative mt-2 flex h-1.5 overflow-hidden rounded-full bg-muted/30">
+            <div className="mt-2 flex h-1.5 overflow-hidden rounded-full bg-muted/30">
               {data.satisfaction.high > 0 && (
                 <div
                   className="bg-green-500"
@@ -123,17 +117,9 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
               )}
             </div>
           )}
-        </div>
+        </AnalyticsCard>
 
-        {/* Engagement */}
-        <div className="relative overflow-hidden rounded-lg border border-[hsl(var(--accent-500)/0.2)] bg-gradient-to-br from-[hsl(var(--surface-1))] to-[hsl(224_15%_12%)] p-5 shadow-[var(--shadow-accent-sm)]">
-          <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-[radial-gradient(circle,hsl(var(--accent-500)/0.1),transparent_70%)]" />
-          <div className="relative flex items-start justify-between gap-3">
-            <p className="text-[13px] font-medium text-tx-muted">Engagement</p>
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-400/20 to-indigo-600/10 ring-1 ring-[hsl(var(--accent-500)/0.2)]">
-              <UsersIcon className="h-4 w-4 text-indigo-400" />
-            </div>
-          </div>
+        <AnalyticsCard title="Engagement" icon={UsersIcon}>
           {(() => {
             const users = engagement?.uniqueUsers ?? 0;
             const convs = data.totals.conversations;
@@ -148,32 +134,20 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
                 : 'aucune conversation';
             return (
               <>
-                <div className="relative mt-3">
+                <div className="mt-3">
                   <span className="text-[28px] font-bold leading-none tracking-tight text-tx-primary">
                     {mainValue}
                   </span>
                 </div>
-                <p className="relative mt-2 text-[13px] font-medium text-tx-secondary">
-                  {mainLabel}
-                </p>
-                {avg > 0 && (
-                  <p className="relative mt-1 text-[11px] text-tx-muted">{avg} msg/conv</p>
-                )}
+                <p className="mt-2 text-[13px] font-medium text-tx-secondary">{mainLabel}</p>
+                {avg > 0 && <p className="mt-1 text-[11px] text-tx-muted">{avg} msg/conv</p>}
               </>
             );
           })()}
-        </div>
+        </AnalyticsCard>
 
-        {/* Questions sans réponse */}
-        <div className="relative overflow-hidden rounded-lg border border-[hsl(var(--accent-500)/0.2)] bg-gradient-to-br from-[hsl(var(--surface-1))] to-[hsl(224_15%_12%)] p-5 shadow-[var(--shadow-accent-sm)]">
-          <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-[radial-gradient(circle,hsl(var(--accent-500)/0.1),transparent_70%)]" />
-          <div className="relative flex items-start justify-between gap-3">
-            <p className="text-[13px] font-medium text-tx-muted">À améliorer</p>
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-400/20 to-indigo-600/10 ring-1 ring-[hsl(var(--accent-500)/0.2)]">
-              <AlertIcon className="h-4 w-4 text-indigo-400" />
-            </div>
-          </div>
-          <div className="relative mt-3">
+        <AnalyticsCard title="À améliorer" icon={AlertIcon}>
+          <div className="mt-3">
             <span
               className={cn(
                 'text-[28px] font-bold leading-none tracking-tight',
@@ -187,39 +161,32 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
               {data.unanswered ? data.unanswered.count : '—'}
             </span>
           </div>
-          <p className="relative mt-2 text-[13px] font-medium text-tx-secondary">
+          <p className="mt-2 text-[13px] font-medium text-tx-secondary">
             question{(data.unanswered?.count ?? 0) > 1 ? 's' : ''} sans réponse
           </p>
           {unansweredRate != null && unansweredRate > 0 && (
             <p
               className={cn(
-                'relative mt-1 text-[11px]',
+                'mt-1 text-[11px]',
                 unansweredRate > 30 ? 'text-red-400' : 'text-yellow-400'
               )}
             >
               {unansweredRate}% du total
             </p>
           )}
-        </div>
+        </AnalyticsCard>
       </div>
 
       {/* Knowledge base summary */}
       {kb && kb.documentCount > 0 && (
-        <div className="relative overflow-hidden rounded-lg border border-[hsl(var(--accent-500)/0.2)] bg-gradient-to-br from-[hsl(var(--surface-1))] to-[hsl(224_15%_12%)] p-5 shadow-[var(--shadow-accent-sm)]">
-          <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-[radial-gradient(circle,hsl(var(--accent-500)/0.1),transparent_70%)]" />
-          <div className="relative flex items-start justify-between gap-3">
-            <p className="text-[13px] font-medium text-tx-muted">Base de connaissances</p>
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-400/20 to-indigo-600/10 ring-1 ring-[hsl(var(--accent-500)/0.2)]">
-              <BookIcon className="h-4 w-4 text-indigo-400" />
-            </div>
-          </div>
-          <p className="relative mt-3 text-[12px] text-tx-muted">
+        <AnalyticsCard title="Base de connaissances" icon={BookIcon}>
+          <p className="mt-3 text-[12px] text-tx-muted">
             {kb.documentCount} document{kb.documentCount > 1 ? 's' : ''}
             {kb.totalPages > 0 && ` · ${kb.totalPages} pages`}
             {kb.totalWords > 0 && ` · ${kb.totalWords.toLocaleString()} mots`}
             {kb.totalChunks > 0 && ` · ${kb.totalChunks} fragments`}
           </p>
-        </div>
+        </AnalyticsCard>
       )}
 
       {/* Charts */}
@@ -227,34 +194,3 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
     </div>
   );
 });
-
-function AnalyticsTabSkeleton() {
-  return (
-    <div className="space-y-6">
-      <Skeleton className="h-9 w-56" />
-      <div className="grid gap-4 md:grid-cols-3">
-        {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-28 w-full rounded-xl" />
-        ))}
-      </div>
-      <div className="grid gap-4 md:grid-cols-3">
-        {[4, 5, 6].map((i) => (
-          <Skeleton key={i} className="h-32 w-full rounded-xl" />
-        ))}
-      </div>
-      <ChartsSkeleton />
-    </div>
-  );
-}
-
-function ChartsSkeleton() {
-  return (
-    <div className="space-y-4">
-      <Skeleton className="h-[340px] w-full rounded-xl" />
-      <div className="grid gap-4 md:grid-cols-2">
-        <Skeleton className="h-[240px] w-full rounded-xl" />
-        <Skeleton className="h-[240px] w-full rounded-xl" />
-      </div>
-    </div>
-  );
-}

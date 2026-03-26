@@ -128,12 +128,37 @@ Le hook `src/lib/hooks/use-public-chat.ts` gère l'accès aux chats publics :
 - Cas `access_code` : modal de saisie du code
 - Cas `access_token` : token passé automatiquement depuis l'URL `?t=TOKEN`
 
-## Composants UI
+## Organisation des composants
+
+**Règle : où créer un composant ?**
+
+```
+→ @corpusai/ui           si : utilisé dans 2+ routes OU purement visuel sans logique métier
+→ src/components/        si : spécifique à l'app web, partagé entre 2+ routes
+→ [route]/components/    si : spécifique à une seule route (1 fichier = 1 composant)
+→ inline dans le fichier si : < ~15 lignes, jamais référencé ailleurs
+```
+
+**Règle : taille de fichier** — max ~300 lignes par composant. Au-delà → extraire les sous-composants.
+
+**Règle : icônes** — toujours `lucide-react` ou `@corpusai/ui/atoms/icons`. Jamais de SVG inline sauf animation custom complexe → fichier dédié `*-icons.tsx`.
+
+**Règle : classes Tailwind répétées** — si une chaîne est utilisée 3+ fois → extraire en constante ou composant.
 
 **TOUJOURS importer depuis `@corpusai/ui`**, jamais de chemins relatifs vers packages/ui :
 
 ```typescript
-import { Button, Card, Input, Skeleton, Badge, Tabs } from '@corpusai/ui';
+import {
+  Button,
+  Card,
+  Input,
+  Skeleton,
+  Badge,
+  Tabs,
+  AnalyticsCard,
+  IconBox,
+  SectionHeader,
+} from '@corpusai/ui';
 ```
 
 Composants locaux dans `src/components/` : ai-card, empty-states, skeletons, form-alert.
