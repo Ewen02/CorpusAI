@@ -125,6 +125,14 @@ export function canAskQuestion(plan: SubscriptionPlanType, questionsToday: numbe
 }
 
 /**
+ * Check if an AI can have more end users (members)
+ */
+export function canAddEndUser(plan: SubscriptionPlanType, currentCount: number): boolean {
+  const limits = getFeatureLimits(plan);
+  return isUnlimited(limits.maxEndUsers) || currentCount < limits.maxEndUsers;
+}
+
+/**
  * Check if the plan allows monetization
  */
 export function canMonetize(plan: SubscriptionPlanType): boolean {
@@ -206,9 +214,6 @@ export const PLAN_PRICING: Record<SubscriptionPlanType, { monthly: number; yearl
   ENTERPRISE: { monthly: 199, yearly: 1990 },
 };
 
-export function getPlanPrice(
-  plan: SubscriptionPlanType,
-  interval: 'monthly' | 'yearly'
-): number {
+export function getPlanPrice(plan: SubscriptionPlanType, interval: 'monthly' | 'yearly'): number {
   return PLAN_PRICING[plan][interval];
 }

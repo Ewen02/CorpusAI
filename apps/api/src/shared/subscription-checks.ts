@@ -4,6 +4,7 @@ import {
   canAddDocument,
   canUploadDocument,
   canAskQuestion,
+  canAddEndUser,
   type SubscriptionPlanType,
 } from '@corpusai/subscription';
 
@@ -44,5 +45,16 @@ export function assertCanUploadDocument(plan: SubscriptionPlanType, sizeMB: numb
 export function assertCanAskQuestion(plan: SubscriptionPlanType, questionsToday: number): void {
   if (!canAskQuestion(plan, questionsToday)) {
     throw new ForbiddenException('Daily question limit reached for this AI');
+  }
+}
+
+/**
+ * Throws ForbiddenException if the AI cannot accept more end users (members).
+ */
+export function assertCanAddEndUser(plan: SubscriptionPlanType, currentCount: number): void {
+  if (!canAddEndUser(plan, currentCount)) {
+    throw new ForbiddenException(
+      `Your ${plan} plan has reached the maximum number of members. Upgrade your plan to invite more.`
+    );
   }
 }
