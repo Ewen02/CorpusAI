@@ -61,11 +61,6 @@ export class CohereReranker implements AsyncReranker {
         results: Array<{ index: number; relevance_score: number }>;
       };
 
-      console.log(
-        '[Cohere Rerank] scores:',
-        data.results.map((r) => `#${r.index} ${r.relevance_score.toFixed(4)}`).join(', ')
-      );
-
       return data.results.map((r) => {
         const original = results[r.index]!;
         return {
@@ -78,7 +73,7 @@ export class CohereReranker implements AsyncReranker {
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.warn('[Cohere Rerank] API call failed, falling back to semantic order:', message);
+      // Fallback: semantic order from Qdrant scores (error logged by caller via metrics)
       return results.map((r) => ({
         ...r,
         semanticScore: r.score,

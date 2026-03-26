@@ -9,6 +9,7 @@ import type {
   RAGPipeline,
   Document,
   IndexResult,
+  IndexedChunk,
   IndexOptions,
   ContextEnrichmentConfig,
   QueryOptions,
@@ -192,11 +193,12 @@ export class RAGPipelineImpl implements RAGPipeline {
 
     if (allChunks.length === 0) {
       onProgress?.('storing', 100, 'No chunks to index');
-      return { documentsIndexed: documents.length, chunksCreated: 0, chunkIds: [] };
+      return { documentsIndexed: documents.length, chunksCreated: 0, chunkIds: [], chunks: [] };
     }
 
     const totalChunks = allChunks.length;
     const chunkIds: string[] = [];
+    const indexedChunks: IndexedChunk[] = [];
     onProgress?.('chunking', 10, `${totalChunks} chunks created`);
 
     // === PHASE 1.5: ENRICHING (10-30%) — optional ===
@@ -240,6 +242,12 @@ export class RAGPipelineImpl implements RAGPipeline {
           throw new Error(`No embedding for chunk ${chunk.id}`);
         }
         chunkIds.push(chunk.id);
+        indexedChunks.push({
+          id: chunk.id,
+          text: chunk.text,
+          position: chunk.metadata.chunkIndex as number,
+          pageNumber: chunk.metadata.pageNumber as number | undefined,
+        });
         return {
           id: chunk.id,
           vector,
@@ -269,6 +277,7 @@ export class RAGPipelineImpl implements RAGPipeline {
       documentsIndexed: documents.length,
       chunksCreated: totalChunks,
       chunkIds,
+      chunks: indexedChunks,
     };
   }
 
@@ -343,9 +352,14 @@ export class RAGPipelineImpl implements RAGPipeline {
       );
     });
 
-    // 3. Appliquer le reranking si configuré
+    // 3. Appliquer le reranking si configuré (skip si résultats trop peu nombreux ou déjà très pertinents)
     const rerankStart = Date.now();
-    const allRankedResults = await this.applyRerankingAsync(results, question, rerankerConfig);
+    const avgSearchScore =
+      results.length > 0 ? results.reduce((s, r) => s + r.score, 0) / results.length : 0;
+    const shouldRerank = results.length >= 3 && avgSearchScore < 0.8;
+    const allRankedResults = shouldRerank
+      ? await this.applyRerankingAsync(results, question, rerankerConfig)
+      : results;
     // Tronquer au topN après reranking (pertinent pour CohereReranker qui réduit 10 → 3)
     const rankedResults = allRankedResults.slice(0, topN);
     metrics.rerankMs = Date.now() - rerankStart;
@@ -353,7 +367,7 @@ export class RAGPipelineImpl implements RAGPipeline {
       this.log(`[RAG] Reranking: ${metrics.rerankMs}ms`);
       rankedResults.forEach((r, i) => {
         this.log(
-          `[RAG]   Reranked #${i + 1} finalScore=${('finalScore' in r ? r.finalScore : r.score).toFixed(4)} semantic=${('semanticScore' in r ? r.semanticScore : r.score).toFixed(4)}`
+          `[RAG]   Reranked #${i + 1} finalScore=${('finalScore' in r ? (r as { finalScore: number }).finalScore : r.score).toFixed(4)} semantic=${('semanticScore' in r ? (r as { semanticScore: number }).semanticScore : r.score).toFixed(4)}`
         );
       });
     }
@@ -439,6 +453,15 @@ export class RAGPipelineImpl implements RAGPipeline {
     } = options;
     const topK = topKOption ?? (this.reranker instanceof CohereReranker ? 10 : 5);
 
+    const totalStart = Date.now();
+    const metrics: QueryMetrics = {
+      embeddingMs: 0,
+      searchMs: 0,
+      rerankMs: 0,
+      llmMs: 0,
+      totalMs: 0,
+    };
+
     this.log('\n========== RAG QUERY STREAM ==========');
     this.log(`[RAG-STREAM] Question: "${question}"`);
     this.log(
@@ -449,6 +472,7 @@ export class RAGPipelineImpl implements RAGPipeline {
     const useHyde = this.shouldUseHyde(question, useHydeOption);
     let results: SearchResult[];
 
+    const searchStart = Date.now();
     if (useHyde) {
       this.log('[RAG-STREAM] HyDE enabled — generating hypothetical document');
       const { results: hydeResults, hydeMs } = await this.hydeSearch(question, {
@@ -459,7 +483,9 @@ export class RAGPipelineImpl implements RAGPipeline {
       results = hydeResults;
       this.log(`[RAG-STREAM] HyDE search: ${results.length} results in ${hydeMs}ms`);
     } else {
+      const embStart = Date.now();
       const questionEmbedding = await this.embeddings.embed(question);
+      metrics.embeddingMs = Date.now() - embStart;
       results = await this.vectorStore.search(questionEmbedding, {
         limit: topK,
         scoreThreshold,
@@ -467,6 +493,7 @@ export class RAGPipelineImpl implements RAGPipeline {
         withPayload: true,
       });
     }
+    metrics.searchMs = Date.now() - searchStart;
 
     this.log(`[RAG-STREAM] Search: ${results.length} results`);
     results.forEach((r, i) => {
@@ -475,8 +502,15 @@ export class RAGPipelineImpl implements RAGPipeline {
       );
     });
 
-    // 3. Appliquer le reranking si configuré
-    const allRankedResults = await this.applyRerankingAsync(results, question, rerankerConfig);
+    // 3. Appliquer le reranking si configuré (skip si résultats trop peu nombreux ou déjà très pertinents)
+    const rerankStart = Date.now();
+    const avgScoreStream =
+      results.length > 0 ? results.reduce((s, r) => s + r.score, 0) / results.length : 0;
+    const shouldRerankStream = results.length >= 3 && avgScoreStream < 0.8;
+    const allRankedResults = shouldRerankStream
+      ? await this.applyRerankingAsync(results, question, rerankerConfig)
+      : results;
+    metrics.rerankMs = Date.now() - rerankStart;
     const rankedResults = allRankedResults.slice(0, topN);
 
     // 4. Construction du contexte
@@ -524,6 +558,7 @@ export class RAGPipelineImpl implements RAGPipeline {
     let streamUsage:
       | { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }
       | undefined;
+    const llmStart = Date.now();
 
     for await (const chunk of stream) {
       const token = chunk.choices[0]?.delta?.content || '';
@@ -537,24 +572,22 @@ export class RAGPipelineImpl implements RAGPipeline {
       }
     }
 
+    metrics.llmMs = Date.now() - llmStart;
+    metrics.totalMs = Date.now() - totalStart;
+    metrics.promptTokens = streamUsage?.prompt_tokens;
+    metrics.completionTokens = streamUsage?.completion_tokens;
+    metrics.totalTokens = streamUsage?.total_tokens;
+
     const answer = tokens.join('');
-    this.log(`[RAG-STREAM] LLM response complete: ${answer.length} chars`);
+    this.log(`[RAG-STREAM] LLM response complete: ${answer.length} chars, ${metrics.llmMs}ms`);
+    this.log(`[RAG-STREAM] Total time: ${metrics.totalMs}ms`);
     this.log('========== END RAG QUERY STREAM ==========\n');
 
     return {
       answer,
       sources: includeSources ? sources : [],
       context,
-      metrics: {
-        embeddingMs: 0,
-        searchMs: 0,
-        rerankMs: 0,
-        llmMs: 0,
-        totalMs: 0,
-        promptTokens: streamUsage?.prompt_tokens,
-        completionTokens: streamUsage?.completion_tokens,
-        totalTokens: streamUsage?.total_tokens,
-      },
+      metrics,
     };
   }
 
@@ -728,7 +761,7 @@ export class RAGPipelineImpl implements RAGPipeline {
       baseURL: config.baseURL ?? this.llmConfig.baseURL,
     });
 
-    // Estimate and log cost before starting
+    // Estimate cost before starting and abort if it exceeds the configured limit
     const estimatedInputTokens = chunks.reduce(
       (sum, c) => sum + Math.ceil((documentTruncated.length + c.text.length) / 4),
       0
@@ -736,6 +769,15 @@ export class RAGPipelineImpl implements RAGPipeline {
     const estimatedOutputTokens = chunks.length * 15;
     const estimatedCost =
       (estimatedInputTokens / 1_000_000) * 0.15 + (estimatedOutputTokens / 1_000_000) * 0.6;
+    const maxCostUsd = config.maxCostUsd ?? 0.1;
+
+    if (estimatedCost > maxCostUsd) {
+      console.warn(
+        `[Context Enrichment] Estimated cost $${estimatedCost.toFixed(4)} exceeds limit $${maxCostUsd.toFixed(2)} — skipping enrichment for ${chunks.length} chunks`
+      );
+      return chunks.map((c) => c.text);
+    }
+
     console.log(
       `[Context Enrichment] ${chunks.length} chunks, ~${Math.ceil(estimatedInputTokens / 1000)}K input tokens, ~${estimatedOutputTokens} output tokens, estimated cost: $${estimatedCost.toFixed(4)} (model: ${model})`
     );

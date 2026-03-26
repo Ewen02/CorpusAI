@@ -2,6 +2,7 @@ export type {
   RAGPipeline,
   Document,
   IndexResult,
+  IndexedChunk,
   IndexOptions,
   ContextEnrichmentConfig,
   ProcessingStage,

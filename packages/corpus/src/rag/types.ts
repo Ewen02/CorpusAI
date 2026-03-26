@@ -20,6 +20,20 @@ export interface Document {
 }
 
 /**
+ * Chunk indexé — données persistables en DB
+ */
+export interface IndexedChunk {
+  /** Qdrant point ID */
+  id: string;
+  /** Texte du chunk */
+  text: string;
+  /** Position dans le document */
+  position: number;
+  /** Numéro de page (optionnel) */
+  pageNumber?: number;
+}
+
+/**
  * Résultat de l'indexation
  */
 export interface IndexResult {
@@ -29,6 +43,8 @@ export interface IndexResult {
   chunksCreated: number;
   /** IDs des chunks créés */
   chunkIds: string[];
+  /** Chunks avec leur contenu (pour persistance DB) */
+  chunks: IndexedChunk[];
 }
 
 /**
@@ -63,6 +79,8 @@ export interface ContextEnrichmentConfig {
   concurrency?: number;
   /** Nombre max de tokens pour la troncature du document. Défaut: 6000 */
   maxDocumentTokens?: number;
+  /** Coût estimé maximum en USD avant d'abandonner l'enrichissement. Défaut: 0.10 */
+  maxCostUsd?: number;
 }
 
 /**

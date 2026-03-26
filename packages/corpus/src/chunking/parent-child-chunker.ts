@@ -31,9 +31,9 @@ export class ParentChildChunker implements ChunkingService {
   private encoding: Tiktoken;
 
   constructor(options: ParentChildChunkerOptions = {}) {
-    this.childSize = options.childSizeTokens ?? 128;
+    this.childSize = options.childSizeTokens ?? 150;
     this.parentSize = options.parentSizeTokens ?? 512;
-    this.childOverlap = options.childOverlapTokens ?? 32;
+    this.childOverlap = options.childOverlapTokens ?? 50;
     this.encoding = get_encoding('cl100k_base');
   }
 
