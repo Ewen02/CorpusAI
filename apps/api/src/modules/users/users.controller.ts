@@ -8,7 +8,7 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 @ApiTags('users')
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
-@SkipThrottle()
+@SkipThrottle({ short: true, medium: true, long: true })
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}

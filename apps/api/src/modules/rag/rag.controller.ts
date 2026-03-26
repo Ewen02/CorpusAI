@@ -18,7 +18,7 @@ import { AuthGuard } from '../auth';
 @ApiTags('rag')
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
-@SkipThrottle()
+@SkipThrottle({ short: true, medium: true, long: true })
 @Controller('rag')
 export class RagController {
   constructor(private readonly ragService: RagService) {}
