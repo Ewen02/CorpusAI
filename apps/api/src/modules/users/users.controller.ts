@@ -1,5 +1,6 @@
 import { Controller, Get, Patch, Delete, Body, Query, UseGuards, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import { UsersService } from './users.service';
 import { AuthGuard, CurrentUser, type CurrentUserData } from '../auth';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -7,6 +8,7 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 @ApiTags('users')
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
+@SkipThrottle()
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}

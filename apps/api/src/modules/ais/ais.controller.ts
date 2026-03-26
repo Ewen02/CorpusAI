@@ -19,6 +19,7 @@ import {
   ApiQuery,
   ApiResponse,
 } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
 import { AIsService } from './ais.service';
 import { MailService } from '../mail/mail.service';
@@ -30,6 +31,7 @@ import { SetAccessCodeDto, UpdateInviteOnlyDto, InviteMemberDto } from './dto/ac
 @ApiTags('ais')
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
+@SkipThrottle()
 @Controller('ais')
 export class AIsController {
   constructor(

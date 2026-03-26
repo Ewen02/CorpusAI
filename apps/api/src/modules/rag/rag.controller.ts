@@ -7,6 +7,7 @@ import {
   ApiQuery,
   ApiResponse,
 } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import { RagService } from './rag.service';
 import { AuthGuard } from '../auth';
 
@@ -17,6 +18,7 @@ import { AuthGuard } from '../auth';
 @ApiTags('rag')
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
+@SkipThrottle()
 @Controller('rag')
 export class RagController {
   constructor(private readonly ragService: RagService) {}
