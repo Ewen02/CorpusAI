@@ -6,11 +6,11 @@
 
 Aucune dependance vers d'autres composants UI. Seulement React, Tailwind, cva, Radix.
 
-Actuels : avatar, badge, button, icons, input, label, select, separator, skeleton, switch, tabs, textarea
+Actuels : avatar, badge, button, icon-box, icons, input, label, select, separator, skeleton, switch, tabs, textarea
 
 ### molecules/ — Composes d'atoms UNIQUEMENT
 
-Actuels : card, chart-tooltip, explore-ai-card, markdown-renderer, stat-card, tooltip, trend-badge
+Actuels : analytics-card, card, chart-tooltip, explore-ai-card, markdown-renderer, section-header, stat-card, tooltip, trend-badge
 
 ### organisms/ — Peuvent utiliser atoms + molecules + autres organisms
 
@@ -71,6 +71,9 @@ Toujours exporter : le composant, son type Props, et la fonction de variants si 
 | `src/lib/utils.ts`                   | Utilitaire cn()                                           |
 | `src/styles.css`                     | Styles Tailwind de base                                   |
 | `src/organisms/notification-bar.tsx` | Barre de notification contextuelle (info/warning/error)   |
+| `src/atoms/icon-box.tsx`             | Box icône avec gradient (sm/md/lg/xl) — pattern répété    |
+| `src/molecules/analytics-card.tsx`   | Card gradient+glow pour sections analytics/integration    |
+| `src/molecules/section-header.tsx`   | En-tête de section avec numéro, titre, description, badge |
 | `src/molecules/explore-ai-card.tsx`  | Carte pour la page de découverte des AIs publics          |
 | `src/molecules/stat-card.tsx`        | Carte stat avec icône, valeur, tendance                   |
 | `src/molecules/trend-badge.tsx`      | Badge +X% / -X% avec couleur dynamique                    |

@@ -2,6 +2,9 @@
 export { cn } from './lib/utils';
 
 // Atoms
+export { IconBox } from './atoms/icon-box';
+export type { IconBoxProps } from './atoms/icon-box';
+
 export { Button, buttonVariants } from './atoms/button';
 export type { ButtonProps } from './atoms/button';
 
@@ -96,6 +99,14 @@ export { MarkdownRenderer } from './molecules/markdown-renderer';
 
 export { ExploreAICard } from './molecules/explore-ai-card';
 export type { ExploreAICardProps } from './molecules/explore-ai-card';
+
+export { SectionHeader } from './molecules/section-header';
+export type { SectionHeaderProps } from './molecules/section-header';
+
+export { AnalyticsCard } from './molecules/analytics-card';
+export type { AnalyticsCardProps } from './molecules/analytics-card';
+
+export { CodeBlock } from './molecules/code-block';
 
 // Organisms
 export { ChatInterface, ChatInterfaceSkeleton } from './organisms/chat-interface';
