@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../api-client';
+import { aiKeys } from './use-ai';
 
 export interface AIAccessGrant {
   id: string;
@@ -30,34 +31,54 @@ export function useAIMembers(aiId: string) {
 }
 
 export function useGenerateAccessToken(aiId: string) {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => apiClient.post<{ token: string; url: string }>(`/ais/${aiId}/access/token`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: aiKeys.detail(aiId) });
+    },
   });
 }
 
 export function useDeleteAccessToken(aiId: string) {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => apiClient.delete<{ success: boolean }>(`/ais/${aiId}/access/token`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: aiKeys.detail(aiId) });
+    },
   });
 }
 
 export function useSetAccessCode(aiId: string) {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (code: string) =>
       apiClient.post<{ success: boolean }>(`/ais/${aiId}/access/code`, { code }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: aiKeys.detail(aiId) });
+    },
   });
 }
 
 export function useDeleteAccessCode(aiId: string) {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => apiClient.delete<{ success: boolean }>(`/ais/${aiId}/access/code`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: aiKeys.detail(aiId) });
+    },
   });
 }
 
 export function useUpdateInviteOnly(aiId: string) {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (inviteOnly: boolean) =>
       apiClient.patch<{ success: boolean }>(`/ais/${aiId}/access/invite`, { inviteOnly }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: aiKeys.detail(aiId) });
+    },
   });
 }
 

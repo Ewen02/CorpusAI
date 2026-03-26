@@ -15,6 +15,7 @@ import {
   Badge,
   cn,
 } from '@corpusai/ui';
+import { Globe, Link2, Lock, Users, Check, RefreshCw, Trash2 } from 'lucide-react';
 import {
   useAI,
   useUpdateAI,
@@ -78,7 +79,17 @@ const inputClass =
 const tabTriggerClass =
   'rounded-md px-4 py-1.5 text-[13px] font-medium transition-all duration-150 data-[state=active]:bg-[hsl(var(--surface-1))] data-[state=active]:text-tx-primary data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-[hsl(var(--border-default))] data-[state=inactive]:text-tx-muted';
 
-function AccessTab({ aiId, inviteOnly }: { aiId: string; inviteOnly: boolean }) {
+function AccessTab({
+  aiId,
+  inviteOnly,
+  hasAccessToken,
+  hasAccessCode,
+}: {
+  aiId: string;
+  inviteOnly: boolean;
+  hasAccessToken: boolean;
+  hasAccessCode: boolean;
+}) {
   const { data: members, isLoading: isLoadingMembers } = useAIMembers(aiId);
   const generateToken = useGenerateAccessToken(aiId);
   const deleteToken = useDeleteAccessToken(aiId);
@@ -95,9 +106,11 @@ function AccessTab({ aiId, inviteOnly }: { aiId: string; inviteOnly: boolean }) 
   React.useEffect(() => {
     if (!initialized.current) {
       if (inviteOnly) setAccessMode('invite');
+      else if (hasAccessToken) setAccessMode('token');
+      else if (hasAccessCode) setAccessMode('code');
       initialized.current = true;
     }
-  }, [inviteOnly]);
+  }, [inviteOnly, hasAccessToken, hasAccessCode]);
   const [generatedToken, setGeneratedToken] = React.useState<{ token: string; url: string } | null>(
     null
   );
@@ -108,15 +121,25 @@ function AccessTab({ aiId, inviteOnly }: { aiId: string; inviteOnly: boolean }) 
   const [copied, setCopied] = React.useState(false);
 
   const handleModeChange = async (mode: typeof accessMode) => {
+    if (mode === accessMode) return;
     setAccessMode(mode);
     if (mode === 'open') {
-      if (accessMode === 'invite') await updateInviteOnly.mutateAsync(false);
-      await deleteToken.mutateAsync();
-      await deleteCode.mutateAsync();
+      await Promise.all([
+        updateInviteOnly.mutateAsync(false),
+        deleteToken.mutateAsync(),
+        deleteCode.mutateAsync(),
+      ]);
     } else if (mode === 'invite') {
-      await updateInviteOnly.mutateAsync(true);
-    } else if (accessMode === 'invite') {
-      await updateInviteOnly.mutateAsync(false);
+      await Promise.all([
+        updateInviteOnly.mutateAsync(true),
+        deleteToken.mutateAsync(),
+        deleteCode.mutateAsync(),
+      ]);
+    } else if (mode === 'token') {
+      await Promise.all([updateInviteOnly.mutateAsync(false), deleteCode.mutateAsync()]);
+    } else if (mode === 'code') {
+      await Promise.all([updateInviteOnly.mutateAsync(false), deleteToken.mutateAsync()]);
+      setGeneratedToken(null);
     }
   };
 
@@ -165,13 +188,29 @@ function AccessTab({ aiId, inviteOnly }: { aiId: string; inviteOnly: boolean }) 
   };
 
   const modeOptions = [
-    { value: 'open' as const, label: 'Ouvert', description: 'Tout le monde peut accéder' },
-    { value: 'token' as const, label: 'Lien secret', description: 'URL avec token unique' },
-    { value: 'code' as const, label: "Code d'accès", description: 'Mot de passe requis' },
+    {
+      value: 'open' as const,
+      label: 'Ouvert',
+      description: 'Tout le monde peut accéder',
+      icon: Globe,
+    },
+    {
+      value: 'token' as const,
+      label: 'Lien secret',
+      description: 'URL avec token unique',
+      icon: Link2,
+    },
+    {
+      value: 'code' as const,
+      label: "Code d'accès",
+      description: 'Mot de passe requis',
+      icon: Lock,
+    },
     {
       value: 'invite' as const,
       label: 'Sur invitation',
       description: 'Membres invités uniquement',
+      icon: Users,
     },
   ];
 
@@ -186,28 +225,41 @@ function AccessTab({ aiId, inviteOnly }: { aiId: string; inviteOnly: boolean }) 
           </p>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {modeOptions.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => handleModeChange(opt.value)}
-              className={cn(
-                'rounded-lg border p-3 text-left transition-colors',
-                accessMode === opt.value
-                  ? 'border-[hsl(var(--accent-500)/0.4)] bg-[hsl(var(--accent-500)/0.08)]'
-                  : 'border-[hsl(var(--border-default))] hover:bg-[hsl(var(--surface-2))]'
-              )}
-            >
-              <p
+          {modeOptions.map((opt) => {
+            const Icon = opt.icon;
+            const isActive = accessMode === opt.value;
+            return (
+              <button
+                key={opt.value}
+                onClick={() => handleModeChange(opt.value)}
                 className={cn(
-                  'text-[13px] font-medium',
-                  accessMode === opt.value ? 'text-[hsl(var(--accent-500))]' : 'text-tx-primary'
+                  'relative rounded-lg border p-3 text-left transition-colors',
+                  isActive
+                    ? 'border-[hsl(var(--accent-500)/0.4)] bg-[hsl(var(--accent-500)/0.08)]'
+                    : 'border-[hsl(var(--border-default))] hover:bg-[hsl(var(--surface-2))]'
                 )}
               >
-                {opt.label}
-              </p>
-              <p className="mt-0.5 text-[12px] text-tx-muted">{opt.description}</p>
-            </button>
-          ))}
+                {isActive && (
+                  <Check className="absolute right-2 top-2 h-3 w-3 text-[hsl(var(--accent-500))]" />
+                )}
+                <Icon
+                  className={cn(
+                    'mb-2 h-5 w-5',
+                    isActive ? 'text-[hsl(var(--accent-500))]' : 'text-tx-muted'
+                  )}
+                />
+                <p
+                  className={cn(
+                    'text-[13px] font-medium',
+                    isActive ? 'text-[hsl(var(--accent-500))]' : 'text-tx-primary'
+                  )}
+                >
+                  {opt.label}
+                </p>
+                <p className="mt-0.5 text-[12px] text-tx-muted">{opt.description}</p>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -243,6 +295,7 @@ function AccessTab({ aiId, inviteOnly }: { aiId: string; inviteOnly: boolean }) 
                   onClick={handleGenerateToken}
                   disabled={generateToken.isPending}
                 >
+                  <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
                   Régénérer
                 </Button>
                 <Button
@@ -251,12 +304,45 @@ function AccessTab({ aiId, inviteOnly }: { aiId: string; inviteOnly: boolean }) 
                   onClick={handleDeleteToken}
                   disabled={deleteToken.isPending}
                 >
+                  <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                  Supprimer
+                </Button>
+              </div>
+            </div>
+          ) : hasAccessToken ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-2))] px-3 py-2">
+                <Lock className="h-4 w-4 text-[hsl(var(--success))]" />
+                <p className="flex-1 text-[13px] text-tx-muted">Un lien secret est actif</p>
+                <span className="text-[11px] text-[hsl(var(--success))]">Actif</span>
+              </div>
+              <p className="text-[12px] text-tx-muted">
+                Régénérez pour obtenir un nouveau lien et invalider l&apos;ancien.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleGenerateToken}
+                  disabled={generateToken.isPending}
+                >
+                  <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                  Régénérer
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={handleDeleteToken}
+                  disabled={deleteToken.isPending}
+                >
+                  <Trash2 className="mr-1.5 h-3.5 w-3.5" />
                   Supprimer
                 </Button>
               </div>
             </div>
           ) : (
             <Button size="sm" onClick={handleGenerateToken} disabled={generateToken.isPending}>
+              <Link2 className="mr-1.5 h-3.5 w-3.5" />
               {generateToken.isPending ? 'Génération...' : 'Générer un lien secret'}
             </Button>
           )}
@@ -272,9 +358,19 @@ function AccessTab({ aiId, inviteOnly }: { aiId: string; inviteOnly: boolean }) 
               Les utilisateurs devront saisir ce code pour accéder à l&apos;assistant.
             </p>
           </div>
+          {hasAccessCode && (
+            <div className="mb-3 flex items-center gap-2 rounded-md bg-[hsl(var(--success)/0.08)] px-3 py-2">
+              <Check className="h-3.5 w-3.5 text-[hsl(var(--success))]" />
+              <p className="text-[12px] text-[hsl(var(--success))]">
+                Un code est actuellement actif
+              </p>
+            </div>
+          )}
           <div className="flex items-end gap-2">
             <div className="flex-1 space-y-1.5">
-              <label className="text-[13px] font-medium text-tx-secondary">Nouveau code</label>
+              <label className="text-[13px] font-medium text-tx-secondary">
+                {hasAccessCode ? "Nouveau code (remplace l'actuel)" : 'Nouveau code'}
+              </label>
               <Input
                 type="text"
                 value={accessCode}
@@ -292,15 +388,18 @@ function AccessTab({ aiId, inviteOnly }: { aiId: string; inviteOnly: boolean }) 
               {codeSaved ? 'Sauvegardé !' : 'Sauvegarder'}
             </Button>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            className="mt-3"
-            onClick={handleDeleteCode}
-            disabled={deleteCode.isPending}
-          >
-            Supprimer le code
-          </Button>
+          {hasAccessCode && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-3"
+              onClick={handleDeleteCode}
+              disabled={deleteCode.isPending}
+            >
+              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+              Supprimer le code actuel
+            </Button>
+          )}
         </div>
       )}
 
@@ -1215,7 +1314,12 @@ export default function AISettingsPage() {
 
         {/* Access Tab */}
         <TabsContent value="access" className="space-y-6">
-          <AccessTab aiId={aiId} inviteOnly={ai.inviteOnly} />
+          <AccessTab
+            aiId={aiId}
+            inviteOnly={ai.inviteOnly}
+            hasAccessToken={ai.hasAccessToken}
+            hasAccessCode={ai.hasAccessCode}
+          />
         </TabsContent>
       </Tabs>
 

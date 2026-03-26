@@ -27,6 +27,7 @@ interface UsePublicChatReturn {
   isLoading: boolean;
   error: string | null;
   accessDeniedReason: AccessDeniedReason | null;
+  isCodeInvalid: boolean;
   showSaveBanner: boolean;
   sendMessage: (content: string, accessCode?: string) => void;
   dismissSaveBanner: () => void;
@@ -46,6 +47,7 @@ export function usePublicChat({ slug, accessToken }: UsePublicChatOptions): UseP
   const [accessDeniedReason, setAccessDeniedReason] = React.useState<AccessDeniedReason | null>(
     null
   );
+  const [isCodeInvalid, setIsCodeInvalid] = React.useState(false);
   const [sentMessageCount, setSentMessageCount] = React.useState(0);
   const [showSaveBanner, setShowSaveBanner] = React.useState(false);
   const [bannerDismissed, setBannerDismissed] = React.useState(false);
@@ -124,6 +126,7 @@ export function usePublicChat({ slug, accessToken }: UsePublicChatOptions): UseP
 
       // If we have an access code but no conversation yet, retry starting the conversation
       if (!conversationId && accessCode && ai) {
+        setIsCodeInvalid(false);
         try {
           const headers: Record<string, string> = {
             'x-conversation-source': 'PUBLIC',
@@ -201,6 +204,7 @@ export function usePublicChat({ slug, accessToken }: UsePublicChatOptions): UseP
             const reason = (err.data as { reason?: string } | undefined)?.reason as
               | AccessDeniedReason
               | undefined;
+            if (reason === 'access_code') setIsCodeInvalid(true);
             setAccessDeniedReason(reason ?? 'access_code');
           }
           return;
@@ -287,6 +291,7 @@ export function usePublicChat({ slug, accessToken }: UsePublicChatOptions): UseP
     isLoading,
     error,
     accessDeniedReason,
+    isCodeInvalid,
     showSaveBanner,
     sendMessage,
     dismissSaveBanner,

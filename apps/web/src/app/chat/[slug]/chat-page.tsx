@@ -20,6 +20,7 @@ export default function ChatPage() {
     isLoading,
     error,
     accessDeniedReason,
+    isCodeInvalid,
     showSaveBanner,
     sendMessage,
     dismissSaveBanner,
@@ -144,7 +145,11 @@ export default function ChatPage() {
               required
               autoFocus
             />
-            {codeError && <p className="text-xs text-destructive">{codeError}</p>}
+            {(codeError || isCodeInvalid) && (
+              <p className="text-xs text-destructive">
+                {codeError || 'Code incorrect, réessayez.'}
+              </p>
+            )}
             <Button type="submit" className="w-full" disabled={isStreaming}>
               Accéder
             </Button>
