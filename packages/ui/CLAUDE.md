@@ -3,17 +3,21 @@
 ## Atomic Design (STRICTEMENT APPLIQUE)
 
 ### atoms/ — Elements indivisibles
+
 Aucune dependance vers d'autres composants UI. Seulement React, Tailwind, cva, Radix.
 
 Actuels : avatar, badge, button, icons, input, label, select, separator, skeleton, switch, tabs, textarea
 
 ### molecules/ — Composes d'atoms UNIQUEMENT
-Actuels : card, chart-tooltip, markdown-renderer, stat-card, tooltip, trend-badge
+
+Actuels : card, chart-tooltip, explore-ai-card, markdown-renderer, stat-card, tooltip, trend-badge
 
 ### organisms/ — Peuvent utiliser atoms + molecules + autres organisms
-Actuels : chat-interface, conversation-list, document-uploader, source-citation
+
+Actuels : chat-interface, conversation-list, document-uploader, notification-bar, source-citation
 
 ### templates/ — Layouts de pages (structure sans donnees reelles)
+
 Actuels : auth-layout, dashboard-layout
 
 ## Regles
@@ -61,8 +65,13 @@ Toujours exporter : le composant, son type Props, et la fonction de variants si 
 
 ## Fichiers cles
 
-| Fichier | Role |
-|---------|------|
-| `src/index.ts` | TOUS les exports publics (composants, types, utilitaires) |
-| `src/lib/utils.ts` | Utilitaire cn() |
-| `src/styles.css` | Styles Tailwind de base |
+| Fichier                              | Role                                                      |
+| ------------------------------------ | --------------------------------------------------------- |
+| `src/index.ts`                       | TOUS les exports publics (composants, types, utilitaires) |
+| `src/lib/utils.ts`                   | Utilitaire cn()                                           |
+| `src/styles.css`                     | Styles Tailwind de base                                   |
+| `src/organisms/notification-bar.tsx` | Barre de notification contextuelle (info/warning/error)   |
+| `src/molecules/explore-ai-card.tsx`  | Carte pour la page de découverte des AIs publics          |
+| `src/molecules/stat-card.tsx`        | Carte stat avec icône, valeur, tendance                   |
+| `src/molecules/trend-badge.tsx`      | Badge +X% / -X% avec couleur dynamique                    |
+| `src/molecules/chart-tooltip.tsx`    | Tooltip personnalisé pour graphiques Recharts             |
