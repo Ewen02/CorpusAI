@@ -40,6 +40,8 @@ export { Switch } from './atoms/switch';
 export { Textarea } from './atoms/textarea';
 export type { TextareaProps } from './atoms/textarea';
 
+export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from './atoms/table';
+
 export {
   Dialog,
   DialogPortal,

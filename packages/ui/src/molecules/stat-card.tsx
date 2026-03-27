@@ -8,6 +8,8 @@ export interface StatCardProps {
   trend?: { value: number; isPositive: boolean };
   trendLabel?: string;
   icon?: React.ComponentType<{ className?: string }>;
+  /** Optional inline badge next to the title (e.g. "5% failed") */
+  badge?: React.ReactNode;
   className?: string;
 }
 
@@ -17,6 +19,7 @@ export function StatCard({
   trend,
   trendLabel = 'vs période précédente',
   icon: Icon,
+  badge,
   className,
 }: StatCardProps) {
   return (
@@ -33,7 +36,10 @@ export function StatCard({
 
       {/* Header : label + icon */}
       <div className="relative flex items-start justify-between gap-3">
-        <p className="text-tx-muted text-[13px] font-medium">{title}</p>
+        <div className="flex items-center gap-1.5">
+          <p className="text-tx-muted text-[13px] font-medium">{title}</p>
+          {badge}
+        </div>
         {Icon && (
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-400/20 to-indigo-600/10 ring-1 ring-[hsl(var(--accent-500)/0.2)]">
             <Icon className="h-4 w-4 text-indigo-400" />

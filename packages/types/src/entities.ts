@@ -23,6 +23,8 @@ export interface User {
   email: string;
   name?: string | null;
   image?: string | null;
+  username?: string | null;
+  bio?: string | null;
   emailVerified: boolean;
   subscriptionPlan: SubscriptionPlan;
   subscriptionStatus: SubscriptionStatus;
