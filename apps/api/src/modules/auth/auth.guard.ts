@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { auth, type Session, type User } from '../../lib/auth';
 import { fromNodeHeaders } from 'better-auth/node';
+import { Sentry } from '../../lib/sentry';
 import type { Request } from 'express';
 
 export interface AuthenticatedRequest extends Request {
@@ -42,6 +43,10 @@ export class AuthGuard implements CanActivate {
     // Attach session and user to request for later use
     request.session = session.session;
     request.user = session.user;
+
+    // Enrich Sentry with authenticated creator context
+    Sentry.setUser({ id: session.user.id, email: session.user.email });
+    Sentry.setTag('userType', 'creator');
 
     return true;
   }

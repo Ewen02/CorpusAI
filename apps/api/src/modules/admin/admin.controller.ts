@@ -64,6 +64,11 @@ export class AdminController {
     return this.adminService.getSystemHealth();
   }
 
+  @Get('tests')
+  getTestStatus() {
+    return this.adminService.getTestStatus();
+  }
+
   @Get('eval/datasets')
   listEvalDatasets() {
     return this.evalReportsService.listDatasets();

@@ -1,6 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
+import {
+  magicLinkTemplate,
+  inviteTemplate,
+  welcomeTemplate,
+  documentIndexedTemplate,
+  documentFailedTemplate,
+} from './templates';
 
 @Injectable()
 export class MailService {
@@ -23,24 +30,7 @@ export class MailService {
 
   async sendMagicLink(email: string, token: string, aiName?: string): Promise<void> {
     const url = `${this.frontendUrl}/portal/auth/verify?token=${token}`;
-    const subject = aiName ? `Votre lien d'accès à ${aiName}` : 'Votre lien de connexion CorpusAI';
-
-    const html = `
-      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
-        <h2 style="color: #1e293b; margin-bottom: 8px;">Connexion à votre espace</h2>
-        <p style="color: #64748b; margin-bottom: 24px;">
-          ${aiName ? `Cliquez sur le lien ci-dessous pour accéder à <strong>${aiName}</strong>.` : 'Cliquez sur le lien ci-dessous pour vous connecter.'}
-          Ce lien expire dans <strong>15 minutes</strong>.
-        </p>
-        <a href="${url}" style="display: inline-block; background: #3b82f6; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600;">
-          Se connecter
-        </a>
-        <p style="color: #94a3b8; font-size: 12px; margin-top: 24px;">
-          Si vous n'avez pas demandé ce lien, ignorez cet email.
-        </p>
-      </div>
-    `;
-
+    const { subject, html } = magicLinkTemplate(url, aiName);
     await this.send(email, subject, html);
   }
 
@@ -50,23 +40,40 @@ export class MailService {
     creatorName: string,
     accessUrl: string
   ): Promise<void> {
-    const subject = `${creatorName} vous invite à accéder à ${aiName}`;
+    const { subject, html } = inviteTemplate(aiName, creatorName, accessUrl);
+    await this.send(email, subject, html);
+  }
 
-    const html = `
-      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
-        <h2 style="color: #1e293b; margin-bottom: 8px;">Vous avez été invité</h2>
-        <p style="color: #64748b; margin-bottom: 24px;">
-          <strong>${creatorName}</strong> vous invite à accéder à l'assistant IA <strong>${aiName}</strong>.
-        </p>
-        <a href="${accessUrl}" style="display: inline-block; background: #3b82f6; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600;">
-          Accéder à ${aiName}
-        </a>
-        <p style="color: #94a3b8; font-size: 12px; margin-top: 24px;">
-          Cet email vous a été envoyé car ${creatorName} a partagé cet assistant avec vous.
-        </p>
-      </div>
-    `;
+  async sendWelcome(email: string, name: string): Promise<void> {
+    const dashboardUrl = `${this.frontendUrl}/dashboard`;
+    const { subject, html } = welcomeTemplate(name, dashboardUrl);
+    await this.send(email, subject, html);
+  }
 
+  async sendDocumentIndexed(
+    email: string,
+    documentName: string,
+    aiName: string,
+    chunkCount: number,
+    aiSettingsUrl: string
+  ): Promise<void> {
+    const { subject, html } = documentIndexedTemplate(
+      documentName,
+      aiName,
+      chunkCount,
+      aiSettingsUrl
+    );
+    await this.send(email, subject, html);
+  }
+
+  async sendDocumentFailed(
+    email: string,
+    documentName: string,
+    aiName: string,
+    errorMessage: string,
+    retryUrl: string
+  ): Promise<void> {
+    const { subject, html } = documentFailedTemplate(documentName, aiName, errorMessage, retryUrl);
     await this.send(email, subject, html);
   }
 
@@ -77,7 +84,15 @@ export class MailService {
     }
 
     try {
-      await this.resend.emails.send({ from: this.fromEmail, to, subject, html });
+      await this.resend.emails.send({
+        from: this.fromEmail,
+        to,
+        subject,
+        html,
+        headers: {
+          'List-Unsubscribe': `<mailto:${this.fromEmail}?subject=unsubscribe>`,
+        },
+      });
     } catch (error) {
       this.logger.error(`Failed to send email to ${to}: ${(error as Error).message}`);
       throw error;

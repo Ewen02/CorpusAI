@@ -26,6 +26,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
         if (correlationId) scope.setTag('correlationId', correlationId);
         scope.setTag('path', request.url);
         scope.setTag('method', request.method);
+        // Tag with aiId if present in route params (e.g. /ais/:aiId/*)
+        const aiId = request.params?.aiId || request.params?.id;
+        if (aiId) scope.setTag('aiId', aiId);
         Sentry.captureException(exception);
       });
     }

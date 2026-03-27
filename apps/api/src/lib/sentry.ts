@@ -7,6 +7,7 @@ export function initSentry(): void {
   Sentry.init({
     dsn,
     environment: process.env.NODE_ENV ?? 'development',
+    release: process.env.SENTRY_RELEASE || 'dev',
     tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
     integrations: [Sentry.prismaIntegration()],
     initialScope: { tags: { app: 'api' } },

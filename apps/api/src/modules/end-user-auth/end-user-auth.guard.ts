@@ -1,5 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { prisma } from '@corpusai/database';
+import { Sentry } from '../../lib/sentry';
 import type { Request } from 'express';
 
 @Injectable()
@@ -22,6 +23,11 @@ export class EndUserAuthGuard implements CanActivate {
 
     // Inject end-user into request
     (request as Request & { endUser: typeof endUser }).endUser = endUser;
+
+    // Enrich Sentry with end-user context
+    Sentry.setUser({ id: endUser.id, email: endUser.email });
+    Sentry.setTag('userType', 'end-user');
+
     return true;
   }
 }
