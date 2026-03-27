@@ -193,6 +193,50 @@ const { sendMessage, isStreaming } = useChatState(conversationId);
 | `src/app/portal/conversations/page.tsx`          | Liste conversations + redirect post-login           |
 | `src/middleware.ts`                              | Protection routes créateur + portail                |
 
+## Clean Code Rules
+
+### File size limits
+
+- **Max 300 lignes par fichier** — au-delà, extraire des sous-composants, hooks, ou helpers
+- **1 composant exporté par fichier** — pas de sous-composants `function` avant le `export default`
+- Les petits composants inline (< 15 lignes, jamais réutilisés) sont acceptés
+
+### Structure d'une route complexe
+
+```
+route/
+├── page.tsx              # Page principale (< 300 lignes, orchestration)
+├── components/           # Sous-composants spécifiques à cette route
+│   ├── my-tab.tsx
+│   └── my-card.tsx
+├── hooks/                # Hooks custom spécifiques à cette route
+│   └── use-my-state.ts
+├── constants.ts          # Constantes, enums, mappings de couleurs
+└── utils.ts              # Helpers purs (formatage, calculs)
+```
+
+### Extraction obligatoire
+
+- **Sous-composant > 50 lignes** → fichier séparé dans `components/`
+- **Hook custom > 30 lignes** → fichier séparé dans `hooks/`
+- **Constantes de config/couleurs** (mappings, options de select, etc.) → `constants.ts`
+- **Fonctions utilitaires** (formatage de dates, calculs) → `utils.ts`
+- **Types/interfaces spécifiques** à une route → `types.ts` (sinon `@corpusai/types`)
+
+### Classes Tailwind
+
+- **Classe réutilisée 3+ fois** → extraire en constante ou composant
+- **Icônes** → toujours `lucide-react`, jamais de SVG inline
+- **Styles du dark theme** → utiliser les CSS variables : `text-tx-primary`, `text-tx-muted`, `bg-[hsl(var(--surface-1))]`, `border-[hsl(var(--border-subtle))]`
+
+### Patterns interdits
+
+- ❌ `function MyComponent()` avant `export default` dans le même fichier (sauf < 15 lignes)
+- ❌ SVG inline — utiliser `lucide-react` ou composant dédié `*-icons.tsx`
+- ❌ Plus de 10 `useState` dans un composant — extraire un hook custom
+- ❌ `as any` — préférer des types stricts ou `unknown` + narrowing
+- ❌ Raw `fetch` dans les composants — utiliser `apiClient` + React Query hooks
+
 ## Checklist qualite
 
 - [ ] TypeScript strict, pas de `any`
@@ -204,3 +248,6 @@ const { sendMessage, isStreaming } = useChatState(conversationId);
 - [ ] Bien distinguer auth créateur (authClient) vs end-user (portal)
 - [ ] Cas `invite_only` dans chat public → bouton vers portal/sign-in (pas juste message d'erreur)
 - [ ] callbackUrl via sessionStorage pour flow magic link post-login redirect
+- [ ] Fichiers < 300 lignes (extraire si besoin)
+- [ ] Pas de sous-composants inline > 50 lignes
+- [ ] Constantes/helpers dans des fichiers dédiés
