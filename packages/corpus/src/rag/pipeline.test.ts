@@ -317,12 +317,10 @@ describe('RAGPipelineImpl', () => {
       });
 
       it('should fallback to original chunk.text when enrichment API call fails', async () => {
-        // First chunk fails, second and third succeed
-        mockOpenAICreate
-          .mockRejectedValueOnce(new Error('Rate limit exceeded'))
-          .mockResolvedValue({ choices: [{ message: { content: 'Context phrase.' } }] });
+        // All enrichment calls fail — non-429 errors are NOT retried by enrichWithRetry
+        mockOpenAICreate.mockRejectedValue(new Error('Invalid API key'));
 
-        // Should NOT throw — indexing should complete successfully
+        // Should NOT throw — indexing should complete with original texts
         const result = await pipeline.index(singleDoc, {
           enableContextEnrichment: true,
           contextEnrichmentConfig: { concurrency: 1 },
@@ -337,10 +335,10 @@ describe('RAGPipelineImpl', () => {
         );
         expect(embeddedTexts).toHaveLength(3);
 
-        // First chunk should use original text (fallback), others should be enriched
+        // All chunks should use original text (fallback)
         expect(embeddedTexts[0]).toMatch(/^Chunk 0/);
-        expect(embeddedTexts[1]).toMatch(/^Context phrase\./);
-        expect(embeddedTexts[2]).toMatch(/^Context phrase\./);
+        expect(embeddedTexts[1]).toMatch(/^Chunk 1/);
+        expect(embeddedTexts[2]).toMatch(/^Chunk 2/);
       });
 
       it('should fallback to original chunk.text when enrichment returns empty response', async () => {
@@ -818,6 +816,13 @@ describe('RAGPipelineImpl', () => {
     });
 
     it('should call Cohere API with correct payload', async () => {
+      // Use low scores so shouldRerank triggers (avg < 0.8)
+      const lowScoreResults = createMockSearchResults(3).map((r, i) => ({
+        ...r,
+        score: 0.6 - i * 0.1,
+      }));
+      (mockVectorStore.hybridSearch as Mock).mockResolvedValue(lowScoreResults);
+
       const coherePipeline = new RAGPipelineImpl(
         'test-ai-id',
         mockEmbeddingService,
@@ -844,7 +849,10 @@ describe('RAGPipelineImpl', () => {
     });
 
     it('should rerank results using Cohere scores and return top N', async () => {
-      const searchResults = createMockSearchResults(3);
+      const searchResults = createMockSearchResults(3).map((r, i) => ({
+        ...r,
+        score: 0.6 - i * 0.1,
+      }));
       (mockVectorStore.hybridSearch as Mock).mockResolvedValue(searchResults);
 
       const coherePipeline = new RAGPipelineImpl(
@@ -869,10 +877,11 @@ describe('RAGPipelineImpl', () => {
     it('should fallback to semantic order when Cohere API fails', async () => {
       mockFetch.mockRejectedValue(new Error('Network error'));
 
-      const searchResults = createMockSearchResults(3);
+      const searchResults = createMockSearchResults(3).map((r, i) => ({
+        ...r,
+        score: 0.6 - i * 0.1,
+      }));
       (mockVectorStore.hybridSearch as Mock).mockResolvedValue(searchResults);
-
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       const coherePipeline = new RAGPipelineImpl(
         'test-ai-id',
@@ -884,19 +893,12 @@ describe('RAGPipelineImpl', () => {
         new CohereReranker({ apiKey: 'test-cohere-key' })
       );
 
-      // Should NOT throw — fallback to semantic order
+      // Should NOT throw — silent fallback to semantic order
       const response = await coherePipeline.query('Test question', { useHyde: false });
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('[Cohere Rerank]'),
-        expect.stringContaining('Network error')
-      );
 
       // Results returned in original Qdrant order (semantic)
       expect(response.sources).toHaveLength(3);
-      expect(response.sources[0]?.score).toBeCloseTo(0.9, 1);
-
-      consoleSpy.mockRestore();
+      expect(response.sources[0]?.score).toBeCloseTo(0.6, 1);
     });
 
     it('should fallback to semantic order when Cohere returns HTTP error', async () => {
@@ -907,7 +909,11 @@ describe('RAGPipelineImpl', () => {
         json: async () => ({}),
       });
 
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const searchResults = createMockSearchResults(3).map((r, i) => ({
+        ...r,
+        score: 0.6 - i * 0.1,
+      }));
+      (mockVectorStore.hybridSearch as Mock).mockResolvedValue(searchResults);
 
       const coherePipeline = new RAGPipelineImpl(
         'test-ai-id',
@@ -919,16 +925,9 @@ describe('RAGPipelineImpl', () => {
         new CohereReranker({ apiKey: 'test-cohere-key' })
       );
 
-      // Should NOT throw — indexing continues with fallback
+      // Should NOT throw — silent fallback
       const response = await coherePipeline.query('Test question', { useHyde: false });
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('[Cohere Rerank]'),
-        expect.stringContaining('429')
-      );
       expect(response.answer).toBe('This is a mocked LLM response.');
-
-      consoleSpy.mockRestore();
     });
 
     it('should respect topN option and slice results to topN', async () => {

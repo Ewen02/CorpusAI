@@ -16,9 +16,9 @@ describe('CachedEmbeddingService', () => {
       dimensions: 1536,
       model: 'text-embedding-3-small',
       embed: vi.fn().mockResolvedValue(mockEmbedding),
-      embedBatch: vi.fn().mockImplementation((texts: string[]) =>
-        Promise.resolve(texts.map(() => mockEmbedding))
-      ),
+      embedBatch: vi
+        .fn()
+        .mockImplementation((texts: string[]) => Promise.resolve(texts.map(() => mockEmbedding))),
     };
 
     mockCache = {
@@ -86,9 +86,7 @@ describe('CachedEmbeddingService', () => {
     it('should use SHA-256 hash for cache key', async () => {
       await cachedService.embed('test text');
 
-      expect(mockCache.get).toHaveBeenCalledWith(
-        expect.stringMatching(/^test:[a-f0-9]{64}$/)
-      );
+      expect(mockCache.get).toHaveBeenCalledWith(expect.stringMatching(/^test:\d+:[a-f0-9]{64}$/));
     });
 
     it('should use prefix in cache key', async () => {
@@ -100,9 +98,7 @@ describe('CachedEmbeddingService', () => {
 
       await customService.embed('test');
 
-      expect(mockCache.get).toHaveBeenCalledWith(
-        expect.stringContaining('custom:prefix:')
-      );
+      expect(mockCache.get).toHaveBeenCalledWith(expect.stringContaining('custom:prefix:'));
     });
 
     it('should handle cache read error gracefully', async () => {
@@ -256,11 +252,9 @@ describe('CachedEmbeddingService', () => {
       const emb2 = [4, 5, 6];
       const emb3 = [7, 8, 9];
 
-      mockCache.mget = vi.fn().mockResolvedValue([
-        JSON.stringify(emb1),
-        null,
-        JSON.stringify(emb3),
-      ]);
+      mockCache.mget = vi
+        .fn()
+        .mockResolvedValue([JSON.stringify(emb1), null, JSON.stringify(emb3)]);
       mockBaseService.embedBatch = vi.fn().mockResolvedValue([emb2]);
 
       const result = await cachedService.embedBatch(['t1', 't2', 't3']);
@@ -306,7 +300,8 @@ describe('CachedEmbeddingService', () => {
 
     it('should calculate hit rate correctly', async () => {
       // 2 hits, 2 misses = 50% hit rate
-      mockCache.get = vi.fn()
+      mockCache.get = vi
+        .fn()
         .mockResolvedValueOnce(JSON.stringify(mockEmbedding)) // hit
         .mockResolvedValueOnce(null) // miss
         .mockResolvedValueOnce(JSON.stringify(mockEmbedding)) // hit
@@ -322,11 +317,9 @@ describe('CachedEmbeddingService', () => {
     });
 
     it('should track batch metrics correctly', async () => {
-      mockCache.mget = vi.fn().mockResolvedValue([
-        JSON.stringify(mockEmbedding),
-        null,
-        JSON.stringify(mockEmbedding),
-      ]);
+      mockCache.mget = vi
+        .fn()
+        .mockResolvedValue([JSON.stringify(mockEmbedding), null, JSON.stringify(mockEmbedding)]);
 
       await cachedService.embedBatch(['t1', 't2', 't3']);
 
@@ -443,9 +436,7 @@ describe('CachedEmbeddingService', () => {
 
       await serviceWithDefaults.embed('test');
 
-      expect(mockCache.get).toHaveBeenCalledWith(
-        expect.stringContaining('emb:')
-      );
+      expect(mockCache.get).toHaveBeenCalledWith(expect.stringContaining('emb:'));
     });
   });
 });

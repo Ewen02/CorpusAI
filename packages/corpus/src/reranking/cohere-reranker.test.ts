@@ -103,34 +103,25 @@ describe('CohereReranker', () => {
     expect(body.model).toBe('rerank-english-v3.0');
   });
 
-  it('should log Cohere scores to console', async () => {
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+  it('should return results with Cohere relevance scores', async () => {
     const reranker = new CohereReranker({ apiKey: 'test-key' });
 
-    await reranker.rerank(createMockResults(3), 'test query');
+    const reranked = await reranker.rerank(createMockResults(3), 'test query');
 
-    expect(consoleSpy).toHaveBeenCalledWith(
-      '[Cohere Rerank] scores:',
-      expect.stringContaining('0.9700')
-    );
-
-    consoleSpy.mockRestore();
+    // Cohere mock returns index 1 first (0.97), then 0 (0.82), then 2 (0.43)
+    expect(reranked[0]!.finalScore).toBeCloseTo(0.97, 2);
+    expect(reranked[1]!.finalScore).toBeCloseTo(0.82, 2);
+    expect(reranked[2]!.finalScore).toBeCloseTo(0.43, 2);
   });
 
   it('should fallback to semantic order on network error (no throw)', async () => {
     mockFetch.mockRejectedValue(new Error('Network failure'));
-    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const reranker = new CohereReranker({ apiKey: 'test-key' });
     const results = createMockResults(3);
 
-    // Must not throw
+    // Must not throw — silent fallback
     const fallback = await reranker.rerank(results, 'test');
-
-    expect(consoleSpy).toHaveBeenCalledWith(
-      '[Cohere Rerank] API call failed, falling back to semantic order:',
-      expect.any(String)
-    );
 
     // Fallback preserves original order with original scores
     expect(fallback).toHaveLength(3);
@@ -138,8 +129,6 @@ describe('CohereReranker', () => {
     expect(fallback[0]!.score).toBeCloseTo(0.9, 1);
     expect(fallback[0]!.finalScore).toBeCloseTo(0.9, 1);
     expect(fallback[0]!.bm25Score).toBe(0);
-
-    consoleSpy.mockRestore();
   });
 
   it('should fallback to semantic order on HTTP error (status 401)', async () => {
@@ -149,20 +138,14 @@ describe('CohereReranker', () => {
       statusText: 'Unauthorized',
       json: async () => ({}),
     });
-    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const reranker = new CohereReranker({ apiKey: 'bad-key' });
     const results = createMockResults(3);
 
     const fallback = await reranker.rerank(results, 'test');
 
-    expect(consoleSpy).toHaveBeenCalledWith(
-      '[Cohere Rerank] API call failed, falling back to semantic order:',
-      expect.stringContaining('401')
-    );
+    // Silent fallback — no throw, preserves original order
     expect(fallback).toHaveLength(3);
-
-    consoleSpy.mockRestore();
   });
 
   it('should return empty array for empty results', async () => {
