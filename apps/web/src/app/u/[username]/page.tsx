@@ -38,6 +38,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       images: creator.image ? [{ url: creator.image }] : [],
       type: 'profile',
     },
+    twitter: {
+      card: 'summary',
+      title: `${creator.name || username} — CorpusAI`,
+      description:
+        creator.bio || `Découvrez les assistants IA de ${creator.name || username} sur CorpusAI.`,
+    },
   };
 }
 

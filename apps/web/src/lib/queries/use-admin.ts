@@ -2,6 +2,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../api-client';
 
 // Types
+export interface AdminTopAI {
+  id: string;
+  name: string;
+  slug: string;
+  conversationCount: number;
+  questionCount: number;
+  documentCount: number;
+  user: { email: string; name: string | null };
+}
+
 export interface AdminDashboard {
   totals: {
     users: number;
@@ -13,18 +23,22 @@ export interface AdminDashboard {
   usersByPlan: Array<{ plan: string; count: number }>;
   documentsByStatus: Array<{ status: string; count: number }>;
   recentSignups: number;
+  topAIs: AdminTopAI[];
+  failedDocsRate: number;
 }
 
 export interface AdminUser {
   id: string;
   email: string;
   name: string | null;
+  username: string | null;
   image: string | null;
   role: string;
   subscriptionPlan: string;
   subscriptionStatus: string;
   createdAt: string;
-  _count: { ais: number };
+  _count: { ais: number; dailyStats: number };
+  sessions: Array<{ updatedAt: string }>;
 }
 
 export interface AdminAI {
@@ -32,11 +46,14 @@ export interface AdminAI {
   name: string;
   slug: string;
   status: string;
+  isPublic: boolean;
+  accessType: string;
   documentCount: number;
   conversationCount: number;
   questionCount: number;
   createdAt: string;
-  user: { email: string; name: string | null };
+  updatedAt: string;
+  user: { id: string; email: string; name: string | null };
 }
 
 interface PaginatedResponse<T> {

@@ -4,6 +4,7 @@ import * as React from 'react';
 import {
   Button,
   Input,
+  Textarea,
   Label,
   Card,
   CardHeader,
@@ -29,6 +30,8 @@ export default function SettingsProfilePage() {
   const [success, setSuccess] = React.useState<string | null>(null);
 
   const [name, setName] = React.useState('');
+  const [username, setUsername] = React.useState('');
+  const [bio, setBio] = React.useState('');
   const [imageUrl, setImageUrl] = React.useState('');
 
   React.useEffect(() => {
@@ -37,6 +40,8 @@ export default function SettingsProfilePage() {
         const data = await apiClient.get<User>('/users/me');
         setProfile(data);
         setName(data.name || '');
+        setUsername(data.username || '');
+        setBio(data.bio || '');
         setImageUrl(data.image || '');
       } catch (err) {
         console.error('Error fetching profile:', err);
@@ -59,6 +64,8 @@ export default function SettingsProfilePage() {
     try {
       const updated = await apiClient.patch<User>('/users/me', {
         name: name || undefined,
+        username: username || undefined,
+        bio: bio || undefined,
         image: imageUrl || undefined,
       });
       setProfile((prev) => (prev ? { ...prev, ...updated } : prev));
@@ -94,7 +101,19 @@ export default function SettingsProfilePage() {
       <Card variant="glass">
         <CardHeader>
           <CardTitle>Profil</CardTitle>
-          <CardDescription>Gérez vos informations personnelles.</CardDescription>
+          <CardDescription>
+            Gérez vos informations personnelles.
+            {profile?.username && (
+              <a
+                href={`/u/${profile.username}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-2 text-[hsl(var(--accent-500))] hover:underline"
+              >
+                Voir mon profil public →
+              </a>
+            )}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -129,6 +148,46 @@ export default function SettingsProfilePage() {
                 maxLength={100}
                 className="h-9 border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] text-[13px] text-tx-primary placeholder:text-tx-disabled focus:border-[hsl(var(--accent-500)/0.4)] focus:ring-1 focus:ring-[hsl(var(--accent-500)/0.15)]"
               />
+            </div>
+
+            {/* Username */}
+            <div className="space-y-1.5">
+              <Label htmlFor="username" className="text-[13px] font-medium text-tx-secondary">
+                Nom d&apos;utilisateur
+              </Label>
+              <div className="flex items-center gap-2">
+                <span className="text-[13px] text-tx-disabled">corpusai.io/u/</span>
+                <Input
+                  id="username"
+                  value={username}
+                  onChange={(e) =>
+                    setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))
+                  }
+                  placeholder="monpseudo"
+                  maxLength={30}
+                  className="h-9 flex-1 border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] text-[13px] text-tx-primary placeholder:text-tx-disabled focus:border-[hsl(var(--accent-500)/0.4)] focus:ring-1 focus:ring-[hsl(var(--accent-500)/0.15)]"
+                />
+              </div>
+              <p className="text-[12px] text-tx-disabled">
+                3 à 30 caractères. Lettres, chiffres, tirets et underscores.
+              </p>
+            </div>
+
+            {/* Bio */}
+            <div className="space-y-1.5">
+              <Label htmlFor="bio" className="text-[13px] font-medium text-tx-secondary">
+                Bio
+              </Label>
+              <Textarea
+                id="bio"
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="Décrivez votre activité en quelques mots"
+                maxLength={160}
+                rows={2}
+                className="border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] text-[13px] text-tx-primary placeholder:text-tx-disabled focus:border-[hsl(var(--accent-500)/0.4)] focus:ring-1 focus:ring-[hsl(var(--accent-500)/0.15)]"
+              />
+              <p className="text-right text-[12px] text-tx-disabled">{bio.length}/160</p>
             </div>
 
             {/* Email (read-only) */}

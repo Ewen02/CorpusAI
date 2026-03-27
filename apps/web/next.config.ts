@@ -15,6 +15,5 @@ export default withSentryConfig(nextConfig, {
   org: 'ewenlq',
   project: 'corpusai',
   authToken: process.env.SENTRY_AUTH_TOKEN,
-  // Upload source maps to Sentry but don't expose them in the client bundle
-  hideSourceMaps: true,
+  sourcemaps: { disable: false },
 });
