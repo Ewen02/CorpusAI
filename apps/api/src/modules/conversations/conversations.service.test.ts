@@ -25,12 +25,14 @@ vi.mock('@corpusai/database', () => ({
       findFirst: vi.fn(),
       create: vi.fn(),
     },
+    $queryRaw: vi.fn().mockResolvedValue([{ count: BigInt(0) }]),
     $transaction: vi.fn((fn: (tx: unknown) => unknown) =>
       fn({
         conversation: {
           create: vi
             .fn()
             .mockResolvedValue({ id: 'conv-1', aiId: 'ai-1', ai: { id: 'ai-1', name: 'Test' } }),
+          update: vi.fn(),
         },
         aI: { update: vi.fn() },
         dailyStats: { upsert: vi.fn() },

@@ -57,7 +57,7 @@ describe('AIsService', () => {
       expect(result).toBe(ais);
       expect(mockAI.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { userId: 'user-1' },
+          where: expect.objectContaining({ userId: 'user-1' }),
           skip: 0,
           take: 10,
         })
@@ -77,12 +77,21 @@ describe('AIsService', () => {
         id: 'ai-1',
         name: 'Test',
         documents: [],
+        accessToken: null,
+        accessCode: null,
         _count: { documents: 0, conversations: 0 },
       };
       mockAI.findFirst.mockResolvedValue(ai);
 
       const result = await service.findOne('user-1', 'ai-1');
-      expect(result).toBe(ai);
+      expect(result).toEqual(
+        expect.objectContaining({
+          id: 'ai-1',
+          name: 'Test',
+          hasAccessToken: false,
+          hasAccessCode: false,
+        })
+      );
     });
 
     it('should throw NotFoundException when AI not found', async () => {

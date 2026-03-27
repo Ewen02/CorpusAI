@@ -49,7 +49,8 @@ describe('AdminService', () => {
   let service: AdminService;
 
   beforeEach(() => {
-    service = new AdminService();
+    const mockConfig = { get: vi.fn().mockReturnValue('http://localhost:6333') };
+    service = new AdminService(mockConfig as any);
     vi.clearAllMocks();
   });
 
@@ -91,7 +92,8 @@ describe('AdminService', () => {
     });
 
     it('should use cached result on second call within TTL', async () => {
-      const cachedService = new AdminService();
+      const mockConfig2 = { get: vi.fn().mockReturnValue('http://localhost:6333') };
+      const cachedService = new AdminService(mockConfig2 as any);
       mockUser.count.mockResolvedValue(1);
       mockAI.count.mockResolvedValue(1);
       mockDocument.count.mockResolvedValue(1);
