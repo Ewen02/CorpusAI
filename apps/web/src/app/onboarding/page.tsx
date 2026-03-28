@@ -45,7 +45,15 @@ function Stepper({ currentStep }: { currentStep: WizardStep }) {
 
 // ─── Main Page ────────────────────────────────────────────────
 
-export default function OnboardingPage() {
+export default function OnboardingPageWrapper() {
+  return (
+    <React.Suspense>
+      <OnboardingPage />
+    </React.Suspense>
+  );
+}
+
+function OnboardingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isDebug = searchParams.get('debug') === 'true';

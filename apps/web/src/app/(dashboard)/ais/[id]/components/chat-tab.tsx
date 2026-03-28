@@ -7,7 +7,6 @@ import {
   ConversationList,
   ConversationListSkeleton,
   type ChatMessage,
-  type ChatSource,
   type Conversation,
 } from '@corpusai/ui';
 
@@ -22,7 +21,6 @@ interface ChatTabProps {
   onSendMessage: (content: string) => void;
   onSelectConversation: (conversation: Conversation) => void;
   onNewConversation: () => void;
-  onSourceClick?: (source: ChatSource) => void;
 }
 
 /**
@@ -40,7 +38,6 @@ export const ChatTab = React.memo(function ChatTab({
   onSendMessage,
   onSelectConversation,
   onNewConversation,
-  onSourceClick,
 }: ChatTabProps) {
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
@@ -66,7 +63,6 @@ export const ChatTab = React.memo(function ChatTab({
           isLoading={isStreaming}
           welcomeMessage={welcomeMessage}
           aiName={aiName}
-          onSourceClick={onSourceClick}
           className="flex-1"
         />
       </Card>

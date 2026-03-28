@@ -5,7 +5,15 @@ import { useSearchParams } from 'next/navigation';
 import { Button, Input, Label } from '@corpusai/ui';
 import { useSendMagicLink } from '@/lib/queries';
 
-export default function PortalSignInPage() {
+export default function PortalSignInPageWrapper() {
+  return (
+    <React.Suspense>
+      <PortalSignInPage />
+    </React.Suspense>
+  );
+}
+
+function PortalSignInPage() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl');
   const aiSlug = searchParams.get('aiSlug');

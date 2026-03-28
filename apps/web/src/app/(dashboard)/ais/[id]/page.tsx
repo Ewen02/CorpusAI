@@ -225,7 +225,7 @@ export default function AIDetailPage() {
               welcomeMessage={welcomeMessage}
               onSendMessage={sendMessage}
               onSelectConversation={handleConversationSelect}
-              onNewConversation={currentConversationId !== null ? startNewConversation : undefined}
+              onNewConversation={currentConversationId !== null ? startNewConversation : () => {}}
             />
           </TabsContent>
 
@@ -248,7 +248,7 @@ export default function AIDetailPage() {
               currentConversationId={currentConversationId}
               isLoading={isLoadingConversations}
               onSelectConversation={handleConversationSelect}
-              onNewConversation={currentConversationId !== null ? startNewConversation : undefined}
+              onNewConversation={currentConversationId !== null ? startNewConversation : () => {}}
             />
           </TabsContent>
 

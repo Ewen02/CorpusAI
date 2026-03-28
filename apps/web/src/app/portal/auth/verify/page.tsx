@@ -6,7 +6,15 @@ import { Button } from '@corpusai/ui';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-export default function PortalVerifyPage() {
+export default function PortalVerifyPageWrapper() {
+  return (
+    <React.Suspense>
+      <PortalVerifyPage />
+    </React.Suspense>
+  );
+}
+
+function PortalVerifyPage() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
   const [status, setStatus] = React.useState<'redirecting' | 'error'>('redirecting');
