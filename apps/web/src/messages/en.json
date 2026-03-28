@@ -91,15 +91,28 @@
     }
   },
   "dashboard": {
+    "title": "Dashboard",
     "welcome": "Welcome! Here's an overview of your activity.",
-    "totalAIs": "AIs",
+    "activeAIs": "Active AIs",
     "totalDocuments": "Documents",
     "totalConversations": "Conversations",
     "totalQuestions": "Questions",
     "recentActivity": "Recent activity",
     "noActivity": "No recent activity",
     "quickActions": "Quick actions",
-    "createFirstAI": "Create your first AI assistant"
+    "createFirstAI": "Create your first AI assistant",
+    "createAI": "Create an AI",
+    "newAI": "New AI",
+    "myAIs": "My AIs",
+    "onboardingTitle": "Welcome to CorpusAI!",
+    "onboardingDescription": "Create your first AI assistant in 3 steps: name it, upload your documents, and start asking questions.",
+    "createMyFirstAI": "Create my first AI",
+    "usage": "Usage",
+    "active": "Active",
+    "aisCreated": "AIs created",
+    "questionsPerDay": "Questions / day",
+    "nearLimit": "Approaching limit",
+    "almostReached": "Limit almost reached"
   },
   "ai": {
     "create": {
@@ -116,6 +129,19 @@
     },
     "list": {
       "title": "My AIs",
+      "subtitle": "Manage your AI assistants and their documents.",
+      "createAI": "Create an AI",
+      "searchPlaceholder": "Search an assistant...",
+      "status": "Status",
+      "allStatuses": "All statuses",
+      "statusActive": "Active",
+      "statusDraft": "Draft",
+      "statusPaused": "Paused",
+      "statusArchived": "Archived",
+      "results": "{count} result(s)",
+      "noResults": "No results",
+      "noResultsDescription": "No assistant matches your search.",
+      "resetFilters": "Reset filters",
       "empty": "No assistants created",
       "emptyDescription": "Create your first AI assistant to get started."
     },

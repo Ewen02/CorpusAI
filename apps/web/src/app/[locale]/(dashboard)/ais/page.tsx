@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   Button,
   Input,
@@ -16,8 +16,10 @@ import { AIsPageSkeleton } from '@/components/skeletons';
 import { AICard, EmptyAIStateFull } from '@/components';
 import { SearchIcon, PlusIcon } from '@/lib/icons';
 import { PageWrapper } from '@/components/page-wrapper';
+import { useRouter } from '@/i18n/routing';
 
 export default function AIsPage() {
+  const t = useTranslations('ai.list');
   const router = useRouter();
   const [searchQuery, setSearchQuery] = React.useState('');
   const deferredSearch = React.useDeferredValue(searchQuery);
@@ -68,21 +70,21 @@ export default function AIsPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-semibold tracking-tight text-tx-primary">Mes AIs</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-tx-primary">{t('title')}</h1>
             {ais && ais.length > 0 && (
               <span className="rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-2))] px-1.5 py-0.5 text-[11px] tabular-nums text-tx-muted">
                 {ais.length}
               </span>
             )}
           </div>
-          <p className="mt-1 text-sm text-tx-muted">Gérez vos assistants IA et leurs documents.</p>
+          <p className="mt-1 text-sm text-tx-muted">{t('subtitle')}</p>
         </div>
         <Button
           onClick={handleCreateAI}
           className="shrink-0 bg-gradient-to-r from-indigo-500 to-indigo-600 shadow-accent transition-all hover:opacity-90 hover:shadow-accent"
         >
           <PlusIcon className="mr-2 h-4 w-4" />
-          Créer un AI
+          {t('createAI')}
         </Button>
       </div>
 
@@ -92,7 +94,7 @@ export default function AIsPage() {
           <div className="relative flex-1 sm:max-w-xs">
             <SearchIcon className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-tx-disabled" />
             <Input
-              placeholder="Rechercher un assistant..."
+              placeholder={t('searchPlaceholder')}
               value={searchQuery}
               onChange={handleSearchChange}
               className="h-9 pl-8 text-sm"
@@ -101,20 +103,20 @@ export default function AIsPage() {
 
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="h-9 w-full text-sm sm:w-[160px]">
-              <SelectValue placeholder="Statut" />
+              <SelectValue placeholder={t('status')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tous les statuts</SelectItem>
-              <SelectItem value="ACTIVE">Actif</SelectItem>
-              <SelectItem value="DRAFT">Brouillon</SelectItem>
-              <SelectItem value="PAUSED">En pause</SelectItem>
-              <SelectItem value="ARCHIVED">Archivé</SelectItem>
+              <SelectItem value="all">{t('allStatuses')}</SelectItem>
+              <SelectItem value="ACTIVE">{t('statusActive')}</SelectItem>
+              <SelectItem value="DRAFT">{t('statusDraft')}</SelectItem>
+              <SelectItem value="PAUSED">{t('statusPaused')}</SelectItem>
+              <SelectItem value="ARCHIVED">{t('statusArchived')}</SelectItem>
             </SelectContent>
           </Select>
 
           {hasActiveFilters && (
             <span className="text-[12px] text-tx-muted">
-              {filteredAIs.length} résultat{filteredAIs.length !== 1 ? 's' : ''}
+              {t('results', { count: filteredAIs.length })}
             </span>
           )}
         </div>
@@ -128,15 +130,13 @@ export default function AIsPage() {
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[hsl(var(--surface-2))]">
             <SearchIcon className="h-5 w-5 text-tx-disabled" />
           </div>
-          <p className="mt-4 text-sm font-medium text-tx-secondary">Aucun résultat</p>
-          <p className="mt-1 text-[13px] text-tx-muted">
-            Aucun assistant ne correspond à votre recherche.
-          </p>
+          <p className="mt-4 text-sm font-medium text-tx-secondary">{t('noResults')}</p>
+          <p className="mt-1 text-[13px] text-tx-muted">{t('noResultsDescription')}</p>
           <button
             onClick={handleResetFilters}
             className="mt-4 text-[13px] font-medium text-indigo-400 hover:text-indigo-300 hover:underline"
           >
-            Réinitialiser les filtres
+            {t('resetFilters')}
           </button>
         </div>
       ) : (

@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Button,
   Input,
@@ -22,6 +23,7 @@ import type { User } from '@corpusai/types';
 import { PageWrapper } from '@/components/page-wrapper';
 
 export default function SettingsProfilePage() {
+  const t = useTranslations('settings');
   const { data: session } = authClient.useSession();
   const [profile, setProfile] = React.useState<User | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -69,7 +71,7 @@ export default function SettingsProfilePage() {
         image: imageUrl || undefined,
       });
       setProfile((prev) => (prev ? { ...prev, ...updated } : prev));
-      setSuccess('Profil mis à jour avec succès');
+      setSuccess(t('saved'));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
     } finally {
@@ -100,7 +102,7 @@ export default function SettingsProfilePage() {
       {/* Profile Card */}
       <Card variant="glass">
         <CardHeader>
-          <CardTitle>Profil</CardTitle>
+          <CardTitle>{t('profile')}</CardTitle>
           <CardDescription>
             Gérez vos informations personnelles.
             {profile?.username && (

@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useTranslations } from 'next-intl';
 import { Button, Tabs, TabsList, TabsTrigger, TabsContent } from '@corpusai/ui';
 import { apiClient } from '@/lib/api-client';
 import { useNavigation } from '@/lib/hooks';
@@ -8,6 +9,8 @@ import { AIFormFields, DEFAULT_AI_FORM_VALUES, ErrorAlert, type AIFormValues } f
 import { PageWrapper } from '@/components/page-wrapper';
 
 export default function CreateAIPage() {
+  const t = useTranslations('ai.create');
+  const tc = useTranslations('common');
   const { goToAI, router } = useNavigation();
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -73,25 +76,21 @@ export default function CreateAIPage() {
   return (
     <PageWrapper className="container max-w-4xl py-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight text-tx-primary">
-          Créer un assistant IA
-        </h1>
-        <p className="mt-1 text-sm text-tx-muted">
-          Configurez votre assistant et commencez à lui ajouter des documents.
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight text-tx-primary">{t('title')}</h1>
+        <p className="mt-1 text-sm text-tx-muted">{t('subtitle')}</p>
       </div>
 
       <form onSubmit={handleSubmit}>
         <Tabs defaultValue="general" className="space-y-6">
           <TabsList className="inline-flex items-center gap-0.5 rounded-lg bg-[hsl(var(--surface-2))] p-1">
             <TabsTrigger value="general" className={tabTriggerClass}>
-              Général
+              {t('tabGeneral')}
             </TabsTrigger>
             <TabsTrigger value="behavior" className={tabTriggerClass}>
-              Comportement
+              {t('tabBehavior')}
             </TabsTrigger>
             <TabsTrigger value="appearance" className={tabTriggerClass}>
-              Apparence
+              {t('tabAppearance')}
             </TabsTrigger>
           </TabsList>
 
@@ -118,7 +117,7 @@ export default function CreateAIPage() {
             onClick={() => router.back()}
             disabled={isLoading}
           >
-            Annuler
+            {tc('cancel')}
           </Button>
           <Button
             type="submit"
@@ -126,7 +125,7 @@ export default function CreateAIPage() {
             disabled={isLoading || !formValues.name || !slug}
             className="bg-gradient-to-r from-indigo-500 to-indigo-600 shadow-[0_2px_8px_hsl(var(--accent-500)/0.35)] hover:opacity-90 disabled:opacity-50"
           >
-            {isLoading ? 'Création en cours...' : "Créer l'assistant"}
+            {isLoading ? t('submitting') : t('submit')}
           </Button>
         </div>
       </form>
