@@ -3,6 +3,7 @@ import { QUEUE_NAMES, type DocumentProcessingJobData } from '@corpusai/queue';
 import { logger } from './lib/logger';
 import { Sentry } from './lib/sentry';
 import { processDocument } from './processors/document-processor';
+import { getProgressService } from './services/progress.service';
 
 export function createWorker(redisUrl: string): Worker<DocumentProcessingJobData> {
   const url = new URL(redisUrl);
@@ -34,7 +35,7 @@ export function createWorker(redisUrl: string): Worker<DocumentProcessingJobData
       { jobId: job?.id, documentId: job?.data.documentId, err },
       'Failed document processing'
     );
-    // Capture only after all retries are exhausted
+    // Capture and notify only after all retries are exhausted
     const maxAttempts = job?.opts?.attempts ?? 3;
     if (job && job.attemptsMade >= maxAttempts) {
       Sentry.withScope((scope) => {
@@ -47,6 +48,18 @@ export function createWorker(redisUrl: string): Worker<DocumentProcessingJobData
         });
         Sentry.captureException(err);
       });
+
+      // Notify the API to send failure email to document owner
+      getProgressService()
+        .publishFinalFailure({
+          documentId: job.data.documentId,
+          aiId: job.data.aiId,
+          filename: job.data.filename,
+          errorMessage: err.message,
+          attemptsMade: job.attemptsMade,
+          failedAt: new Date().toISOString(),
+        })
+        .catch(() => {});
     }
   });
 

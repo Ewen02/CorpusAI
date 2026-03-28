@@ -1,5 +1,9 @@
 import Redis from 'ioredis';
-import { REDIS_CHANNELS, type DocumentProgressEvent } from '@corpusai/queue';
+import {
+  REDIS_CHANNELS,
+  type DocumentProgressEvent,
+  type DocumentFinalFailureEvent,
+} from '@corpusai/queue';
 import { logger } from '../lib/logger';
 
 export class ProgressService {
@@ -15,6 +19,17 @@ export class ProgressService {
     } catch (error) {
       // Don't crash document processing if progress notification fails
       logger.warn({ err: error, documentId: event.documentId }, 'Failed to publish progress event');
+    }
+  }
+
+  async publishFinalFailure(event: DocumentFinalFailureEvent): Promise<void> {
+    try {
+      await this.redis.publish(REDIS_CHANNELS.DOCUMENT_FINAL_FAILURE, JSON.stringify(event));
+    } catch (error) {
+      logger.warn(
+        { err: error, documentId: event.documentId },
+        'Failed to publish final failure event'
+      );
     }
   }
 
