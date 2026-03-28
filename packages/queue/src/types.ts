@@ -11,6 +11,15 @@ export interface DocumentProcessingJobData {
   filePath?: string;
 }
 
+export interface DocumentFinalFailureEvent {
+  documentId: string;
+  aiId: string;
+  filename: string;
+  errorMessage: string;
+  attemptsMade: number;
+  failedAt: string;
+}
+
 export interface DocumentProgressEvent {
   documentId: string;
   status: 'PENDING' | 'PROCESSING' | 'INDEXED' | 'FAILED';

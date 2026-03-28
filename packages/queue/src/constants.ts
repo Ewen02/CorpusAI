@@ -12,4 +12,5 @@ export const JOB_RETRY_CONFIG = {
 
 export const REDIS_CHANNELS = {
   DOCUMENT_PROGRESS: 'doc-progress',
+  DOCUMENT_FINAL_FAILURE: 'doc-final-failure',
 } as const;
