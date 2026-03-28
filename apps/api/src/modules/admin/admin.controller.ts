@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Patch,
   Param,
   Query,
@@ -67,6 +68,24 @@ export class AdminController {
   @Get('tests')
   getTestStatus() {
     return this.adminService.getTestStatus();
+  }
+
+  @Get('failed-jobs')
+  getFailedJobs(
+    @Query('skip', new DefaultValuePipe(0), ParseIntPipe) skip: number,
+    @Query('take', new DefaultValuePipe(20), ParseIntPipe) take: number
+  ) {
+    return this.adminService.getFailedJobs(skip, take);
+  }
+
+  @Post('failed-jobs/:jobId/retry')
+  retryFailedJob(@Param('jobId') jobId: string) {
+    return this.adminService.retryFailedJob(jobId);
+  }
+
+  @Delete('failed-jobs/:jobId')
+  discardFailedJob(@Param('jobId') jobId: string) {
+    return this.adminService.discardFailedJob(jobId);
   }
 
   @Get('eval/datasets')

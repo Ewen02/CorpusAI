@@ -48,9 +48,11 @@ const mockMessage = prisma.message as unknown as { count: ReturnType<typeof vi.f
 describe('AdminService', () => {
   let service: AdminService;
 
+  const mockQueue = { getFailed: vi.fn(), getFailedCount: vi.fn(), getJob: vi.fn() };
+
   beforeEach(() => {
     const mockConfig = { get: vi.fn().mockReturnValue('http://localhost:6333') };
-    service = new AdminService(mockConfig as any);
+    service = new AdminService(mockConfig as any, mockQueue as any);
     vi.clearAllMocks();
   });
 
@@ -93,7 +95,7 @@ describe('AdminService', () => {
 
     it('should use cached result on second call within TTL', async () => {
       const mockConfig2 = { get: vi.fn().mockReturnValue('http://localhost:6333') };
-      const cachedService = new AdminService(mockConfig2 as any);
+      const cachedService = new AdminService(mockConfig2 as any, mockQueue as any);
       mockUser.count.mockResolvedValue(1);
       mockAI.count.mockResolvedValue(1);
       mockDocument.count.mockResolvedValue(1);

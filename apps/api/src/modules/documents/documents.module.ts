@@ -1,10 +1,16 @@
-import { Module, Inject, OnModuleDestroy, Logger } from '@nestjs/common';
+import { Module, Inject, OnModuleDestroy, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EventEmitter } from 'node:events';
 import Redis from 'ioredis';
-import { createDocumentQueue, REDIS_CHANNELS } from '@corpusai/queue';
+import { prisma } from '@corpusai/database';
+import {
+  createDocumentQueue,
+  REDIS_CHANNELS,
+  type DocumentFinalFailureEvent,
+} from '@corpusai/queue';
 import { DocumentsController } from './documents.controller';
 import { DocumentsService } from './documents.service';
+import { MailService } from '../mail/mail.service';
 import { RagModule } from '../rag';
 
 @Module({
@@ -56,18 +62,24 @@ import { RagModule } from '../rag';
         subscriber
           .connect()
           .then(() => {
-            subscriber.subscribe(REDIS_CHANNELS.DOCUMENT_PROGRESS).catch((err: unknown) => {
-              logger.error(`Failed to subscribe to progress channel: ${err}`);
-            });
+            subscriber
+              .subscribe(REDIS_CHANNELS.DOCUMENT_PROGRESS, REDIS_CHANNELS.DOCUMENT_FINAL_FAILURE)
+              .catch((err: unknown) => {
+                logger.error(`Failed to subscribe to channels: ${err}`);
+              });
           })
           .catch((err: unknown) => {
             logger.error(`Failed to connect Redis subscriber: ${err}`);
           });
 
-        subscriber.on('message', (_channel: string, message: string) => {
+        subscriber.on('message', (channel: string, message: string) => {
           try {
             const event = JSON.parse(message);
-            emitter.emit('progress', event);
+            if (channel === REDIS_CHANNELS.DOCUMENT_PROGRESS) {
+              emitter.emit('progress', event);
+            } else if (channel === REDIS_CHANNELS.DOCUMENT_FINAL_FAILURE) {
+              emitter.emit('final-failure', event);
+            }
           } catch {
             // Ignore malformed messages
           }
@@ -78,16 +90,54 @@ import { RagModule } from '../rag';
       inject: ['PROGRESS_SUBSCRIBER'],
     },
   ],
-  exports: [DocumentsService],
+  exports: [DocumentsService, 'DOCUMENT_QUEUE'],
 })
-export class DocumentsModule implements OnModuleDestroy {
+export class DocumentsModule implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger('DocumentsModule');
+
   constructor(
     @Inject('PROGRESS_SUBSCRIBER') private readonly subscriber: Redis,
-    @Inject('PROGRESS_EMITTER') private readonly emitter: EventEmitter
+    @Inject('PROGRESS_EMITTER') private readonly emitter: EventEmitter,
+    private readonly mailService: MailService
   ) {}
+
+  onModuleInit() {
+    this.emitter.on('final-failure', (event: DocumentFinalFailureEvent) => {
+      this.handleFinalFailure(event).catch((err) => {
+        this.logger.error(`Failed to handle final failure event: ${err}`);
+      });
+    });
+  }
 
   async onModuleDestroy() {
     await this.subscriber.quit().catch(() => {});
     this.emitter.removeAllListeners();
+  }
+
+  private async handleFinalFailure(event: DocumentFinalFailureEvent): Promise<void> {
+    const ai = await prisma.aI.findUnique({
+      where: { id: event.aiId },
+      select: {
+        name: true,
+        slug: true,
+        user: { select: { email: true } },
+      },
+    });
+
+    if (!ai?.user.email) return;
+
+    const retryUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/ais/${event.aiId}?tab=documents`;
+
+    await this.mailService.sendDocumentFailed(
+      ai.user.email,
+      event.filename,
+      ai.name,
+      event.errorMessage,
+      retryUrl
+    );
+
+    this.logger.log(
+      `Sent failure notification for document ${event.documentId} to ${ai.user.email}`
+    );
   }
 }

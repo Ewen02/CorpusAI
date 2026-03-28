@@ -1,6 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { prisma } from '@corpusai/database';
+import type { Queue } from 'bullmq';
+import type { DocumentProcessingJobData } from '@corpusai/queue';
 
 const DASHBOARD_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
@@ -9,7 +11,10 @@ export class AdminService {
   private readonly logger = new Logger(AdminService.name);
   private dashboardCache: { data: unknown; expiresAt: number } | null = null;
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    @Inject('DOCUMENT_QUEUE') private readonly documentQueue: Queue<DocumentProcessingJobData>
+  ) {}
 
   async getDashboard() {
     if (this.dashboardCache && Date.now() < this.dashboardCache.expiresAt) {
@@ -444,6 +449,43 @@ export class AdminService {
 
     this.testCache = { data, expiresAt: Date.now() + AdminService.TEST_CACHE_TTL };
     return data;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Failed jobs (BullMQ DLQ)
+  // ---------------------------------------------------------------------------
+
+  async getFailedJobs(skip = 0, take = 20) {
+    const jobs = await this.documentQueue.getFailed(skip, skip + take - 1);
+    return {
+      total: await this.documentQueue.getFailedCount(),
+      jobs: jobs.map((job) => ({
+        jobId: job.id,
+        documentId: job.data.documentId,
+        aiId: job.data.aiId,
+        filename: job.data.filename,
+        error: job.failedReason ?? 'Unknown error',
+        attemptsMade: job.attemptsMade,
+        failedAt: job.finishedOn ? new Date(job.finishedOn).toISOString() : null,
+        createdAt: new Date(job.timestamp).toISOString(),
+      })),
+    };
+  }
+
+  async retryFailedJob(jobId: string) {
+    const job = await this.documentQueue.getJob(jobId);
+    if (!job) throw new NotFoundException('Job not found');
+    await job.retry();
+    this.logger.log(`Retried failed job ${jobId}`);
+    return { success: true };
+  }
+
+  async discardFailedJob(jobId: string) {
+    const job = await this.documentQueue.getJob(jobId);
+    if (!job) throw new NotFoundException('Job not found');
+    await job.remove();
+    this.logger.log(`Discarded failed job ${jobId}`);
+    return { success: true };
   }
 
   private parseVitestJson(output: string): {

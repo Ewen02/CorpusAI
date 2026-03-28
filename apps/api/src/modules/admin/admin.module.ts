@@ -4,9 +4,10 @@ import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { EvalReportsService } from './eval-reports.service';
 import { AuthGuard } from '../auth/auth.guard';
+import { DocumentsModule } from '../documents/documents.module';
 
 @Module({
-  imports: [ConfigModule],
+  imports: [ConfigModule, DocumentsModule],
   controllers: [AdminController],
   providers: [AdminService, EvalReportsService, AuthGuard],
 })
