@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { Button, Badge } from '@corpusai/ui';
 import { AnimatedSection } from '@/components/animated-section';
 
@@ -24,90 +25,95 @@ export const metadata: Metadata = {
 
 export const revalidate = 3600;
 
-const features = [
-  {
-    title: 'Importez & indexez',
-    description:
-      'PDF, documents, pages web. Notre pipeline RAG traite et indexe automatiquement votre contenu pour une recherche instantanée.',
-    icon: (
-      <svg
-        className="h-5 w-5"
-        fill="none"
-        viewBox="0 0 24 24"
-        strokeWidth={1.5}
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
-        />
-      </svg>
-    ),
-  },
-  {
-    title: 'Conversations naturelles',
-    description:
-      'Posez des questions en langage naturel. Obtenez des réponses précises avec des citations directes vers vos sources.',
-    icon: (
-      <svg
-        className="h-5 w-5"
-        fill="none"
-        viewBox="0 0 24 24"
-        strokeWidth={1.5}
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"
-        />
-      </svg>
-    ),
-  },
-  {
-    title: 'Intégrez partout',
-    description:
-      "Déployez votre assistant comme widget sur n'importe quel site. Design personnalisable pour correspondre à votre identité.",
-    icon: (
-      <svg
-        className="h-5 w-5"
-        fill="none"
-        viewBox="0 0 24 24"
-        strokeWidth={1.5}
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"
-        />
-      </svg>
-    ),
-  },
-  {
-    title: 'Partagez avec la communauté',
-    description:
-      "Rendez votre IA publique et rejoignez la marketplace. Découvrez les assistants créés par d'autres utilisateurs.",
-    icon: (
-      <svg
-        className="h-5 w-5"
-        fill="none"
-        viewBox="0 0 24 24"
-        strokeWidth={1.5}
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"
-        />
-      </svg>
-    ),
-  },
-];
+export default async function Home() {
+  const t = await getTranslations('landing');
 
-export default function Home() {
+  const features = [
+    {
+      title: t('featureImport'),
+      description: t('featureImportDesc'),
+      icon: (
+        <svg
+          className="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={1.5}
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
+          />
+        </svg>
+      ),
+    },
+    {
+      title: t('featureChat'),
+      description: t('featureChatDesc'),
+      icon: (
+        <svg
+          className="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={1.5}
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"
+          />
+        </svg>
+      ),
+    },
+    {
+      title: t('featureIntegrate'),
+      description: t('featureIntegrateDesc'),
+      icon: (
+        <svg
+          className="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={1.5}
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"
+          />
+        </svg>
+      ),
+    },
+    {
+      title: t('featureShare'),
+      description: t('featureShareDesc'),
+      icon: (
+        <svg
+          className="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={1.5}
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"
+          />
+        </svg>
+      ),
+    },
+  ];
+
+  const showcaseAIs = [
+    { name: t('showcaseLegal'), category: t('showcaseLegalCategory'), count: '2.4k' },
+    { name: t('showcasePython'), category: t('showcasePythonCategory'), count: '1.8k' },
+    { name: t('showcaseSupport'), category: t('showcaseSupportCategory'), count: '3.1k' },
+    { name: t('showcaseTax'), category: t('showcaseTaxCategory'), count: '980' },
+  ];
+
   return (
     <div className="min-h-screen">
       {/* Navigation */}
@@ -124,21 +130,21 @@ export default function Home() {
               href="#features"
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
-              Fonctionnalités
+              {t('features')}
             </a>
             <Link
               href="/explore"
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
-              Explorer
+              {t('explore')}
             </Link>
           </div>
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" asChild>
-              <Link href="/sign-in">Se connecter</Link>
+              <Link href="/sign-in">{t('signIn')}</Link>
             </Button>
             <Button size="sm" asChild>
-              <Link href="/sign-up">Commencer gratuitement</Link>
+              <Link href="/sign-up">{t('startFree')}</Link>
             </Button>
           </div>
         </div>
@@ -158,28 +164,25 @@ export default function Home() {
 
         <div className="relative mx-auto max-w-5xl px-6 text-center">
           <Badge variant="secondary" className="mb-6 text-xs">
-            Maintenant en bêta publique
+            {t('badge')}
           </Badge>
           <h1 className="mx-auto max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
-            <span className="text-gradient">Vos documents.</span>
+            <span className="text-gradient">{t('heroTitle1')}</span>
             <br />
-            Votre IA. Votre communauté.
+            {t('heroTitle2')}
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-base text-muted-foreground md:text-lg">
-            Transformez n'importe quel document en assistant conversationnel en quelques minutes.
-            Partagez-le avec la communauté ou intégrez-le sur votre site.
+            {t('heroDescription')}
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button size="lg" className="min-w-[200px]" asChild>
-              <Link href="/sign-up">Créer mon IA gratuitement</Link>
+              <Link href="/sign-up">{t('ctaStart')}</Link>
             </Button>
             <Button variant="outline" size="lg" className="min-w-[160px]" asChild>
-              <Link href="/explore">Explorer la communauté</Link>
+              <Link href="/explore">{t('ctaExplore')}</Link>
             </Button>
           </div>
-          <p className="mt-4 text-xs text-muted-foreground/60">
-            Gratuit. Aucune carte de crédit requise.
-          </p>
+          <p className="mt-4 text-xs text-muted-foreground/60">{t('noCreditCard')}</p>
         </div>
 
         {/* Hero visual */}
@@ -194,9 +197,7 @@ export default function Home() {
               <span className="ml-2 font-mono text-xs text-muted-foreground/60">index.html</span>
             </div>
             <div className="p-6 font-mono text-sm leading-relaxed">
-              <p className="text-muted-foreground/50">
-                &lt;!-- Intégrez votre IA en une ligne --&gt;
-              </p>
+              <p className="text-muted-foreground/50">&lt;!-- {t('codeComment')} --&gt;</p>
               <p className="mt-2">
                 <span className="text-muted-foreground">&lt;</span>
                 <span className="text-primary">script</span>
@@ -205,7 +206,7 @@ export default function Home() {
               </p>
               <p className="pl-4">
                 <span className="text-muted-foreground">data-ai=</span>
-                <span className="text-emerald-400">&quot;votre-assistant&quot;</span>
+                <span className="text-emerald-400">&quot;{t('dataAiValue')}&quot;</span>
                 <span className="text-muted-foreground"> /&gt;</span>
               </p>
             </div>
@@ -218,13 +219,13 @@ export default function Home() {
         <div className="mx-auto max-w-7xl px-6">
           <div className="text-center">
             <p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted-foreground/50">
-              Fonctionnalités
+              {t('features')}
             </p>
             <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-              Tout ce dont vous avez besoin
+              {t('featuresTitle')}
             </h2>
             <p className="mx-auto mt-3 max-w-lg text-sm text-muted-foreground">
-              De l'import de documents au déploiement, CorpusAI gère l'intégralité du pipeline.
+              {t('featuresDescription')}
             </p>
           </div>
 
@@ -252,33 +253,26 @@ export default function Home() {
           <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
             <div>
               <p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted-foreground/50">
-                Communauté
+                {t('community')}
               </p>
               <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-                Une marketplace d'assistants IA
+                {t('communityTitle')}
               </h2>
               <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                Des créateurs du monde entier partagent leurs assistants alimentés par des documents
-                réels. Support client, cours éducatifs, guides juridiques — découvrez des AIs utiles
-                créés par la communauté.
+                {t('communityDescription')}
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Button asChild>
-                  <Link href="/explore">Explorer les AIs</Link>
+                  <Link href="/explore">{t('exploreAIs')}</Link>
                 </Button>
                 <Button variant="outline" asChild>
-                  <Link href="/sign-up">Partager le mien</Link>
+                  <Link href="/sign-up">{t('shareMyAI')}</Link>
                 </Button>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              {[
-                { name: 'Assistant Juridique', category: 'Juridique', count: '2.4k' },
-                { name: 'Cours de Python', category: 'Éducation', count: '1.8k' },
-                { name: 'Support Produit', category: 'Support', count: '3.1k' },
-                { name: 'Guide Fiscal 2024', category: 'Finance', count: '980' },
-              ].map((ai) => (
+              {showcaseAIs.map((ai) => (
                 <div
                   key={ai.name}
                   className="rounded-xl border border-border/60 bg-card p-4 transition-all duration-200 hover:border-primary/20"
@@ -291,7 +285,9 @@ export default function Home() {
                     <span className="rounded-full bg-muted/60 px-2 py-0.5 text-[10px] text-muted-foreground">
                       {ai.category}
                     </span>
-                    <span className="text-[10px] text-muted-foreground/60">{ai.count} conv.</span>
+                    <span className="text-[10px] text-muted-foreground/60">
+                      {ai.count} {t('convSuffix')}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -312,19 +308,16 @@ export default function Home() {
                   'radial-gradient(ellipse 60% 60% at 50% 0%, hsl(230 65% 58% / 0.08) 0%, transparent 70%)',
               }}
             />
-            <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-              Rejoignez la communauté CorpusAI
-            </h2>
+            <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">{t('ctaTitle')}</h2>
             <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-muted-foreground">
-              Créez votre premier assistant IA, partagez-le avec la communauté, et découvrez des
-              milliers d'AIs utiles créés par d'autres.
+              {t('ctaDescription')}
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Button size="lg" asChild>
-                <Link href="/sign-up">Commencer gratuitement</Link>
+                <Link href="/sign-up">{t('ctaStartFree')}</Link>
               </Button>
               <Button variant="outline" size="lg" asChild>
-                <Link href="/explore">Explorer d'abord</Link>
+                <Link href="/explore">{t('ctaExplorFirst')}</Link>
               </Button>
             </div>
           </div>
@@ -343,13 +336,13 @@ export default function Home() {
             </div>
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
               <Link href="/explore" className="transition-colors hover:text-foreground">
-                Explorer
+                {t('explore')}
               </Link>
               <a href="#" className="transition-colors hover:text-foreground">
-                Confidentialité
+                {t('privacy')}
               </a>
               <a href="#" className="transition-colors hover:text-foreground">
-                Conditions
+                {t('terms')}
               </a>
             </div>
             <p className="text-xs text-muted-foreground/50">

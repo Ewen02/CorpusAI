@@ -4,10 +4,12 @@ import * as React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { ChatInterface, ChatInterfaceSkeleton, Skeleton, Button, Input } from '@corpusai/ui';
 import { usePublicChat } from '@/lib/hooks/use-public-chat';
 
 export default function ChatPage() {
+  const t = useTranslations('chatPublic');
   const params = useParams();
   const searchParams = useSearchParams();
   const slug = params.slug as string;
@@ -71,21 +73,17 @@ export default function ChatPage() {
         <div className="w-full max-w-sm space-y-6 rounded-xl border border-border bg-card p-8 shadow-2xl">
           <div className="space-y-1 text-center">
             <div className="text-3xl">🔐</div>
-            <h1 className="text-lg font-semibold">{ai?.name ?? 'Cet assistant'}</h1>
-            <p className="text-sm text-muted-foreground">
-              Cet assistant est réservé aux membres invités.
-            </p>
+            <h1 className="text-lg font-semibold">{ai?.name ?? t('thisAssistant')}</h1>
+            <p className="text-sm text-muted-foreground">{t('inviteOnly')}</p>
           </div>
           <div className="space-y-3">
             <Link
               href={`/portal/sign-in?callbackUrl=/chat/${slug}&aiSlug=${slug}`}
               className="block"
             >
-              <Button className="w-full">Se connecter</Button>
+              <Button className="w-full">{t('signInToAccess')}</Button>
             </Link>
-            <p className="text-center text-xs text-muted-foreground">
-              Vous avez reçu une invitation ? Connectez-vous pour accéder.
-            </p>
+            <p className="text-center text-xs text-muted-foreground">{t('inviteHint')}</p>
           </div>
         </div>
       </PageContainer>
@@ -99,10 +97,10 @@ export default function ChatPage() {
         <div className="flex flex-1 items-center justify-center p-4">
           <div className="text-center">
             <div className="mb-4 text-5xl">:(</div>
-            <h1 className="mb-2 text-xl font-semibold text-foreground">Oops!</h1>
+            <h1 className="mb-2 text-xl font-semibold text-foreground">{t('oops')}</h1>
             <p className="text-muted-foreground">{error}</p>
             <Link href="/" className="mt-6 inline-block text-sm text-primary hover:underline">
-              Retour à l&apos;accueil
+              {t('backToHome')}
             </Link>
           </div>
         </div>
@@ -132,9 +130,7 @@ export default function ChatPage() {
           <div className="space-y-1 text-center">
             <div className="text-3xl">🔒</div>
             <h1 className="text-lg font-semibold">{ai.name}</h1>
-            <p className="text-sm text-muted-foreground">
-              Entrez le code d&apos;accès pour continuer
-            </p>
+            <p className="text-sm text-muted-foreground">{t('enterCode')}</p>
           </div>
           <form onSubmit={handleCodeSubmit} className="space-y-4">
             <Input
@@ -144,17 +140,15 @@ export default function ChatPage() {
                 setAccessCode(e.target.value);
                 setCodeError('');
               }}
-              placeholder="Code d'accès"
+              placeholder={t('accessCode')}
               required
               autoFocus
             />
             {(codeError || isCodeInvalid) && (
-              <p className="text-xs text-destructive">
-                {codeError || 'Code incorrect, réessayez.'}
-              </p>
+              <p className="text-xs text-destructive">{codeError || t('codeInvalid')}</p>
             )}
             <Button type="submit" className="w-full" disabled={isStreaming}>
-              Accéder
+              {t('access')}
             </Button>
           </form>
         </div>
@@ -172,22 +166,20 @@ export default function ChatPage() {
           primaryColor={ai.primaryColor ?? undefined}
         />
 
-        {showSaveBanner && <SaveBanner onDismiss={dismissSaveBanner} />}
+        {showSaveBanner && <SaveBanner onDismiss={dismissSaveBanner} t={t} />}
 
         <div className="flex-1 overflow-hidden">
           <ChatInterface
             messages={messages}
             onSendMessage={handleSendMessage}
             isLoading={isStreaming}
-            welcomeMessage={
-              ai.welcomeMessage ?? `Bonjour ! Je suis ${ai.name}. Comment puis-je vous aider ?`
-            }
+            welcomeMessage={ai.welcomeMessage ?? t('welcomeMessage', { name: ai.name })}
             aiName={ai.name}
             aiAvatar={ai.avatar ?? undefined}
-            placeholder="Posez votre question..."
+            placeholder={t('placeholder')}
           />
         </div>
-        <PageFooter />
+        <PageFooter t={t} />
       </ChatCard>
     </PageContainer>
   );
@@ -197,13 +189,13 @@ export default function ChatPage() {
 // Sub-components
 // ============================================
 
-function SaveBanner({ onDismiss }: { onDismiss: () => void }) {
+function SaveBanner({ onDismiss, t }: { onDismiss: () => void; t: (key: string) => string }) {
   return (
     <div className="flex shrink-0 items-center justify-between border-b border-border bg-primary/5 px-4 py-2.5">
       <p className="text-sm text-foreground">
-        Sauvegardez cette conversation —{' '}
+        {t('saveConversation')}{' '}
         <Link href="/portal/sign-in" className="font-medium text-primary hover:underline">
-          créer un compte gratuit
+          {t('createFreeAccount')}
         </Link>
       </p>
       <button
@@ -272,7 +264,7 @@ function ChatHeader({
   );
 }
 
-function PageFooter() {
+function PageFooter({ t }: { t: (key: string) => string }) {
   return (
     <div className="shrink-0 border-t border-border px-4 py-2.5 text-center">
       <a
@@ -281,7 +273,7 @@ function PageFooter() {
         rel="noopener noreferrer"
         className="text-xs text-muted-foreground transition-colors hover:text-foreground"
       >
-        Propulsé par CorpusAI
+        {t('poweredBy')}
       </a>
     </div>
   );

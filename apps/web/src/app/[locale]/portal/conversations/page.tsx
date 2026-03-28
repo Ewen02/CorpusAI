@@ -1,8 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle, Button, Skeleton, Badge } from '@corpusai/ui';
+import { useRouter } from '@/i18n/routing';
 import { usePortalConversations, usePortalSignOut } from '@/lib/queries';
 
 function formatDate(dateString: string) {
@@ -14,6 +15,7 @@ function formatDate(dateString: string) {
 }
 
 export default function PortalConversationsPage() {
+  const t = useTranslations('portal.conversations');
   const router = useRouter();
   const { data: conversations, isLoading } = usePortalConversations();
   const { mutate: signOut, isPending: isSigningOut } = usePortalSignOut();
@@ -39,9 +41,9 @@ export default function PortalConversationsPage() {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border px-6 py-4">
         <div className="mx-auto flex max-w-2xl items-center justify-between">
-          <h1 className="text-lg font-semibold">Mes conversations</h1>
+          <h1 className="text-lg font-semibold">{t('title')}</h1>
           <Button variant="ghost" size="sm" onClick={handleSignOut} disabled={isSigningOut}>
-            {isSigningOut ? 'Déconnexion...' : 'Se déconnecter'}
+            {isSigningOut ? t('signingOut') : t('signOut')}
           </Button>
         </div>
       </header>
@@ -56,10 +58,8 @@ export default function PortalConversationsPage() {
         ) : !conversations || conversations.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground">Aucune conversation sauvegardée</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Vos conversations avec les assistants apparaîtront ici.
-              </p>
+              <p className="text-muted-foreground">{t('empty')}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{t('emptyDescription')}</p>
             </CardContent>
           </Card>
         ) : (
@@ -73,7 +73,7 @@ export default function PortalConversationsPage() {
                 <CardHeader className="pb-2 pt-4">
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle className="text-sm font-medium">
-                      {conv.title || 'Conversation sans titre'}
+                      {conv.title || t('untitled')}
                     </CardTitle>
                     <Badge
                       variant="secondary"

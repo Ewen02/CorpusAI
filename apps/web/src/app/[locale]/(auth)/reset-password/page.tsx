@@ -1,8 +1,10 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { AuthLayout, AuthForm, Button, Input, Label } from '@corpusai/ui';
+import { useRouter } from '@/i18n/routing';
 import { authClient } from '@/lib/auth-client';
 
 export default function ResetPasswordPage() {
@@ -14,6 +16,7 @@ export default function ResetPasswordPage() {
 }
 
 function ResetPasswordContent() {
+  const t = useTranslations('resetPassword');
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token') ?? '';
@@ -27,11 +30,11 @@ function ResetPasswordContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
-      setError('Les mots de passe ne correspondent pas');
+      setError(t('errorMismatch'));
       return;
     }
     if (password.length < 8) {
-      setError('Le mot de passe doit contenir au moins 8 caracteres');
+      setError(t('errorMinLength'));
       return;
     }
 
@@ -42,7 +45,7 @@ function ResetPasswordContent() {
       await authClient.resetPassword({ newPassword: password, token });
       setSuccess(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la reinitialisation');
+      setError(err instanceof Error ? err.message : t('errorGeneric'));
     } finally {
       setIsLoading(false);
     }
@@ -51,8 +54,8 @@ function ResetPasswordContent() {
   if (!token) {
     return (
       <AuthLayout
-        title="Lien invalide"
-        description="Ce lien de reinitialisation est invalide ou a expire."
+        title={t('invalidLink')}
+        description={t('invalidDescription')}
         showBackLink
         onBack={() => router.push('/forgot-password')}
       >
@@ -61,7 +64,7 @@ function ResetPasswordContent() {
           className="w-full"
           onClick={() => router.push('/forgot-password')}
         >
-          Demander un nouveau lien
+          {t('requestNew')}
         </Button>
       </AuthLayout>
     );
@@ -70,13 +73,13 @@ function ResetPasswordContent() {
   if (success) {
     return (
       <AuthLayout
-        title="Mot de passe modifie"
-        description="Votre mot de passe a ete reinitialise avec succes."
+        title={t('success')}
+        description={t('successDescription')}
         showBackLink
         onBack={() => router.push('/sign-in')}
       >
         <Button className="w-full" onClick={() => router.push('/sign-in')}>
-          Se connecter
+          {t('signIn')}
         </Button>
       </AuthLayout>
     );
@@ -84,8 +87,8 @@ function ResetPasswordContent() {
 
   return (
     <AuthLayout
-      title="Nouveau mot de passe"
-      description="Choisissez un nouveau mot de passe pour votre compte"
+      title={t('title')}
+      description={t('description')}
       showBackLink
       onBack={() => router.push('/sign-in')}
     >
@@ -95,7 +98,7 @@ function ResetPasswordContent() {
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="password">Nouveau mot de passe</Label>
+          <Label htmlFor="password">{t('newPassword')}</Label>
           <Input
             id="password"
             type="password"
@@ -109,7 +112,7 @@ function ResetPasswordContent() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="confirm-password">Confirmer le mot de passe</Label>
+          <Label htmlFor="confirm-password">{t('confirmPassword')}</Label>
           <Input
             id="confirm-password"
             type="password"
@@ -123,7 +126,7 @@ function ResetPasswordContent() {
         </div>
 
         <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? 'Reinitialisation...' : 'Reinitialiser le mot de passe'}
+          {isLoading ? t('submitting') : t('submit')}
         </Button>
       </AuthForm>
     </AuthLayout>

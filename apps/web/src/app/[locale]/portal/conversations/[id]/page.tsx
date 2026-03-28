@@ -1,11 +1,15 @@
 'use client';
 
 import * as React from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Button, Card, CardContent, Skeleton } from '@corpusai/ui';
+import { useRouter } from '@/i18n/routing';
 import { usePortalConversation } from '@/lib/queries';
 
 export default function PortalConversationDetailPage() {
+  const t = useTranslations('portal.conversations');
+  const tCommon = useTranslations('common');
   const params = useParams();
   const router = useRouter();
   const conversationId = params.id as string;
@@ -34,13 +38,13 @@ export default function PortalConversationDetailPage() {
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <Card className="w-full max-w-sm">
           <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">Conversation introuvable</p>
+            <p className="text-muted-foreground">{t('notFound')}</p>
             <Button
               variant="outline"
               className="mt-4"
               onClick={() => router.push('/portal/conversations')}
             >
-              Retour
+              {tCommon('back')}
             </Button>
           </CardContent>
         </Card>
@@ -61,9 +65,7 @@ export default function PortalConversationDetailPage() {
             ←
           </Button>
           <div>
-            <h1 className="text-sm font-medium">
-              {conversation.title || 'Conversation sans titre'}
-            </h1>
+            <h1 className="text-sm font-medium">{conversation.title || t('untitled')}</h1>
             <p className="text-xs text-muted-foreground">{conversation.ai.name}</p>
           </div>
         </div>
@@ -88,7 +90,7 @@ export default function PortalConversationDetailPage() {
         {conversation.messages.length === 0 && (
           <Card>
             <CardContent className="py-8 text-center">
-              <p className="text-sm text-muted-foreground">Aucun message dans cette conversation</p>
+              <p className="text-sm text-muted-foreground">{t('noMessages')}</p>
             </CardContent>
           </Card>
         )}

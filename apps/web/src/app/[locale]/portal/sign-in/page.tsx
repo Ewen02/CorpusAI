@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Button, Input, Label } from '@corpusai/ui';
 import { useSendMagicLink } from '@/lib/queries';
 
@@ -14,6 +15,7 @@ export default function PortalSignInPageWrapper() {
 }
 
 function PortalSignInPage() {
+  const t = useTranslations('portal.signIn');
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl');
   const aiSlug = searchParams.get('aiSlug');
@@ -36,16 +38,16 @@ function PortalSignInPage() {
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <div className="w-full max-w-sm space-y-4 text-center">
           <div className="text-4xl">✉️</div>
-          <h1 className="text-xl font-semibold">Vérifiez votre email</h1>
-          <p className="text-sm text-muted-foreground">
-            Un lien de connexion a été envoyé à <strong>{email}</strong>. Le lien expire dans 15
-            minutes.
-          </p>
+          <h1 className="text-xl font-semibold">{t('sent')}</h1>
+          <p
+            className="text-sm text-muted-foreground"
+            dangerouslySetInnerHTML={{ __html: t('sentDescription', { email }) }}
+          />
           <button
             className="text-sm text-primary underline underline-offset-4"
             onClick={() => setSent(false)}
           >
-            Renvoyer un lien
+            {t('resend')}
           </button>
         </div>
       </div>
@@ -56,10 +58,8 @@ function PortalSignInPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="space-y-1 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">Accès portail</h1>
-          <p className="text-sm text-muted-foreground">
-            Entrez votre email pour recevoir un lien de connexion
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
+          <p className="text-sm text-muted-foreground">{t('description')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -68,7 +68,7 @@ function PortalSignInPage() {
             <Input
               id="email"
               type="email"
-              placeholder="vous@exemple.com"
+              placeholder={t('emailPlaceholder')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -77,7 +77,7 @@ function PortalSignInPage() {
           </div>
 
           <Button type="submit" className="w-full" disabled={isPending}>
-            {isPending ? 'Envoi en cours...' : 'Recevoir un lien de connexion'}
+            {isPending ? t('submitting') : t('submit')}
           </Button>
         </form>
       </div>

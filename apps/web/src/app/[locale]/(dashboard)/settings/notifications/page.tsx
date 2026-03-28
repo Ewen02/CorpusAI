@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Button,
   Switch,
@@ -27,86 +28,91 @@ interface NotificationCategory {
   settings: NotificationSetting[];
 }
 
-const defaultCategories: NotificationCategory[] = [
-  {
-    id: 'email',
-    title: 'Notifications par email',
-    description: 'Gérez les emails que vous recevez de CorpusAI',
-    settings: [
-      {
-        id: 'email_weekly',
-        label: 'Résumé hebdomadaire',
-        description: "Recevez un résumé de l'activité de vos assistants",
-        enabled: true,
-      },
-      {
-        id: 'email_quota',
-        label: 'Alertes de quota',
-        description: 'Soyez averti lorsque vous approchez de vos limites',
-        enabled: true,
-      },
-      {
-        id: 'email_updates',
-        label: 'Mises à jour produit',
-        description: 'Nouveautés et améliorations de CorpusAI',
-        enabled: false,
-      },
-      {
-        id: 'email_tips',
-        label: 'Conseils et astuces',
-        description: 'Apprenez à mieux utiliser vos assistants IA',
-        enabled: false,
-      },
-    ],
-  },
-  {
-    id: 'activity',
-    title: 'Activité des assistants',
-    description: 'Notifications sur vos assistants IA',
-    settings: [
-      {
-        id: 'activity_new_conversation',
-        label: 'Nouvelles conversations',
-        description: 'Quand un utilisateur démarre une conversation',
-        enabled: false,
-      },
-      {
-        id: 'activity_document_indexed',
-        label: 'Documents indexés',
-        description: 'Quand un document est prêt à être utilisé',
-        enabled: true,
-      },
-      {
-        id: 'activity_errors',
-        label: 'Erreurs',
-        description: 'Quand un probleme survient avec un assistant',
-        enabled: true,
-      },
-    ],
-  },
-  {
-    id: 'marketing',
-    title: 'Marketing',
-    description: 'Communications promotionnelles',
-    settings: [
-      {
-        id: 'marketing_newsletter',
-        label: 'Newsletter',
-        description: "Actualites sur l'IA et CorpusAI",
-        enabled: false,
-      },
-      {
-        id: 'marketing_offers',
-        label: 'Offres speciales',
-        description: 'Promotions et offres exclusives',
-        enabled: false,
-      },
-    ],
-  },
-];
+function getDefaultCategories(t: (key: string) => string): NotificationCategory[] {
+  return [
+    {
+      id: 'email',
+      title: t('emailTitle'),
+      description: t('emailDescription'),
+      settings: [
+        {
+          id: 'email_weekly',
+          label: t('weeklySummary'),
+          description: t('weeklySummaryDesc'),
+          enabled: true,
+        },
+        {
+          id: 'email_quota',
+          label: t('quotaAlerts'),
+          description: t('quotaAlertsDesc'),
+          enabled: true,
+        },
+        {
+          id: 'email_updates',
+          label: t('productUpdates'),
+          description: t('productUpdatesDesc'),
+          enabled: false,
+        },
+        {
+          id: 'email_tips',
+          label: t('tipsAndTricks'),
+          description: t('tipsAndTricksDesc'),
+          enabled: false,
+        },
+      ],
+    },
+    {
+      id: 'activity',
+      title: t('assistantActivity'),
+      description: t('assistantActivityDesc'),
+      settings: [
+        {
+          id: 'activity_new_conversation',
+          label: t('newConversations'),
+          description: t('newConversationsDesc'),
+          enabled: false,
+        },
+        {
+          id: 'activity_document_indexed',
+          label: t('documentsIndexed'),
+          description: t('documentsIndexedDesc'),
+          enabled: true,
+        },
+        {
+          id: 'activity_errors',
+          label: t('errors'),
+          description: t('errorsDesc'),
+          enabled: true,
+        },
+      ],
+    },
+    {
+      id: 'marketing',
+      title: t('marketing'),
+      description: t('marketingDesc'),
+      settings: [
+        {
+          id: 'marketing_newsletter',
+          label: t('newsletter'),
+          description: t('newsletterDesc'),
+          enabled: false,
+        },
+        {
+          id: 'marketing_offers',
+          label: t('specialOffers'),
+          description: t('specialOffersDesc'),
+          enabled: false,
+        },
+      ],
+    },
+  ];
+}
 
 export default function SettingsNotificationsPage() {
-  const [categories, setCategories] = React.useState(defaultCategories);
+  const t = useTranslations('notifications');
+  const [categories, setCategories] = React.useState<NotificationCategory[]>(() =>
+    getDefaultCategories(t)
+  );
   const [isSaving, setIsSaving] = React.useState(false);
   const [hasChanges, setHasChanges] = React.useState(false);
   const [saveError, setSaveError] = React.useState<string | null>(null);
@@ -163,7 +169,7 @@ export default function SettingsNotificationsPage() {
       await apiClient.patch('/users/me', { notificationPreferences: prefs });
       setHasChanges(false);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde');
+      setSaveError(err instanceof Error ? err.message : t('errorSaving'));
     } finally {
       setIsSaving(false);
     }
@@ -218,10 +224,10 @@ export default function SettingsNotificationsPage() {
         {saveError && <p className="text-sm text-destructive">{saveError}</p>}
         <div className="flex items-center justify-between">
           <Button variant="ghost" onClick={handleDisableAll}>
-            Tout désactiver
+            {t('disableAll')}
           </Button>
           <Button onClick={handleSave} disabled={!hasChanges || isSaving}>
-            {isSaving ? 'Enregistrement...' : 'Enregistrer les préférences'}
+            {isSaving ? t('saving') : t('savePreferences')}
           </Button>
         </div>
       </div>

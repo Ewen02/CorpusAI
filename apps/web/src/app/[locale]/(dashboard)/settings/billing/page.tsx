@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import {
   Button,
   Badge,
@@ -28,6 +29,8 @@ import {
 import { PageWrapper } from '@/components/page-wrapper';
 
 export default function SettingsBillingPage() {
+  const t = useTranslations('billing');
+  const locale = useLocale();
   const { data: stats, isLoading } = useDashboardStats();
   const { data: invoices } = useInvoices();
   const createCheckout = useCreateCheckout();
@@ -70,15 +73,15 @@ export default function SettingsBillingPage() {
       {/* Current Plan */}
       <Card variant="glass">
         <CardHeader>
-          <CardTitle>Votre abonnement</CardTitle>
-          <CardDescription>Gerez votre plan et votre facturation.</CardDescription>
+          <CardTitle>{t('title')}</CardTitle>
+          <CardDescription>{t('description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex items-center justify-between rounded-lg bg-muted/50 p-4">
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-semibold">{currentPlanData.name}</h3>
-                {currentPlan !== 'FREE' && <Badge variant="secondary">Actif</Badge>}
+                {currentPlan !== 'FREE' && <Badge variant="secondary">{t('active')}</Badge>}
               </div>
               <p className="mt-1 text-sm text-muted-foreground">{currentPlanData.description}</p>
             </div>
@@ -94,29 +97,29 @@ export default function SettingsBillingPage() {
 
           {/* Usage Stats */}
           <div>
-            <h4 className="mb-3 text-sm font-medium">Utilisation actuelle</h4>
+            <h4 className="mb-3 text-sm font-medium">{t('currentUsage')}</h4>
             <div className="grid grid-cols-3 gap-4">
               <div className="rounded-lg bg-muted/30 p-4">
                 <p className="text-2xl font-bold">{stats?.aiCount || 0}</p>
-                <p className="text-xs text-muted-foreground">Assistant(s) IA</p>
+                <p className="text-xs text-muted-foreground">{t('aiAssistants')}</p>
                 <p className="mt-1 text-xs text-muted-foreground/70">
-                  Restant: {formatRemaining(aiRemaining)}/
+                  {t('remaining')}: {formatRemaining(aiRemaining)}/
                   {currentLimits.maxAIs === -1 ? '∞' : currentLimits.maxAIs}
                 </p>
               </div>
               <div className="rounded-lg bg-muted/30 p-4">
                 <p className="text-2xl font-bold">{stats?.documentCount || 0}</p>
-                <p className="text-xs text-muted-foreground">Documents</p>
+                <p className="text-xs text-muted-foreground">{t('documents')}</p>
                 <p className="mt-1 text-xs text-muted-foreground/70">
-                  Max/AI:{' '}
+                  {t('maxPerAI')}:{' '}
                   {currentLimits.maxDocumentsPerAI === -1 ? '∞' : currentLimits.maxDocumentsPerAI}
                 </p>
               </div>
               <div className="rounded-lg bg-muted/30 p-4">
                 <p className="text-2xl font-bold">{stats?.questionCount || 0}</p>
-                <p className="text-xs text-muted-foreground">Questions aujourd'hui</p>
+                <p className="text-xs text-muted-foreground">{t('questionsToday')}</p>
                 <p className="mt-1 text-xs text-muted-foreground/70">
-                  Restant: {formatRemaining(questionsRemaining)}/
+                  {t('remaining')}: {formatRemaining(questionsRemaining)}/
                   {currentLimits.maxQuestionsPerDay === -1 ? '∞' : currentLimits.maxQuestionsPerDay}
                 </p>
               </div>
@@ -128,8 +131,8 @@ export default function SettingsBillingPage() {
       {/* Plans */}
       <Card variant="glass">
         <CardHeader>
-          <CardTitle>Changer de plan</CardTitle>
-          <CardDescription>Choisissez le plan adapte a vos besoins.</CardDescription>
+          <CardTitle>{t('changePlan')}</CardTitle>
+          <CardDescription>{t('changePlanDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -143,11 +146,13 @@ export default function SettingsBillingPage() {
                   } ${isCurrent ? 'ring-2 ring-primary' : ''}`}
                 >
                   {plan.popular && (
-                    <Badge className="absolute -top-2 left-1/2 -translate-x-1/2">Populaire</Badge>
+                    <Badge className="absolute -top-2 left-1/2 -translate-x-1/2">
+                      {t('popular')}
+                    </Badge>
                   )}
                   {isCurrent && (
                     <Badge variant="secondary" className="absolute -top-2 right-4">
-                      Actuel
+                      {t('currentPlan')}
                     </Badge>
                   )}
 
@@ -185,7 +190,7 @@ export default function SettingsBillingPage() {
                     disabled={isCurrent}
                     onClick={() => handleUpgrade(plan.id)}
                   >
-                    {isCurrent ? 'Plan actuel' : 'Choisir ce plan'}
+                    {isCurrent ? t('currentPlan') : t('choosePlan')}
                   </Button>
                 </div>
               );
@@ -198,10 +203,8 @@ export default function SettingsBillingPage() {
       {currentPlan !== 'FREE' && (
         <Card variant="glass">
           <CardHeader>
-            <CardTitle>Gerer votre abonnement</CardTitle>
-            <CardDescription>
-              Modifier, annuler ou mettre a jour votre moyen de paiement.
-            </CardDescription>
+            <CardTitle>{t('manageBilling')}</CardTitle>
+            <CardDescription>{t('manageBillingDescription')}</CardDescription>
           </CardHeader>
           <CardContent>
             <Button
@@ -209,7 +212,7 @@ export default function SettingsBillingPage() {
               onClick={() => customerPortal.mutate()}
               disabled={customerPortal.isPending}
             >
-              {customerPortal.isPending ? 'Redirection...' : 'Ouvrir le portail de facturation'}
+              {customerPortal.isPending ? t('redirecting') : t('openPortal')}
             </Button>
           </CardContent>
         </Card>
@@ -218,8 +221,8 @@ export default function SettingsBillingPage() {
       {/* Payment History */}
       <Card variant="glass">
         <CardHeader>
-          <CardTitle>Historique de facturation</CardTitle>
-          <CardDescription>Vos factures et paiements precedents.</CardDescription>
+          <CardTitle>{t('invoiceHistory')}</CardTitle>
+          <CardDescription>{t('invoiceHistoryDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           {invoices && invoices.length > 0 ? (
@@ -232,12 +235,12 @@ export default function SettingsBillingPage() {
                   <div>
                     <p className="text-sm font-medium">
                       {invoice.date
-                        ? new Date(invoice.date).toLocaleDateString('fr-FR', {
+                        ? new Date(invoice.date).toLocaleDateString(locale, {
                             day: 'numeric',
                             month: 'long',
                             year: 'numeric',
                           })
-                        : 'Date inconnue'}
+                        : t('unknownDate')}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {(invoice.amount / 100).toFixed(2)} {invoice.currency.toUpperCase()}
@@ -245,7 +248,7 @@ export default function SettingsBillingPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant={invoice.status === 'paid' ? 'secondary' : 'destructive'}>
-                      {invoice.status === 'paid' ? 'Paye' : invoice.status}
+                      {invoice.status === 'paid' ? t('paid') : invoice.status}
                     </Badge>
                     {invoice.pdfUrl && (
                       <Button variant="ghost" size="sm" asChild>
@@ -261,8 +264,8 @@ export default function SettingsBillingPage() {
           ) : (
             <div className="py-8 text-center text-muted-foreground">
               <ReceiptIcon className="mx-auto mb-4 h-12 w-12 opacity-50" />
-              <p>Aucune facture disponible</p>
-              <p className="text-sm">Vos factures apparaitront ici apres votre premier paiement.</p>
+              <p>{t('noInvoices')}</p>
+              <p className="text-sm">{t('noInvoicesDescription')}</p>
             </div>
           )}
         </CardContent>

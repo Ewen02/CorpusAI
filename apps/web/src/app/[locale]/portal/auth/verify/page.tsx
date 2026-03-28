@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Button } from '@corpusai/ui';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -15,6 +16,7 @@ export default function PortalVerifyPageWrapper() {
 }
 
 function PortalVerifyPage() {
+  const t = useTranslations('portal.verify');
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
   const [status, setStatus] = React.useState<'redirecting' | 'error'>('redirecting');
@@ -33,12 +35,10 @@ function PortalVerifyPage() {
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <div className="w-full max-w-sm space-y-4 text-center">
           <div className="text-4xl">⚠️</div>
-          <h1 className="text-xl font-semibold">Lien invalide ou expiré</h1>
-          <p className="text-sm text-muted-foreground">
-            Ce lien de connexion a expiré ou a déjà été utilisé.
-          </p>
+          <h1 className="text-xl font-semibold">{t('invalidLink')}</h1>
+          <p className="text-sm text-muted-foreground">{t('invalidDescription')}</p>
           <Button variant="outline" onClick={() => (window.location.href = '/portal/sign-in')}>
-            Demander un nouveau lien
+            {t('requestNew')}
           </Button>
         </div>
       </div>
@@ -47,7 +47,7 @@ function PortalVerifyPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
-      <p className="text-sm text-muted-foreground">Connexion en cours...</p>
+      <p className="text-sm text-muted-foreground">{t('redirecting')}</p>
     </div>
   );
 }

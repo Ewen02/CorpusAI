@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import {
   Card,
   CardHeader,
@@ -18,6 +19,9 @@ import { KeyIcon, PlusIcon, XIcon } from '@/lib/icons';
 import { PageWrapper } from '@/components/page-wrapper';
 
 export default function SettingsApiKeysPage() {
+  const t = useTranslations('apiKeys');
+  const tc = useTranslations('common');
+  const locale = useLocale();
   const { data: keys, isLoading } = useApiKeys();
   const createKey = useCreateApiKey();
   const deleteKey = useDeleteApiKey();
@@ -46,26 +50,24 @@ export default function SettingsApiKeysPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <KeyIcon className="h-5 w-5" />
-            Cles API
+            {t('title')}
           </CardTitle>
-          <CardDescription>
-            Gerez vos cles d&apos;acces a l&apos;API publique CorpusAI.
-          </CardDescription>
+          <CardDescription>{t('description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Create Key */}
           <div className="space-y-3">
-            <Label>Nouvelle cle API</Label>
+            <Label>{t('newKey')}</Label>
             <div className="flex gap-2">
               <Input
-                placeholder="Nom de la cle (ex: Production)"
+                placeholder={t('keyNamePlaceholder')}
                 value={newKeyName}
                 onChange={(e) => setNewKeyName(e.target.value)}
                 className="max-w-xs"
               />
               <Button onClick={handleCreate} disabled={createKey.isPending}>
                 <PlusIcon className="mr-2 h-4 w-4" />
-                {createKey.isPending ? 'Creation...' : 'Creer'}
+                {createKey.isPending ? t('creating') : tc('create')}
               </Button>
             </div>
           </div>
@@ -73,15 +75,13 @@ export default function SettingsApiKeysPage() {
           {/* Newly Created Key (show once) */}
           {createdKey && (
             <div className="rounded-lg border border-green-500/20 bg-green-500/5 p-4">
-              <p className="mb-2 text-sm font-medium text-green-500">
-                Cle creee avec succes ! Copiez-la maintenant, elle ne sera plus affichee.
-              </p>
+              <p className="mb-2 text-sm font-medium text-green-500">{t('keyCreated')}</p>
               <div className="flex items-center gap-2">
                 <code className="flex-1 break-all rounded bg-muted p-2 font-mono text-xs">
                   {createdKey.key}
                 </code>
                 <Button variant="outline" size="sm" onClick={handleCopy}>
-                  {copied ? 'Copie !' : 'Copier'}
+                  {copied ? t('copied') : t('copy')}
                 </Button>
               </div>
               <Button
@@ -90,7 +90,7 @@ export default function SettingsApiKeysPage() {
                 className="mt-2"
                 onClick={() => setCreatedKey(null)}
               >
-                Fermer
+                {tc('close')}
               </Button>
             </div>
           )}
@@ -99,13 +99,11 @@ export default function SettingsApiKeysPage() {
 
           {/* Existing Keys */}
           <div>
-            <h3 className="mb-3 text-sm font-medium">Cles existantes</h3>
+            <h3 className="mb-3 text-sm font-medium">{t('existingKeys')}</h3>
             {isLoading ? (
-              <p className="text-sm text-muted-foreground">Chargement...</p>
+              <p className="text-sm text-muted-foreground">{tc('loading')}</p>
             ) : !keys || keys.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Aucune cle API. Creez-en une pour utiliser l&apos;API.
-              </p>
+              <p className="text-sm text-muted-foreground">{t('noKeys')}</p>
             ) : (
               <div className="space-y-2">
                 {keys.map((key) => (
@@ -121,11 +119,16 @@ export default function SettingsApiKeysPage() {
                         </code>
                       </div>
                       <div className="mt-1 flex gap-3 text-xs text-muted-foreground">
-                        <span>Creee le {new Date(key.createdAt).toLocaleDateString('fr-FR')}</span>
+                        <span>
+                          {t('createdOn', {
+                            date: new Date(key.createdAt).toLocaleDateString(locale),
+                          })}
+                        </span>
                         {key.lastUsedAt && (
                           <span>
-                            Derniere utilisation :{' '}
-                            {new Date(key.lastUsedAt).toLocaleDateString('fr-FR')}
+                            {t('lastUsed', {
+                              date: new Date(key.lastUsedAt).toLocaleDateString(locale),
+                            })}
                           </span>
                         )}
                       </div>
@@ -150,13 +153,13 @@ export default function SettingsApiKeysPage() {
       {/* API Documentation */}
       <Card variant="glass">
         <CardHeader>
-          <CardTitle>Documentation API</CardTitle>
-          <CardDescription>Exemples d&apos;utilisation de l&apos;API publique.</CardDescription>
+          <CardTitle>{t('apiDocs')}</CardTitle>
+          <CardDescription>{t('apiDocsDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div>
-              <h4 className="mb-2 text-sm font-medium">Lister vos AIs</h4>
+              <h4 className="mb-2 text-sm font-medium">{t('listAIs')}</h4>
               <pre className="overflow-x-auto rounded-lg bg-muted/50 p-3 font-mono text-xs">
                 {`curl -H "Authorization: Bearer cai_votre_cle" \\
   ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/v1/ais`}
@@ -164,7 +167,7 @@ export default function SettingsApiKeysPage() {
             </div>
 
             <div>
-              <h4 className="mb-2 text-sm font-medium">Poser une question</h4>
+              <h4 className="mb-2 text-sm font-medium">{t('askQuestion')}</h4>
               <pre className="overflow-x-auto rounded-lg bg-muted/50 p-3 font-mono text-xs">
                 {`curl -X POST \\
   -H "Authorization: Bearer cai_votre_cle" \\
@@ -175,10 +178,10 @@ export default function SettingsApiKeysPage() {
             </div>
 
             <div>
-              <h4 className="mb-2 text-sm font-medium">Reponse</h4>
+              <h4 className="mb-2 text-sm font-medium">{t('response')}</h4>
               <pre className="overflow-x-auto rounded-lg bg-muted/50 p-3 font-mono text-xs">
                 {`{
-  "answer": "La reponse generee...",
+  "answer": "${t('generatedResponse')}",
   "sources": [
     { "content": "...", "score": 0.92, "metadata": {...} }
   ],

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
+import { useTranslations } from 'next-intl';
 import { StatCard, cn } from '@corpusai/ui';
 import { useAnalytics, type AnalyticsPeriod } from '@/lib/queries';
 import { AnalyticsSkeleton } from '@/components/skeletons';
@@ -15,6 +16,7 @@ const AnalyticsCharts = dynamic(() => import('./charts'), {
 });
 
 export default function AnalyticsPage() {
+  const t = useTranslations('analytics');
   const [period, setPeriod] = useState<AnalyticsPeriod>('30d');
   const { data, isLoading, error } = useAnalytics(period);
 
@@ -30,7 +32,7 @@ export default function AnalyticsPage() {
     return (
       <PageWrapper>
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[hsl(var(--border-default))] py-16 text-center">
-          <p className="text-sm text-tx-muted">Erreur lors du chargement des analytics.</p>
+          <p className="text-sm text-tx-muted">{t('errorLoading')}</p>
         </div>
       </PageWrapper>
     );
@@ -41,8 +43,8 @@ export default function AnalyticsPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-tx-primary">Analytics</h1>
-          <p className="mt-1 text-sm text-tx-muted">Suivez l&apos;évolution de votre activité.</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-tx-primary">{t('title')}</h1>
+          <p className="mt-1 text-sm text-tx-muted">{t('subtitle')}</p>
         </div>
 
         {/* Period Selector — pill segment */}
