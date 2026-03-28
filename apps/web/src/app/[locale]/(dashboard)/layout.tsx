@@ -1,7 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   DashboardLayout,
   DashboardLayoutSkeleton,
@@ -11,6 +12,7 @@ import {
 } from '@corpusai/ui';
 import { authClient } from '@/lib/auth-client';
 import { useAIs } from '@/lib/queries';
+import { useRouter } from '@/i18n/routing';
 import {
   HomeIcon,
   BotIcon,
@@ -21,60 +23,72 @@ import {
   CompassIcon,
 } from '@/lib/icons';
 
-// Navigation items
-const mainNavItems: NavItem[] = [
-  {
-    id: 'dashboard',
-    label: 'Dashboard',
-    href: '/dashboard',
-    icon: <HomeIcon className="h-4 w-4" />,
-  },
-  { id: 'ais', label: 'Mes AIs', href: '/ais', icon: <BotIcon className="h-4 w-4" /> },
-  {
-    id: 'analytics',
-    label: 'Analytics',
-    href: '/analytics',
-    icon: <ChartIcon className="h-4 w-4" />,
-  },
-  {
-    id: 'explore',
-    label: 'Explorer',
-    href: '/explore',
-    icon: <CompassIcon className="h-4 w-4" />,
-  },
-];
-
-const adminNavItem: NavItem = {
-  id: 'admin',
-  label: 'Admin',
-  href: '/admin',
-  icon: <ShieldIcon className="h-4 w-4" />,
-};
-
-const bottomNavItems: NavItem[] = [
-  {
-    id: 'settings',
-    label: 'Settings',
-    href: '/settings',
-    icon: <SettingsIcon className="h-4 w-4" />,
-  },
-  {
-    id: 'docs',
-    label: 'Documentation',
-    href: 'https://docs.corpusai.com',
-    icon: <BookIcon className="h-4 w-4" />,
-  },
-];
-
 export default function DashboardLayoutWrapper({ children }: { children: React.ReactNode }) {
+  const t = useTranslations('nav');
   const router = useRouter();
   const pathname = usePathname();
   const { data: session, isPending } = authClient.useSession();
 
-  // Fetch AIs using React Query hook
   const { data: aisData } = useAIs();
 
-  // Convert AIs data to nav items
+  const mainNavItems: NavItem[] = React.useMemo(
+    () => [
+      {
+        id: 'dashboard',
+        label: t('dashboard'),
+        href: '/dashboard',
+        icon: <HomeIcon className="h-4 w-4" />,
+      },
+      {
+        id: 'ais',
+        label: t('myAIs'),
+        href: '/ais',
+        icon: <BotIcon className="h-4 w-4" />,
+      },
+      {
+        id: 'analytics',
+        label: t('analytics'),
+        href: '/analytics',
+        icon: <ChartIcon className="h-4 w-4" />,
+      },
+      {
+        id: 'explore',
+        label: t('explore'),
+        href: '/explore',
+        icon: <CompassIcon className="h-4 w-4" />,
+      },
+    ],
+    [t]
+  );
+
+  const adminNavItem: NavItem = React.useMemo(
+    () => ({
+      id: 'admin',
+      label: t('admin'),
+      href: '/admin',
+      icon: <ShieldIcon className="h-4 w-4" />,
+    }),
+    [t]
+  );
+
+  const bottomNavItems: NavItem[] = React.useMemo(
+    () => [
+      {
+        id: 'settings',
+        label: t('settings'),
+        href: '/settings',
+        icon: <SettingsIcon className="h-4 w-4" />,
+      },
+      {
+        id: 'docs',
+        label: t('documentation'),
+        href: 'https://docs.corpusai.com',
+        icon: <BookIcon className="h-4 w-4" />,
+      },
+    ],
+    [t]
+  );
+
   const aiItems: AINavItem[] = React.useMemo(() => {
     if (!aisData) return [];
     return aisData.map((ai) => ({
@@ -85,10 +99,9 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
     }));
   }, [aisData]);
 
-  // User data from session - memoized to prevent unnecessary re-renders
   const user: UserData = React.useMemo(
     () => ({
-      name: session?.user?.name || 'Utilisateur',
+      name: session?.user?.name || 'User',
       email: session?.user?.email || '',
       plan: 'FREE' as const,
     }),
@@ -119,12 +132,10 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
     router.push('/sign-in');
   }, [router]);
 
-  // Show skeleton while loading session
   if (isPending) {
     return <DashboardLayoutSkeleton />;
   }
 
-  // Add admin nav item if user is admin
   const isAdmin = (session?.user as Record<string, unknown> | undefined)?.role === 'ADMIN';
   const navItems = isAdmin ? [...mainNavItems, adminNavItem] : mainNavItems;
 
