@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { FileText } from 'lucide-react';
 import { Button, Card, CardContent, ChatInterface } from '@corpusai/ui';
+import { useTranslations } from 'next-intl';
 import { useChatState } from '@/app/[locale]/(dashboard)/ais/[id]/hooks/use-chat-state';
 import type { CreatedAI } from './step-create-ai';
 import { IndexingBanner } from './indexing-banner';
@@ -25,6 +26,7 @@ export function StepTestChat({
   onNext,
   onBack,
 }: StepTestChatProps) {
+  const t = useTranslations('onboarding.testChat');
   const { messages, isStreaming, sendMessage } = useChatState({ aiSlug: ai.slug });
 
   if (totalCount === 0) {
@@ -38,19 +40,17 @@ export function StepTestChat({
             </div>
             <div className="space-y-1">
               <p className="text-sm font-medium text-[hsl(var(--text-primary))]">
-                Aucun document indexé
+                {t('noDocuments')}
               </p>
-              <p className="text-sm text-[hsl(var(--text-muted))]">
-                Ajoutez un document pour que votre assistant puisse répondre à vos questions.
-              </p>
+              <p className="text-sm text-[hsl(var(--text-muted))]">{t('noDocumentsHint')}</p>
             </div>
             <Button variant="outline" size="sm" onClick={onBack}>
-              ← Ajouter un document
+              {t('addDocument')}
             </Button>
           </CardContent>
         </Card>
         <Button variant="ghost" className="w-full text-[hsl(var(--text-muted))]" onClick={onNext}>
-          Continuer sans document
+          {t('continueWithout')}
         </Button>
       </div>
     );
@@ -60,17 +60,10 @@ export function StepTestChat({
     <div className="space-y-6">
       <div className="space-y-1">
         <h2 className="text-2xl font-bold tracking-tight text-[hsl(var(--text-primary))]">
-          Testez votre assistant
+          {t('title')}
         </h2>
-        <p className="text-sm text-[hsl(var(--text-muted))]">
-          Posez une question pour voir votre IA en action.
-        </p>
-        {isIndexing && (
-          <p className="text-xs text-amber-400/80">
-            Vos documents sont encore en cours d'indexation — les réponses s'amélioreront dans
-            quelques instants.
-          </p>
-        )}
+        <p className="text-sm text-[hsl(var(--text-muted))]">{t('subtitle')}</p>
+        {isIndexing && <p className="text-xs text-amber-400/80">{t('indexingWarning')}</p>}
       </div>
 
       <IndexingBanner indexed={indexedCount} total={totalCount} progress={indexingProgress} />
@@ -87,21 +80,20 @@ export function StepTestChat({
       </Card>
 
       <Button size="lg" className="bg-gradient-primary w-full" onClick={onNext}>
-        Continuer
+        {t('continue')}
       </Button>
     </div>
   );
 }
 
 function StepHeader() {
+  const t = useTranslations('onboarding.testChat');
   return (
     <div className="space-y-1">
       <h2 className="text-2xl font-bold tracking-tight text-[hsl(var(--text-primary))]">
-        Testez votre assistant
+        {t('title')}
       </h2>
-      <p className="text-sm text-[hsl(var(--text-muted))]">
-        Posez une question pour voir votre IA en action.
-      </p>
+      <p className="text-sm text-[hsl(var(--text-muted))]">{t('subtitle')}</p>
     </div>
   );
 }

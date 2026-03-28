@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { Button, Card, CardContent, Input, Label, Textarea } from '@corpusai/ui';
+import { useTranslations } from 'next-intl';
 import { apiClient } from '@/lib/api-client';
 import type { CreatedAI } from './step-create-ai';
 
@@ -10,6 +11,7 @@ interface StepPersonalizeProps {
 }
 
 export function StepPersonalize({ ai, onNext, onSkip }: StepPersonalizeProps) {
+  const t = useTranslations('onboarding.personalize');
   const defaultSystemPrompt = `Tu es ${ai.name}${ai.description ? `, spécialisé dans ${ai.description}` : ''}. Tu réponds uniquement à partir des documents fournis.`;
   const defaultWelcomeMessage = `Bonjour ! Je suis ${ai.name}. Comment puis-je vous aider ?`;
 
@@ -36,24 +38,22 @@ export function StepPersonalize({ ai, onNext, onSkip }: StepPersonalizeProps) {
     <div className="space-y-6">
       <div className="space-y-1">
         <h2 className="text-2xl font-bold tracking-tight text-[hsl(var(--text-primary))]">
-          Personnalisez votre assistant
+          {t('title')}
         </h2>
-        <p className="text-sm text-[hsl(var(--text-muted))]">
-          Définissez comment il se comporte et comment il se présente.
-        </p>
+        <p className="text-sm text-[hsl(var(--text-muted))]">{t('subtitle')}</p>
       </div>
 
       <Card className="surface-raised">
         <CardContent className="space-y-5 pt-6">
           <div className="space-y-2">
-            <Label htmlFor="system-prompt">Comportement</Label>
+            <Label htmlFor="system-prompt">{t('behaviorLabel')}</Label>
             <Textarea
               id="system-prompt"
               value={systemPrompt}
               onChange={(e) => setSystemPrompt(e.target.value)}
               rows={4}
               maxLength={4000}
-              placeholder="Tu es un assistant spécialisé dans [nom]. Tu réponds uniquement à partir des documents fournis. Tu es direct et précis."
+              placeholder={t('behaviorPlaceholder')}
             />
             <p className="text-right text-xs text-[hsl(var(--text-muted))]">
               {systemPrompt.length}/4000
@@ -61,13 +61,13 @@ export function StepPersonalize({ ai, onNext, onSkip }: StepPersonalizeProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="welcome-message">Message d&apos;accueil</Label>
+            <Label htmlFor="welcome-message">{t('welcomeLabel')}</Label>
             <Input
               id="welcome-message"
               value={welcomeMessage}
               onChange={(e) => setWelcomeMessage(e.target.value)}
               maxLength={500}
-              placeholder="Bonjour ! Comment puis-je vous aider ?"
+              placeholder={t('welcomePlaceholder')}
             />
           </div>
         </CardContent>
@@ -80,10 +80,10 @@ export function StepPersonalize({ ai, onNext, onSkip }: StepPersonalizeProps) {
           onClick={handleContinue}
           disabled={isLoading}
         >
-          {isLoading ? 'Enregistrement…' : 'Continuer'}
+          {isLoading ? t('saving') : t('continue')}
         </Button>
         <Button variant="ghost" className="w-full text-[hsl(var(--text-muted))]" onClick={onSkip}>
-          Passer cette étape
+          {t('skip')}
         </Button>
       </div>
     </div>

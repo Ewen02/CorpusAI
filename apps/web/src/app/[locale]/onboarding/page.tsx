@@ -1,8 +1,10 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
+import { useRouter } from '@/i18n/routing';
 import { cn } from '@corpusai/ui';
+import { useTranslations } from 'next-intl';
 import { authClient } from '@/lib/auth-client';
 import { useDocumentUpload } from '@/app/[locale]/(dashboard)/ais/[id]/hooks/use-document-upload';
 import { StepWelcome } from './components/step-welcome';
@@ -57,6 +59,7 @@ function OnboardingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isDebug = searchParams.get('debug') === 'true';
+  const t = useTranslations('common');
 
   const { data: session, isPending } = authClient.useSession();
   const [step, setStep] = React.useState<WizardStep>(isDebug ? 1 : 0);
@@ -95,7 +98,7 @@ function OnboardingPage() {
   if (isPending) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="animate-pulse text-[hsl(var(--text-muted))]">Chargement…</div>
+        <div className="animate-pulse text-[hsl(var(--text-muted))]">{t('loading')}</div>
       </div>
     );
   }

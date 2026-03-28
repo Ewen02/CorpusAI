@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@corpusai/ui';
+import { useTranslations } from 'next-intl';
 import { apiClient } from '@/lib/api-client';
 
 const SLUG_FORBIDDEN = /[^a-z0-9\s-]/g;
@@ -40,6 +41,7 @@ interface StepCreateAIProps {
 }
 
 export function StepCreateAI({ onCreated }: StepCreateAIProps) {
+  const t = useTranslations('onboarding.createAI');
   const [name, setName] = React.useState('');
   const [slug, setSlug] = React.useState('');
   const [description, setDescription] = React.useState('');
@@ -70,32 +72,30 @@ export function StepCreateAI({ onCreated }: StepCreateAIProps) {
         if (description.trim()) ai.description = description.trim();
         onCreated(ai);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+        setError(err instanceof Error ? err.message : t('errorGeneric'));
       } finally {
         setIsLoading(false);
       }
     },
-    [name, slug, description, language, onCreated]
+    [name, slug, description, language, onCreated, t]
   );
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-1">
         <h2 className="text-2xl font-bold tracking-tight text-[hsl(var(--text-primary))]">
-          Créez votre assistant
+          {t('title')}
         </h2>
-        <p className="text-sm text-[hsl(var(--text-muted))]">
-          Donnez un nom à votre IA — vous pourrez tout configurer plus tard.
-        </p>
+        <p className="text-sm text-[hsl(var(--text-muted))]">{t('subtitle')}</p>
       </div>
 
       <Card className="surface-raised">
         <CardContent className="space-y-5 pt-6">
           <div className="space-y-2">
-            <Label htmlFor="ai-name">Nom de l&apos;assistant</Label>
+            <Label htmlFor="ai-name">{t('nameLabel')}</Label>
             <Input
               id="ai-name"
-              placeholder="ex: Assistant RH, Support client…"
+              placeholder={t('namePlaceholder')}
               value={name}
               onChange={handleNameChange}
               required
@@ -103,7 +103,7 @@ export function StepCreateAI({ onCreated }: StepCreateAIProps) {
             />
             {slug && (
               <p className="text-xs text-[hsl(var(--text-muted))]">
-                URL :{' '}
+                {t('urlPrefix')}{' '}
                 <span className="font-mono text-[hsl(var(--text-secondary))]">/chat/{slug}</span>
               </p>
             )}
@@ -111,11 +111,12 @@ export function StepCreateAI({ onCreated }: StepCreateAIProps) {
 
           <div className="space-y-2">
             <Label htmlFor="ai-description">
-              Description <span className="text-[hsl(var(--text-muted))]">(optionnel)</span>
+              {t('descriptionLabel')}{' '}
+              <span className="text-[hsl(var(--text-muted))]">{t('descriptionOptional')}</span>
             </Label>
             <Textarea
               id="ai-description"
-              placeholder="Décrivez ce que fait votre assistant…"
+              placeholder={t('descriptionPlaceholder')}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
@@ -123,14 +124,14 @@ export function StepCreateAI({ onCreated }: StepCreateAIProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="ai-language">Langue</Label>
+            <Label htmlFor="ai-language">{t('languageLabel')}</Label>
             <Select value={language} onValueChange={(v) => setLanguage(v as 'fr' | 'en')}>
               <SelectTrigger id="ai-language">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="fr">Français</SelectItem>
-                <SelectItem value="en">English</SelectItem>
+                <SelectItem value="fr">{t('languageFr')}</SelectItem>
+                <SelectItem value="en">{t('languageEn')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -149,7 +150,7 @@ export function StepCreateAI({ onCreated }: StepCreateAIProps) {
         className="bg-gradient-primary w-full"
         disabled={!name.trim() || !slug || isLoading}
       >
-        {isLoading ? 'Création en cours…' : 'Continuer'}
+        {isLoading ? t('creating') : t('continue')}
       </Button>
     </form>
   );

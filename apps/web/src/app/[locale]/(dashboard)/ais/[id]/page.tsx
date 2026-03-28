@@ -18,6 +18,7 @@ import {
   type Conversation,
 } from '@corpusai/ui';
 import dynamic from 'next/dynamic';
+import { useTranslations } from 'next-intl';
 import { useAI, useConversations, useDocuments } from '@/lib/queries';
 import { useNavigation } from '@/lib/hooks';
 import { useChatState, useDocumentUpload } from './hooks';
@@ -43,6 +44,8 @@ export default function AIDetailPage() {
   const searchParams = useSearchParams();
   const aiId = params.id as string;
   const { goToAIList, goToAISettings } = useNavigation();
+  const t = useTranslations('ai.detail');
+  const tCommon = useTranslations('common');
 
   const [showChecklist, setShowChecklist] = React.useState(
     searchParams.get('fromOnboarding') === 'true'
@@ -80,13 +83,13 @@ export default function AIDetailPage() {
       .filter((conv) => conv.messageCount > 0)
       .map((conv) => ({
         id: conv.id,
-        title: conv.title || 'Nouvelle conversation',
+        title: conv.title || t('newConversation'),
         lastMessage: conv.lastMessage || '',
         messageCount: conv.messageCount,
         createdAt: new Date(conv.createdAt),
         updatedAt: new Date(conv.updatedAt),
       }));
-  }, [conversationsData]);
+  }, [conversationsData, t]);
 
   // Generate dynamic welcome message from indexed documents
   const welcomeMessage = React.useMemo(() => {
@@ -124,28 +127,28 @@ export default function AIDetailPage() {
   const checklistItems = React.useMemo((): NotificationBarItem[] => {
     const documentCount = (aiData as AI | undefined)?.documentCount ?? 0;
     return [
-      { icon: 'check', label: 'IA créée' },
+      { icon: 'check', label: t('aiCreated') },
       documentCount > 0
-        ? { icon: 'check', label: 'Documents indexés' }
+        ? { icon: 'check', label: t('documentsIndexed') }
         : {
             icon: 'arrow',
-            label: 'Ajoutez des documents',
+            label: t('addDocuments'),
             onClick: () => {
               setActiveTab('documents');
               setShowChecklist(false);
             },
           },
-      { icon: 'arrow', label: 'Comportement', onClick: () => goToAISettings(aiId) },
+      { icon: 'arrow', label: t('behavior'), onClick: () => goToAISettings(aiId) },
       {
         icon: 'arrow',
-        label: 'Intégration',
+        label: t('integration'),
         onClick: () => {
           setActiveTab('integration');
           setShowChecklist(false);
         },
       },
     ];
-  }, [(aiData as AI | undefined)?.documentCount, aiId, goToAISettings]);
+  }, [(aiData as AI | undefined)?.documentCount, aiId, goToAISettings, t]);
 
   const handleShare = React.useCallback(() => {
     setShareOpen(true);
@@ -170,9 +173,9 @@ export default function AIDetailPage() {
       <div className="container py-8">
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">Assistant introuvable</p>
+            <p className="text-muted-foreground">{t('notFound')}</p>
             <Button className="mt-4" onClick={goToAIList}>
-              Retour a la liste
+              {t('backToList')}
             </Button>
           </CardContent>
         </Card>
@@ -187,7 +190,7 @@ export default function AIDetailPage() {
 
         {showChecklist && (
           <NotificationBar
-            title="Votre assistant est prêt !"
+            title={t('assistantReady')}
             items={checklistItems}
             onClose={() => setShowChecklist(false)}
             className="mb-2 mt-4"
@@ -206,12 +209,12 @@ export default function AIDetailPage() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList>
-            <TabsTrigger value="chat">Chat</TabsTrigger>
-            <TabsTrigger value="documents">Documents</TabsTrigger>
-            <TabsTrigger value="conversations">Historique</TabsTrigger>
-            <TabsTrigger value="analytics">Analytiques</TabsTrigger>
-            <TabsTrigger value="integration">Intégration</TabsTrigger>
-            <TabsTrigger value="debug">Debug</TabsTrigger>
+            <TabsTrigger value="chat">{t('chat')}</TabsTrigger>
+            <TabsTrigger value="documents">{t('documents')}</TabsTrigger>
+            <TabsTrigger value="conversations">{t('history')}</TabsTrigger>
+            <TabsTrigger value="analytics">{t('analytics')}</TabsTrigger>
+            <TabsTrigger value="integration">{t('integration')}</TabsTrigger>
+            <TabsTrigger value="debug">{t('debug')}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="chat" className="space-y-0">

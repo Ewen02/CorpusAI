@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { Button, DocumentUploader } from '@corpusai/ui';
+import { useTranslations } from 'next-intl';
 import type { useDocumentUpload } from '@/app/[locale]/(dashboard)/ais/[id]/hooks/use-document-upload';
 
 interface StepUploadProps {
@@ -17,6 +18,7 @@ export function StepUpload({
   onNext,
   onSkip,
 }: StepUploadProps) {
+  const t = useTranslations('onboarding.upload');
   const hasUploaded = uploadedFiles.some(
     (f) => f.status === 'processing' || f.status === 'success'
   );
@@ -26,11 +28,9 @@ export function StepUpload({
     <div className="space-y-6">
       <div className="space-y-1">
         <h2 className="text-2xl font-bold tracking-tight text-[hsl(var(--text-primary))]">
-          Ajoutez vos documents
+          {t('title')}
         </h2>
-        <p className="text-sm text-[hsl(var(--text-muted))]">
-          PDF, Word, texte… Vos documents alimentent la base de connaissance de votre IA.
-        </p>
+        <p className="text-sm text-[hsl(var(--text-muted))]">{t('subtitle')}</p>
       </div>
 
       <DocumentUploader
@@ -46,10 +46,10 @@ export function StepUpload({
           onClick={onNext}
           disabled={!hasUploaded || isUploading}
         >
-          {isUploading ? 'Upload en cours…' : 'Continuer'}
+          {isUploading ? t('uploading') : t('continue')}
         </Button>
         <Button variant="ghost" className="w-full text-[hsl(var(--text-muted))]" onClick={onSkip}>
-          Passer cette étape
+          {t('skip')}
         </Button>
       </div>
     </div>

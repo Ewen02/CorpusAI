@@ -152,7 +152,16 @@
       "analytics": "Analytics",
       "debug": "Debug",
       "integration": "Intégration",
-      "settings": "Paramètres"
+      "settings": "Paramètres",
+      "newConversation": "Nouvelle conversation",
+      "aiCreated": "IA créée",
+      "documentsIndexed": "Documents indexés",
+      "addDocuments": "Ajoutez des documents",
+      "behavior": "Comportement",
+      "notFound": "Assistant introuvable",
+      "backToList": "Retour à la liste",
+      "assistantReady": "Votre assistant est prêt !",
+      "history": "Historique"
     }
   },
   "documents": {
@@ -451,5 +460,70 @@
   "metadata": {
     "title": "CorpusAI — Créez votre IA depuis vos documents",
     "description": "Transformez vos documents en assistant IA conversationnel"
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Bienvenue, {firstName} !",
+      "subtitle": "Transformez vos documents en assistants IA intelligents en quelques minutes.",
+      "featureImportTitle": "Importez vos documents",
+      "featureImportDesc": "PDF, Word, texte… Tous vos fichiers deviennent une base de connaissances.",
+      "featureAskTitle": "Posez des questions",
+      "featureAskDesc": "Votre IA répond instantanément en se basant sur vos documents.",
+      "featureShareTitle": "Partagez avec le monde",
+      "featureShareDesc": "Intégrez votre assistant sur votre site ou partagez-le publiquement.",
+      "start": "Commencer",
+      "exploreDashboard": "Explorer le dashboard"
+    },
+    "createAI": {
+      "title": "Créez votre assistant",
+      "subtitle": "Donnez un nom à votre IA — vous pourrez tout configurer plus tard.",
+      "nameLabel": "Nom de l'assistant",
+      "namePlaceholder": "ex: Assistant RH, Support client…",
+      "urlPrefix": "URL :",
+      "descriptionLabel": "Description",
+      "descriptionOptional": "(optionnel)",
+      "descriptionPlaceholder": "Décrivez ce que fait votre assistant…",
+      "languageLabel": "Langue",
+      "languageFr": "Français",
+      "languageEn": "English",
+      "creating": "Création en cours…",
+      "continue": "Continuer",
+      "errorGeneric": "Une erreur est survenue"
+    },
+    "personalize": {
+      "title": "Personnalisez votre assistant",
+      "subtitle": "Définissez comment il se comporte et comment il se présente.",
+      "behaviorLabel": "Comportement",
+      "behaviorPlaceholder": "Tu es un assistant spécialisé dans [nom]. Tu réponds uniquement à partir des documents fournis. Tu es direct et précis.",
+      "welcomeLabel": "Message d'accueil",
+      "welcomePlaceholder": "Bonjour ! Comment puis-je vous aider ?",
+      "saving": "Enregistrement…",
+      "continue": "Continuer",
+      "skip": "Passer cette étape"
+    },
+    "upload": {
+      "title": "Ajoutez vos documents",
+      "subtitle": "PDF, Word, texte… Vos documents alimentent la base de connaissance de votre IA.",
+      "uploading": "Upload en cours…",
+      "continue": "Continuer",
+      "skip": "Passer cette étape"
+    },
+    "testChat": {
+      "title": "Testez votre assistant",
+      "subtitle": "Posez une question pour voir votre IA en action.",
+      "indexingWarning": "Vos documents sont encore en cours d'indexation — les réponses s'amélioreront dans quelques instants.",
+      "noDocuments": "Aucun document indexé",
+      "noDocumentsHint": "Ajoutez un document pour que votre assistant puisse répondre à vos questions.",
+      "addDocument": "← Ajouter un document",
+      "continueWithout": "Continuer sans document",
+      "continue": "Continuer"
+    },
+    "share": {
+      "title": "Partagez votre assistant",
+      "subtitle": "Votre IA est prête. Partagez-la ou intégrez-la sur votre site.",
+      "directLink": "Lien direct",
+      "embedOnSite": "Intégrer sur votre site",
+      "finish": "Accéder à mon assistant"
+    }
   }
 }

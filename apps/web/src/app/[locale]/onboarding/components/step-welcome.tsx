@@ -1,31 +1,34 @@
 import * as React from 'react';
 import { FileText, MessageSquare, Upload } from 'lucide-react';
 import { Button } from '@corpusai/ui';
+import { useTranslations } from 'next-intl';
 
 interface StepWelcomeProps {
   firstName: string;
   onNext: () => void;
 }
 
-const WELCOME_FEATURES = [
-  {
-    title: 'Importez vos documents',
-    description: 'PDF, Word, texte… Tous vos fichiers deviennent une base de connaissances.',
-    icon: FileText,
-  },
-  {
-    title: 'Posez des questions',
-    description: 'Votre IA répond instantanément en se basant sur vos documents.',
-    icon: MessageSquare,
-  },
-  {
-    title: 'Partagez avec le monde',
-    description: 'Intégrez votre assistant sur votre site ou partagez-le publiquement.',
-    icon: Upload,
-  },
-];
-
 export function StepWelcome({ firstName, onNext }: StepWelcomeProps) {
+  const t = useTranslations('onboarding.welcome');
+
+  const features = [
+    {
+      title: t('featureImportTitle'),
+      description: t('featureImportDesc'),
+      icon: FileText,
+    },
+    {
+      title: t('featureAskTitle'),
+      description: t('featureAskDesc'),
+      icon: MessageSquare,
+    },
+    {
+      title: t('featureShareTitle'),
+      description: t('featureShareDesc'),
+      icon: Upload,
+    },
+  ];
+
   return (
     <div className="space-y-8 text-center">
       <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
@@ -34,15 +37,13 @@ export function StepWelcome({ firstName, onNext }: StepWelcomeProps) {
 
       <div className="space-y-3">
         <h1 className="text-3xl font-bold tracking-tight text-[hsl(var(--text-primary))]">
-          Bienvenue, <span className="text-gradient-accent">{firstName}</span> !
+          {t('title', { firstName })}
         </h1>
-        <p className="text-[hsl(var(--text-muted))]">
-          Transformez vos documents en assistants IA intelligents en quelques minutes.
-        </p>
+        <p className="text-[hsl(var(--text-muted))]">{t('subtitle')}</p>
       </div>
 
       <div className="grid gap-3 text-left">
-        {WELCOME_FEATURES.map((feature) => (
+        {features.map((feature) => (
           <div key={feature.title} className="surface-raised flex items-start gap-4 p-4">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
               <feature.icon className="h-5 w-5 text-primary" />
@@ -59,14 +60,14 @@ export function StepWelcome({ firstName, onNext }: StepWelcomeProps) {
 
       <div className="flex flex-col gap-3">
         <Button size="lg" className="bg-gradient-primary w-full" onClick={onNext}>
-          Commencer
+          {t('start')}
         </Button>
         <Button
           variant="ghost"
           className="w-full text-[hsl(var(--text-muted))]"
           onClick={() => window.location.replace('/dashboard')}
         >
-          Explorer le dashboard
+          {t('exploreDashboard')}
         </Button>
       </div>
     </div>

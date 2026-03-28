@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { Button, Card, CardHeader, CardTitle, CardContent, Input, CopyButton } from '@corpusai/ui';
+import { useTranslations } from 'next-intl';
 import type { CreatedAI } from './step-create-ai';
 import { IndexingBanner } from './indexing-banner';
 
@@ -20,6 +21,7 @@ export function StepShare({
   indexingProgress,
   onFinish,
 }: StepShareProps) {
+  const t = useTranslations('onboarding.share');
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://corpusai.io';
   const chatUrl = `${origin}/chat/${ai.slug}`;
   const embedCode = `<script src="${origin}/embed.js" data-ai="${ai.slug}" defer></script>`;
@@ -28,11 +30,9 @@ export function StepShare({
     <div className="space-y-6">
       <div className="space-y-1">
         <h2 className="text-2xl font-bold tracking-tight text-[hsl(var(--text-primary))]">
-          Partagez votre assistant
+          {t('title')}
         </h2>
-        <p className="text-sm text-[hsl(var(--text-muted))]">
-          Votre IA est prête. Partagez-la ou intégrez-la sur votre site.
-        </p>
+        <p className="text-sm text-[hsl(var(--text-muted))]">{t('subtitle')}</p>
       </div>
 
       <IndexingBanner indexed={indexedCount} total={totalCount} progress={indexingProgress} />
@@ -41,7 +41,7 @@ export function StepShare({
         <Card className="surface-raised">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-[hsl(var(--text-secondary))]">
-              Lien direct
+              {t('directLink')}
             </CardTitle>
           </CardHeader>
           <CardContent className="flex items-center gap-2">
@@ -57,7 +57,7 @@ export function StepShare({
         <Card className="surface-raised">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-[hsl(var(--text-secondary))]">
-              Intégrer sur votre site
+              {t('embedOnSite')}
             </CardTitle>
           </CardHeader>
           <CardContent className="relative">
@@ -72,7 +72,7 @@ export function StepShare({
       </div>
 
       <Button size="lg" className="bg-gradient-primary w-full" onClick={onFinish}>
-        Accéder à mon assistant
+        {t('finish')}
       </Button>
     </div>
   );
