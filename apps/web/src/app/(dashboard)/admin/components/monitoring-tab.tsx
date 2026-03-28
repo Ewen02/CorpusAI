@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Card, CardHeader, CardTitle, CardContent, Skeleton, Badge } from '@corpusai/ui';
+import { Card, CardHeader, CardTitle, CardContent, Skeleton, Badge, Button } from '@corpusai/ui';
 import { apiClient } from '@/lib/api-client';
 import {
   Activity,
@@ -12,7 +12,16 @@ import {
   RefreshCw,
   CheckCircle2,
   FileText,
+  AlertTriangle,
+  RotateCcw,
+  Trash2,
 } from 'lucide-react';
+import {
+  useFailedJobs,
+  useRetryFailedJob,
+  useDiscardFailedJob,
+  type FailedJob,
+} from '@/lib/queries/use-admin';
 import type { HealthData, TestStatus } from '../types';
 import { AUTO_REFRESH_INTERVAL } from '../constants';
 import { formatUptime } from '../utils';
@@ -174,6 +183,9 @@ export function MonitoringTab() {
         </Card>
       )}
 
+      {/* Failed jobs (DLQ) */}
+      <FailedJobsSection />
+
       {/* Test suites */}
       <Card variant="glass">
         <CardHeader className="pb-3">
@@ -270,6 +282,103 @@ export function MonitoringTab() {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function FailedJobsSection() {
+  const { data, isLoading } = useFailedJobs();
+  const retryJob = useRetryFailedJob();
+  const discardJob = useDiscardFailedJob();
+
+  if (isLoading) {
+    return <Skeleton className="h-24 w-full rounded-xl" />;
+  }
+
+  const jobs = data?.jobs ?? [];
+
+  return (
+    <Card variant="glass">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-[15px]">
+          <AlertTriangle className="h-4 w-4 text-tx-muted" />
+          Jobs en échec
+          {jobs.length > 0 && (
+            <Badge variant="destructive" className="ml-2">
+              {data?.total ?? jobs.length}
+            </Badge>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {jobs.length === 0 ? (
+          <p className="py-4 text-center text-[13px] text-tx-disabled">
+            Aucun job en échec dans la file.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {jobs.map((job) => (
+              <FailedJobRow
+                key={job.jobId}
+                job={job}
+                onRetry={() => retryJob.mutate(job.jobId)}
+                onDiscard={() => discardJob.mutate(job.jobId)}
+                isRetrying={retryJob.isPending}
+                isDiscarding={discardJob.isPending}
+              />
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function FailedJobRow({
+  job,
+  onRetry,
+  onDiscard,
+  isRetrying,
+  isDiscarding,
+}: {
+  job: FailedJob;
+  onRetry: () => void;
+  onDiscard: () => void;
+  isRetrying: boolean;
+  isDiscarding: boolean;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3 rounded-lg border border-[hsl(var(--border-subtle))] p-4">
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[13px] font-semibold text-tx-primary">{job.filename}</p>
+        <p className="mt-1 truncate text-[12px] text-[hsl(var(--danger))]">{job.error}</p>
+        <div className="mt-1.5 flex gap-3 text-[11px] text-tx-disabled">
+          <span>{job.attemptsMade} tentatives</span>
+          {job.failedAt && <span>{new Date(job.failedAt).toLocaleString('fr-FR')}</span>}
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={onRetry}
+          disabled={isRetrying}
+          title="Réessayer"
+        >
+          <RotateCcw className={`h-4 w-4 ${isRetrying ? 'animate-spin' : ''}`} />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-tx-muted hover:text-[hsl(var(--danger))]"
+          onClick={onDiscard}
+          disabled={isDiscarding}
+          title="Supprimer"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 }

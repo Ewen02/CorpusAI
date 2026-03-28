@@ -67,6 +67,22 @@ interface PaginatedResponse<T> {
   };
 }
 
+export interface FailedJob {
+  jobId: string;
+  documentId: string;
+  aiId: string;
+  filename: string;
+  error: string;
+  attemptsMade: number;
+  failedAt: string | null;
+  createdAt: string;
+}
+
+interface FailedJobsResponse {
+  total: number;
+  jobs: FailedJob[];
+}
+
 // Keys
 export const adminKeys = {
   all: ['admin'] as const,
@@ -74,6 +90,7 @@ export const adminKeys = {
   users: (page: number, search?: string) => [...adminKeys.all, 'users', page, search] as const,
   ais: (page: number, search?: string) => [...adminKeys.all, 'ais', page, search] as const,
   health: () => [...adminKeys.all, 'health'] as const,
+  failedJobs: () => [...adminKeys.all, 'failed-jobs'] as const,
 };
 
 // Hooks
@@ -124,6 +141,34 @@ export function useUpdateUserPlan() {
       apiClient.patch(`/admin/users/${userId}/plan`, { plan }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminKeys.all });
+    },
+  });
+}
+
+export function useFailedJobs() {
+  return useQuery({
+    queryKey: adminKeys.failedJobs(),
+    queryFn: () => apiClient.get<FailedJobsResponse>('/admin/failed-jobs'),
+    refetchInterval: 30_000,
+  });
+}
+
+export function useRetryFailedJob() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (jobId: string) => apiClient.post(`/admin/failed-jobs/${jobId}/retry`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.failedJobs() });
+    },
+  });
+}
+
+export function useDiscardFailedJob() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (jobId: string) => apiClient.delete(`/admin/failed-jobs/${jobId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.failedJobs() });
     },
   });
 }
