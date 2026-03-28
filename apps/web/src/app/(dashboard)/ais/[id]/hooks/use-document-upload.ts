@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { type QueryClient, useQueryClient } from '@tanstack/react-query';
 import type { UploadedFile } from '@corpusai/ui';
-import { apiClient, API_URL } from '@/lib/api-client';
+import { apiClient, ApiError, API_URL } from '@/lib/api-client';
 import { documentKeys, useDeleteDocument, useRetryDocument } from '@/lib/queries';
 
 interface UseDocumentUploadOptions {
@@ -283,6 +283,39 @@ export function useDocumentUpload({ aiId, documents }: UseDocumentUploadOptions)
     }
   }, [aiId, documents, scheduleNextStep, queryClient]);
 
+  const subscribeDoc = React.useCallback(
+    (fileId: string, docId: string) => {
+      subscribedDocIdsRef.current.add(docId);
+      const unsubscribe = subscribeToProgress(
+        aiId,
+        docId,
+        (event) =>
+          handleProgressEvent(fileId, event, stepTimersRef, setUploadedFiles, scheduleNextStep),
+        () => {
+          unsubscribersRef.current.delete(unsubscribe);
+          subscribedDocIdsRef.current.delete(docId);
+          buildFinalizeHandler(fileId, aiId, stepTimersRef, setUploadedFiles, queryClient)();
+        },
+        () => {
+          unsubscribersRef.current.delete(unsubscribe);
+          subscribedDocIdsRef.current.delete(docId);
+          const stepState = stepTimersRef.current.get(fileId);
+          if (stepState?.timer) clearTimeout(stepState.timer);
+          stepTimersRef.current.delete(fileId);
+          setUploadedFiles((prev) =>
+            prev.map((f) =>
+              f.id === fileId
+                ? { ...f, status: 'error' as const, error: "Echec de l'indexation" }
+                : f
+            )
+          );
+        }
+      );
+      unsubscribersRef.current.add(unsubscribe);
+    },
+    [aiId, queryClient, scheduleNextStep]
+  );
+
   const uploadFiles = React.useCallback(
     async (files: File[]) => {
       const newFiles: UploadedFile[] = files.map((file) => ({
@@ -294,7 +327,71 @@ export function useDocumentUpload({ aiId, documents }: UseDocumentUploadOptions)
 
       setUploadedFiles((prev) => [...prev, ...newFiles]);
 
-      for (const uploadedFile of newFiles) {
+      const isPlainText = (type: string) => type === 'text/plain' || type === 'text/markdown';
+
+      const textFiles = newFiles.filter((f) => isPlainText(f.file.type));
+      const binaryFiles = newFiles.filter((f) => !isPlainText(f.file.type));
+
+      // Bulk upload binary files in a single request
+      if (binaryFiles.length > 0) {
+        setUploadedFiles((prev) =>
+          prev.map((f) =>
+            binaryFiles.some((bf) => bf.id === f.id)
+              ? { ...f, status: 'uploading' as const, progress: 5 }
+              : f
+          )
+        );
+
+        try {
+          const formData = new FormData();
+          for (const uf of binaryFiles) {
+            formData.append('files', uf.file);
+          }
+
+          const docs = await apiClient.upload<{ id: string; filename: string }[]>(
+            `/ais/${aiId}/documents/upload-bulk`,
+            formData
+          );
+
+          setUploadedFiles((prev) =>
+            prev.map((f) =>
+              binaryFiles.some((bf) => bf.id === f.id)
+                ? { ...f, status: 'processing' as const, progress: 10 }
+                : f
+            )
+          );
+
+          queryClient.invalidateQueries({ queryKey: documentKeys.listByAI(aiId) });
+
+          // Subscribe to SSE for each document (correlate by array index)
+          for (let i = 0; i < docs.length; i++) {
+            subscribeDoc(binaryFiles[i]!.id, docs[i]!.id);
+          }
+        } catch (error) {
+          // Map per-file errors if available
+          const apiErr = error instanceof ApiError ? error : null;
+          const fileErrors =
+            (apiErr?.data as { errors?: { filename: string; reason: string }[] })?.errors ?? [];
+
+          for (const uf of binaryFiles) {
+            const fileError = fileErrors.find((e) => e.filename === uf.file.name);
+            setUploadedFiles((prev) =>
+              prev.map((f) =>
+                f.id === uf.id
+                  ? {
+                      ...f,
+                      status: 'error' as const,
+                      error: fileError?.reason || apiErr?.message || "Echec de l'upload",
+                    }
+                  : f
+              )
+            );
+          }
+        }
+      }
+
+      // Upload text files sequentially (they use a different endpoint)
+      for (const uploadedFile of textFiles) {
         try {
           setUploadedFiles((prev) =>
             prev.map((f) =>
@@ -302,27 +399,16 @@ export function useDocumentUpload({ aiId, documents }: UseDocumentUploadOptions)
             )
           );
 
-          const isPlainText =
-            uploadedFile.file.type === 'text/plain' || uploadedFile.file.type === 'text/markdown';
-
-          let doc: { id: string };
-
-          if (isPlainText) {
-            const reader = new FileReader();
-            const content = await new Promise<string>((resolve, reject) => {
-              reader.onload = () => resolve(reader.result as string);
-              reader.onerror = reject;
-              reader.readAsText(uploadedFile.file);
-            });
-            doc = await apiClient.post<{ id: string }>(`/ais/${aiId}/documents/text`, {
-              filename: uploadedFile.file.name,
-              content,
-            });
-          } else {
-            const formData = new FormData();
-            formData.append('file', uploadedFile.file);
-            doc = await apiClient.upload<{ id: string }>(`/ais/${aiId}/documents/upload`, formData);
-          }
+          const reader = new FileReader();
+          const content = await new Promise<string>((resolve, reject) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsText(uploadedFile.file);
+          });
+          const doc = await apiClient.post<{ id: string }>(`/ais/${aiId}/documents/text`, {
+            filename: uploadedFile.file.name,
+            content,
+          });
 
           setUploadedFiles((prev) =>
             prev.map((f) =>
@@ -331,35 +417,7 @@ export function useDocumentUpload({ aiId, documents }: UseDocumentUploadOptions)
           );
 
           queryClient.invalidateQueries({ queryKey: documentKeys.listByAI(aiId) });
-          subscribedDocIdsRef.current.add(doc.id);
-
-          const fileId = uploadedFile.id;
-          const unsubscribe = subscribeToProgress(
-            aiId,
-            doc.id,
-            (event) =>
-              handleProgressEvent(fileId, event, stepTimersRef, setUploadedFiles, scheduleNextStep),
-            () => {
-              unsubscribersRef.current.delete(unsubscribe);
-              subscribedDocIdsRef.current.delete(doc.id);
-              buildFinalizeHandler(fileId, aiId, stepTimersRef, setUploadedFiles, queryClient)();
-            },
-            () => {
-              unsubscribersRef.current.delete(unsubscribe);
-              subscribedDocIdsRef.current.delete(doc.id);
-              const stepState = stepTimersRef.current.get(fileId);
-              if (stepState?.timer) clearTimeout(stepState.timer);
-              stepTimersRef.current.delete(fileId);
-              setUploadedFiles((prev) =>
-                prev.map((f) =>
-                  f.id === fileId
-                    ? { ...f, status: 'error' as const, error: "Echec de l'indexation" }
-                    : f
-                )
-              );
-            }
-          );
-          unsubscribersRef.current.add(unsubscribe);
+          subscribeDoc(uploadedFile.id, doc.id);
         } catch (error) {
           console.error('Upload error:', error);
           setUploadedFiles((prev) =>
@@ -372,7 +430,7 @@ export function useDocumentUpload({ aiId, documents }: UseDocumentUploadOptions)
         }
       }
     },
-    [aiId, queryClient, scheduleNextStep]
+    [aiId, queryClient, subscribeDoc]
   );
 
   const removeFile = React.useCallback((fileId: string) => {
