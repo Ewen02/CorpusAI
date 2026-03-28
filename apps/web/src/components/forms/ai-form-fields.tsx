@@ -1,17 +1,18 @@
 'use client';
 
 import * as React from 'react';
+import { useTranslations } from 'next-intl';
 import { Input, Textarea, Switch } from '@corpusai/ui';
 import { AICategory } from '@corpusai/types';
 
-const CATEGORY_OPTIONS: { value: AICategory; label: string }[] = [
-  { value: 'SUPPORT', label: 'Support client' },
-  { value: 'EDUCATION', label: 'Éducation' },
-  { value: 'LEGAL', label: 'Juridique' },
-  { value: 'FINANCE', label: 'Finance' },
-  { value: 'HEALTH', label: 'Santé' },
-  { value: 'TECH', label: 'Tech' },
-  { value: 'OTHER', label: 'Autre' },
+const CATEGORY_VALUES: AICategory[] = [
+  'SUPPORT',
+  'EDUCATION',
+  'LEGAL',
+  'FINANCE',
+  'HEALTH',
+  'TECH',
+  'OTHER',
 ];
 
 export interface AIFormValues {
@@ -95,16 +96,15 @@ function GeneralFields({
   AIFormFieldsProps,
   'values' | 'onChange' | 'showSlug' | 'slug' | 'onSlugChange' | 'readOnlySlug'
 >) {
+  const t = useTranslations('aiForm');
   return (
     <>
       {/* Informations de base */}
       <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] p-5">
         <div className="mb-5">
-          <p className="text-[15px] font-semibold text-tx-primary">Informations de base</p>
+          <p className="text-[15px] font-semibold text-tx-primary">{t('basicInfo')}</p>
           <p className="mt-0.5 text-[13px] text-tx-muted">
-            {showSlug
-              ? 'Définissez le nom et la description de votre assistant.'
-              : 'Modifiez le nom et la description de votre assistant.'}
+            {showSlug ? t('basicInfoDescriptionCreate') : t('basicInfoDescriptionEdit')}
           </p>
         </div>
 
@@ -112,11 +112,11 @@ function GeneralFields({
           {/* Nom */}
           <div className="space-y-1.5">
             <label className="text-[13px] font-medium text-tx-secondary" htmlFor="name">
-              Nom de l&apos;assistant {showSlug && <span className="text-indigo-400">*</span>}
+              {t('assistantName')} {showSlug && <span className="text-indigo-400">*</span>}
             </label>
             <Input
               id="name"
-              placeholder="Ex: FAQ Support Client"
+              placeholder={t('namePlaceholder')}
               value={values.name}
               onChange={(e) => onChange('name', e.target.value)}
               required={showSlug}
@@ -129,7 +129,7 @@ function GeneralFields({
           {showSlug && slug !== undefined && onSlugChange && (
             <div className="space-y-1.5">
               <label className="text-[13px] font-medium text-tx-secondary" htmlFor="slug">
-                URL personnalisée
+                {t('customUrl')}
               </label>
               <div className="flex items-center gap-2">
                 <span className="text-[13px] text-tx-disabled">corpusai.app/chat/</span>
@@ -143,35 +143,31 @@ function GeneralFields({
                   className="h-9 flex-1 border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] text-[13px] text-tx-primary placeholder:text-tx-disabled focus:border-[hsl(var(--accent-500)/0.4)] focus:ring-1 focus:ring-[hsl(var(--accent-500)/0.15)]"
                 />
               </div>
-              <p className="text-[12px] text-tx-disabled">
-                Lettres minuscules, chiffres et tirets uniquement.
-              </p>
+              <p className="text-[12px] text-tx-disabled">{t('slugHint')}</p>
             </div>
           )}
 
           {readOnlySlug && (
             <div className="space-y-1.5">
-              <label className="text-[13px] font-medium text-tx-secondary">URL personnalisée</label>
+              <label className="text-[13px] font-medium text-tx-secondary">{t('customUrl')}</label>
               <div className="flex items-center gap-2 text-[13px]">
                 <span className="text-tx-disabled">corpusai.app/chat/</span>
                 <code className="rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-2))] px-2 py-0.5 text-tx-secondary">
                   {readOnlySlug}
                 </code>
               </div>
-              <p className="text-[12px] text-tx-disabled">
-                Le slug ne peut pas être modifié après la création.
-              </p>
+              <p className="text-[12px] text-tx-disabled">{t('slugReadonly')}</p>
             </div>
           )}
 
           {/* Description */}
           <div className="space-y-1.5">
             <label className="text-[13px] font-medium text-tx-secondary" htmlFor="description">
-              Description
+              {t('description')}
             </label>
             <Textarea
               id="description"
-              placeholder="Décrivez ce que fait votre assistant..."
+              placeholder={t('descriptionPlaceholder')}
               value={values.description}
               onChange={(e) => onChange('description', e.target.value)}
               maxLength={500}
@@ -179,14 +175,14 @@ function GeneralFields({
               className="border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] text-[13px] text-tx-primary placeholder:text-tx-disabled focus:border-[hsl(var(--accent-500)/0.4)] focus:ring-1 focus:ring-[hsl(var(--accent-500)/0.15)]"
             />
             <p className="text-[12px] text-tx-disabled">
-              {values.description.length}/500 caractères
+              {t('charCount', { count: values.description.length, max: 500 })}
             </p>
           </div>
 
           {/* Catégorie */}
           <div className="space-y-1.5">
             <label className="text-[13px] font-medium text-tx-secondary" htmlFor="category">
-              Catégorie
+              {t('category')}
             </label>
             <select
               id="category"
@@ -194,15 +190,13 @@ function GeneralFields({
               onChange={(e) => onChange('category', e.target.value as AICategory)}
               className={inputClass}
             >
-              {CATEGORY_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
+              {CATEGORY_VALUES.map((catValue) => (
+                <option key={catValue} value={catValue}>
+                  {t(`categories.${catValue}`)}
                 </option>
               ))}
             </select>
-            <p className="text-[12px] text-tx-disabled">
-              Aide les utilisateurs à découvrir votre IA sur la marketplace.
-            </p>
+            <p className="text-[12px] text-tx-disabled">{t('categoryHint')}</p>
           </div>
         </div>
       </div>
@@ -210,18 +204,14 @@ function GeneralFields({
       {/* Accès */}
       <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] p-5">
         <div className="mb-5">
-          <p className="text-[15px] font-semibold text-tx-primary">Accès</p>
-          <p className="mt-0.5 text-[13px] text-tx-muted">
-            Définissez qui peut accéder à votre assistant.
-          </p>
+          <p className="text-[15px] font-semibold text-tx-primary">{t('access')}</p>
+          <p className="mt-0.5 text-[13px] text-tx-muted">{t('accessDescription')}</p>
         </div>
 
         <div className="flex items-center justify-between rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-2))] px-4 py-3">
           <div>
-            <p className="text-[13px] font-medium text-tx-primary">Accès public</p>
-            <p className="mt-0.5 text-[12px] text-tx-disabled">
-              Tout le monde peut utiliser cet assistant.
-            </p>
+            <p className="text-[13px] font-medium text-tx-primary">{t('publicAccess')}</p>
+            <p className="mt-0.5 text-[12px] text-tx-disabled">{t('publicAccessDescription')}</p>
           </div>
           <Switch
             id="public"
@@ -239,25 +229,24 @@ function GeneralFields({
 // ============================================
 
 function BehaviorFields({ values, onChange }: Pick<AIFormFieldsProps, 'values' | 'onChange'>) {
+  const t = useTranslations('aiForm');
   return (
     <>
       {/* Prompt système */}
       <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] p-5">
         <div className="mb-5">
-          <p className="text-[15px] font-semibold text-tx-primary">Prompt système</p>
-          <p className="mt-0.5 text-[13px] text-tx-muted">
-            Instructions de base pour guider le comportement de l&apos;IA.
-          </p>
+          <p className="text-[15px] font-semibold text-tx-primary">{t('systemPrompt')}</p>
+          <p className="mt-0.5 text-[13px] text-tx-muted">{t('systemPromptDescription')}</p>
         </div>
 
         <div className="space-y-4">
           <div className="space-y-1.5">
             <label className="text-[13px] font-medium text-tx-secondary" htmlFor="systemPrompt">
-              Instructions
+              {t('instructions')}
             </label>
             <Textarea
               id="systemPrompt"
-              placeholder="Tu es un assistant spécialisé dans..."
+              placeholder={t('systemPromptPlaceholder')}
               value={values.systemPrompt}
               onChange={(e) => onChange('systemPrompt', e.target.value)}
               maxLength={4000}
@@ -265,17 +254,17 @@ function BehaviorFields({ values, onChange }: Pick<AIFormFieldsProps, 'values' |
               className="border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] text-[13px] text-tx-primary placeholder:text-tx-disabled focus:border-[hsl(var(--accent-500)/0.4)] focus:ring-1 focus:ring-[hsl(var(--accent-500)/0.15)]"
             />
             <p className="text-[12px] text-tx-disabled">
-              {values.systemPrompt.length}/4000 caractères
+              {t('charCount', { count: values.systemPrompt.length, max: 4000 })}
             </p>
           </div>
 
           <div className="space-y-1.5">
             <label className="text-[13px] font-medium text-tx-secondary" htmlFor="welcomeMessage">
-              Message d&apos;accueil
+              {t('welcomeMessage')}
             </label>
             <Textarea
               id="welcomeMessage"
-              placeholder="Bonjour ! Comment puis-je vous aider ?"
+              placeholder={t('welcomeMessagePlaceholder')}
               value={values.welcomeMessage}
               onChange={(e) => onChange('welcomeMessage', e.target.value)}
               maxLength={500}
@@ -289,17 +278,15 @@ function BehaviorFields({ values, onChange }: Pick<AIFormFieldsProps, 'values' |
       {/* Paramètres avancés */}
       <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] p-5">
         <div className="mb-5">
-          <p className="text-[15px] font-semibold text-tx-primary">Paramètres avancés</p>
-          <p className="mt-0.5 text-[13px] text-tx-muted">
-            Ajustez le comportement de génération de l&apos;IA.
-          </p>
+          <p className="text-[15px] font-semibold text-tx-primary">{t('advancedSettings')}</p>
+          <p className="mt-0.5 text-[13px] text-tx-muted">{t('advancedSettingsDescription')}</p>
         </div>
 
         <div className="space-y-6">
           {/* language */}
           <div className="space-y-1.5">
             <label className="text-[13px] font-medium text-tx-secondary" htmlFor="language">
-              Langue des réponses
+              {t('responseLanguage')}
             </label>
             <select
               id="language"
@@ -307,18 +294,16 @@ function BehaviorFields({ values, onChange }: Pick<AIFormFieldsProps, 'values' |
               onChange={(e) => onChange('language', e.target.value as 'fr' | 'en')}
               className={inputClass}
             >
-              <option value="fr">Français</option>
-              <option value="en">English</option>
+              <option value="fr">{t('languageFr')}</option>
+              <option value="en">{t('languageEn')}</option>
             </select>
-            <p className="text-[12px] text-tx-disabled">
-              Détermine la langue des instructions système de l&apos;IA.
-            </p>
+            <p className="text-[12px] text-tx-disabled">{t('responseLanguageHint')}</p>
           </div>
           {/* maxTokens */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-[13px] font-medium text-tx-secondary" htmlFor="maxTokens">
-                Tokens maximum
+                {t('maxTokens')}
               </label>
               <span className="rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-2))] px-1.5 py-0.5 text-[12px] tabular-nums text-tx-muted">
                 {values.maxTokens}
@@ -334,14 +319,14 @@ function BehaviorFields({ values, onChange }: Pick<AIFormFieldsProps, 'values' |
               onChange={(e) => onChange('maxTokens', Number(e.target.value))}
               className="w-full accent-indigo-500"
             />
-            <p className="text-[12px] text-tx-disabled">Longueur maximale des réponses générées.</p>
+            <p className="text-[12px] text-tx-disabled">{t('maxTokensHint')}</p>
           </div>
 
           {/* temperature */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-[13px] font-medium text-tx-secondary" htmlFor="temperature">
-                Température
+                {t('temperature')}
               </label>
               <span className="rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-2))] px-1.5 py-0.5 text-[12px] tabular-nums text-tx-muted">
                 {values.temperature.toFixed(1)}
@@ -357,9 +342,7 @@ function BehaviorFields({ values, onChange }: Pick<AIFormFieldsProps, 'values' |
               onChange={(e) => onChange('temperature', Number(e.target.value))}
               className="w-full accent-indigo-500"
             />
-            <p className="text-[12px] text-tx-disabled">
-              0 = précis et déterministe, 1 = créatif et varié.
-            </p>
+            <p className="text-[12px] text-tx-disabled">{t('temperatureHint')}</p>
           </div>
         </div>
       </div>
@@ -372,19 +355,18 @@ function BehaviorFields({ values, onChange }: Pick<AIFormFieldsProps, 'values' |
 // ============================================
 
 function AppearanceFields({ values, onChange }: Pick<AIFormFieldsProps, 'values' | 'onChange'>) {
+  const t = useTranslations('aiForm');
   return (
     <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] p-5">
       <div className="mb-5">
-        <p className="text-[15px] font-semibold text-tx-primary">Personnalisation</p>
-        <p className="mt-0.5 text-[13px] text-tx-muted">
-          Personnalisez l&apos;apparence de votre assistant.
-        </p>
+        <p className="text-[15px] font-semibold text-tx-primary">{t('customization')}</p>
+        <p className="mt-0.5 text-[13px] text-tx-muted">{t('customizationDescription')}</p>
       </div>
 
       <div className="space-y-4">
         <div className="space-y-1.5">
           <label className="text-[13px] font-medium text-tx-secondary" htmlFor="primaryColor">
-            Couleur principale
+            {t('primaryColor')}
           </label>
           <div className="flex items-center gap-3">
             <input
@@ -406,7 +388,7 @@ function AppearanceFields({ values, onChange }: Pick<AIFormFieldsProps, 'values'
         {/* Preview */}
         <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-2))] p-4">
           <p className="mb-3 text-[12px] font-semibold uppercase tracking-wide text-tx-disabled">
-            Aperçu
+            {t('preview')}
           </p>
           <div className="flex items-start gap-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-400/20 to-indigo-600/10 text-[13px] font-semibold text-indigo-400 ring-1 ring-[hsl(var(--accent-500)/0.2)]">

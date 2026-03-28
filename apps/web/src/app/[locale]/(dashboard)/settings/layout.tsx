@@ -2,54 +2,56 @@
 
 import * as React from 'react';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { cn } from '@corpusai/ui';
 import { useNavigation } from '@/lib/hooks';
 import { ROUTES } from '@/lib/constants';
 import { UserIcon, CreditCardIcon, ShieldIcon, BellIcon, KeyIcon } from '@/lib/icons';
 
 interface SettingsNavItem {
-  label: string;
+  labelKey: 'profile' | 'billing' | 'security' | 'notifications' | 'apiKeys';
   href: string;
   icon: React.ReactNode;
 }
 
 const settingsNav: SettingsNavItem[] = [
   {
-    label: 'Profil',
+    labelKey: 'profile',
     href: ROUTES.settings.root,
     icon: <UserIcon className="h-4 w-4" />,
   },
   {
-    label: 'Abonnement',
+    labelKey: 'billing',
     href: ROUTES.settings.billing,
     icon: <CreditCardIcon className="h-4 w-4" />,
   },
   {
-    label: 'Sécurité',
+    labelKey: 'security',
     href: ROUTES.settings.security,
     icon: <ShieldIcon className="h-4 w-4" />,
   },
   {
-    label: 'Notifications',
+    labelKey: 'notifications',
     href: ROUTES.settings.notifications,
     icon: <BellIcon className="h-4 w-4" />,
   },
   {
-    label: 'Clés API',
+    labelKey: 'apiKeys',
     href: ROUTES.settings.apiKeys,
     icon: <KeyIcon className="h-4 w-4" />,
   },
 ];
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
+  const t = useTranslations('settings');
   const pathname = usePathname();
   const { navigateTo } = useNavigation();
 
   return (
     <div className="container max-w-6xl py-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight text-tx-primary">Paramètres</h1>
-        <p className="mt-1 text-sm text-tx-muted">Gérez votre compte et vos préférences.</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-tx-primary">{t('title')}</h1>
+        <p className="mt-1 text-sm text-tx-muted">{t('subtitle')}</p>
       </div>
 
       <div className="flex flex-col gap-8 md:flex-row">
@@ -74,7 +76,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                     >
                       {item.icon}
                     </span>
-                    {item.label}
+                    {t(item.labelKey)}
                   </button>
                 </li>
               );

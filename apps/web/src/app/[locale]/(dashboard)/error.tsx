@@ -2,6 +2,7 @@
 
 import * as Sentry from '@sentry/nextjs';
 import * as React from 'react';
+import { useTranslations } from 'next-intl';
 import { Button, Card, CardContent, CardHeader, CardTitle, CardDescription } from '@corpusai/ui';
 
 interface ErrorBoundaryProps {
@@ -10,6 +11,8 @@ interface ErrorBoundaryProps {
 }
 
 export default function DashboardError({ error, reset }: ErrorBoundaryProps) {
+  const t = useTranslations('error');
+
   React.useEffect(() => {
     Sentry.captureException(error);
   }, [error]);
@@ -18,19 +21,15 @@ export default function DashboardError({ error, reset }: ErrorBoundaryProps) {
     <div className="container py-8">
       <Card className="mx-auto max-w-lg">
         <CardHeader>
-          <CardTitle className="text-destructive">Une erreur est survenue</CardTitle>
-          <CardDescription>
-            Nous sommes desoles, une erreur inattendue s&apos;est produite.
-          </CardDescription>
+          <CardTitle className="text-destructive">{t('title')}</CardTitle>
+          <CardDescription>{t('description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            {error.message || 'Une erreur inconnue est survenue.'}
-          </p>
+          <p className="text-sm text-muted-foreground">{error.message || t('unknownError')}</p>
           <div className="flex gap-2">
-            <Button onClick={reset}>Reessayer</Button>
+            <Button onClick={reset}>{t('retry')}</Button>
             <Button variant="outline" onClick={() => (window.location.href = '/dashboard')}>
-              Retour au dashboard
+              {t('backToDashboard')}
             </Button>
           </div>
         </CardContent>

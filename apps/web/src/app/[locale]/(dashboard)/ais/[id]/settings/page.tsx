@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import {
   Button,
   Input,
@@ -37,44 +38,26 @@ import {
 import { PageWrapper } from '@/components/page-wrapper';
 import { AICategory } from '@corpusai/types';
 
-const CATEGORY_OPTIONS: { value: AICategory; label: string }[] = [
-  { value: 'SUPPORT', label: 'Support client' },
-  { value: 'EDUCATION', label: 'Éducation' },
-  { value: 'LEGAL', label: 'Juridique' },
-  { value: 'FINANCE', label: 'Finance' },
-  { value: 'HEALTH', label: 'Santé' },
-  { value: 'TECH', label: 'Tech' },
-  { value: 'OTHER', label: 'Autre' },
+const CATEGORY_VALUES: AICategory[] = [
+  'SUPPORT',
+  'EDUCATION',
+  'LEGAL',
+  'FINANCE',
+  'HEALTH',
+  'TECH',
+  'OTHER',
 ];
 
 type AIStatus = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED';
 
-const statusOptions: { value: AIStatus; label: string; description: string; color: string }[] = [
-  {
-    value: 'DRAFT',
-    label: 'Brouillon',
-    description: 'Non visible publiquement',
-    color: 'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]',
-  },
-  {
-    value: 'ACTIVE',
-    label: 'Actif',
-    description: 'Accessible à tous',
-    color: 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]',
-  },
-  {
-    value: 'PAUSED',
-    label: 'En pause',
-    description: 'Temporairement désactivé',
-    color: 'bg-[hsl(var(--warning)/0.1)] text-[hsl(var(--warning)/0.8)]',
-  },
-  {
-    value: 'ARCHIVED',
-    label: 'Archivé',
-    description: 'Conservé mais inactif',
-    color: 'bg-[hsl(var(--surface-3))] text-tx-muted',
-  },
-];
+const STATUS_VALUES: AIStatus[] = ['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED'];
+
+const STATUS_COLORS: Record<AIStatus, string> = {
+  DRAFT: 'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]',
+  ACTIVE: 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]',
+  PAUSED: 'bg-[hsl(var(--warning)/0.1)] text-[hsl(var(--warning)/0.8)]',
+  ARCHIVED: 'bg-[hsl(var(--surface-3))] text-tx-muted',
+};
 
 const inputClass =
   'h-9 border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] text-[13px] text-tx-primary placeholder:text-tx-disabled focus:border-[hsl(var(--accent-500)/0.4)] focus:ring-1 focus:ring-[hsl(var(--accent-500)/0.15)]';
@@ -93,6 +76,7 @@ function AccessTab({
   hasAccessToken: boolean;
   hasAccessCode: boolean;
 }) {
+  const t = useTranslations('aiSettings.accessTab');
   const queryClient = useQueryClient();
   const { data: members, isLoading: isLoadingMembers } = useAIMembers(aiId);
   const generateToken = useGenerateAccessToken(aiId);
@@ -177,7 +161,7 @@ function AccessTab({
       await inviteMember.mutateAsync({ email: inviteEmail });
       setInviteEmail('');
     } catch {
-      setInviteError("Erreur lors de l'invitation");
+      setInviteError(t('inviteError'));
     }
   };
 
@@ -188,26 +172,26 @@ function AccessTab({
   const modeOptions = [
     {
       value: 'open' as const,
-      label: 'Ouvert',
-      description: 'Tout le monde peut accéder',
+      label: t('modeOpen'),
+      description: t('modeOpenDescription'),
       icon: Globe,
     },
     {
       value: 'token' as const,
-      label: 'Lien secret',
-      description: 'URL avec token unique',
+      label: t('modeToken'),
+      description: t('modeTokenDescription'),
       icon: Link2,
     },
     {
       value: 'code' as const,
-      label: "Code d'accès",
-      description: 'Mot de passe requis',
+      label: t('modeCode'),
+      description: t('modeCodeDescription'),
       icon: Lock,
     },
     {
       value: 'invite' as const,
-      label: 'Sur invitation',
-      description: 'Membres invités uniquement',
+      label: t('modeInvite'),
+      description: t('modeInviteDescription'),
       icon: Users,
     },
   ];
@@ -217,10 +201,8 @@ function AccessTab({
       {/* Mode selector */}
       <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] p-5">
         <div className="mb-5">
-          <p className="text-[15px] font-semibold text-tx-primary">Mode d&apos;accès</p>
-          <p className="mt-0.5 text-[13px] text-tx-muted">
-            Définissez qui peut accéder à votre assistant.
-          </p>
+          <p className="text-[15px] font-semibold text-tx-primary">{t('modeTitle')}</p>
+          <p className="mt-0.5 text-[13px] text-tx-muted">{t('modeDescription')}</p>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {modeOptions.map((opt) => {
@@ -267,10 +249,8 @@ function AccessTab({
       {accessMode === 'token' && (
         <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] p-5">
           <div className="mb-4">
-            <p className="text-[15px] font-semibold text-tx-primary">Lien secret</p>
-            <p className="mt-0.5 text-[13px] text-tx-muted">
-              Partagez ce lien uniquement avec les personnes autorisées.
-            </p>
+            <p className="text-[15px] font-semibold text-tx-primary">{t('secretLink')}</p>
+            <p className="mt-0.5 text-[13px] text-tx-muted">{t('secretLinkDescription')}</p>
           </div>
           {generatedToken ? (
             <div className="space-y-3">
@@ -285,7 +265,7 @@ function AccessTab({
                   variant="outline"
                   onClick={() => handleCopyUrl(generatedToken.url)}
                 >
-                  {copied ? 'Copié !' : 'Copier'}
+                  {copied ? t('copied') : t('copy')}
                 </Button>
               </div>
               <div className="flex gap-2">
@@ -296,7 +276,7 @@ function AccessTab({
                   disabled={generateToken.isPending}
                 >
                   <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-                  Régénérer
+                  {t('regenerate')}
                 </Button>
                 <Button
                   size="sm"
@@ -305,7 +285,7 @@ function AccessTab({
                   disabled={deleteToken.isPending}
                 >
                   <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                  Supprimer
+                  {t('delete')}
                 </Button>
               </div>
             </div>
@@ -313,12 +293,10 @@ function AccessTab({
             <div className="space-y-3">
               <div className="flex items-center gap-2 rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-2))] px-3 py-2">
                 <Lock className="h-4 w-4 text-[hsl(var(--success))]" />
-                <p className="flex-1 text-[13px] text-tx-muted">Un lien secret est actif</p>
-                <span className="text-[11px] text-[hsl(var(--success))]">Actif</span>
+                <p className="flex-1 text-[13px] text-tx-muted">{t('secretLinkActive')}</p>
+                <span className="text-[11px] text-[hsl(var(--success))]">{t('active')}</span>
               </div>
-              <p className="text-[12px] text-tx-muted">
-                Régénérez pour obtenir un nouveau lien et invalider l&apos;ancien.
-              </p>
+              <p className="text-[12px] text-tx-muted">{t('regenerateHint')}</p>
               <div className="flex gap-2">
                 <Button
                   size="sm"
@@ -327,7 +305,7 @@ function AccessTab({
                   disabled={generateToken.isPending}
                 >
                   <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-                  Régénérer
+                  {t('regenerate')}
                 </Button>
                 <Button
                   size="sm"
@@ -336,14 +314,14 @@ function AccessTab({
                   disabled={deleteToken.isPending}
                 >
                   <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                  Supprimer
+                  {t('delete')}
                 </Button>
               </div>
             </div>
           ) : (
             <Button size="sm" onClick={handleGenerateToken} disabled={generateToken.isPending}>
               <Link2 className="mr-1.5 h-3.5 w-3.5" />
-              {generateToken.isPending ? 'Génération...' : 'Générer un lien secret'}
+              {generateToken.isPending ? t('generating') : t('generateSecretLink')}
             </Button>
           )}
         </div>
@@ -353,17 +331,13 @@ function AccessTab({
       {accessMode === 'code' && (
         <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] p-5">
           <div className="mb-4">
-            <p className="text-[15px] font-semibold text-tx-primary">Code d&apos;accès</p>
-            <p className="mt-0.5 text-[13px] text-tx-muted">
-              Les utilisateurs devront saisir ce code pour accéder à l&apos;assistant.
-            </p>
+            <p className="text-[15px] font-semibold text-tx-primary">{t('accessCodeTitle')}</p>
+            <p className="mt-0.5 text-[13px] text-tx-muted">{t('accessCodeDescription')}</p>
           </div>
           {hasAccessCode && (
             <div className="mb-3 flex items-center gap-2 rounded-md bg-[hsl(var(--success)/0.08)] px-3 py-2">
               <Check className="h-3.5 w-3.5 text-[hsl(var(--success))]" />
-              <p className="text-[12px] text-[hsl(var(--success))]">
-                Un code est actuellement actif
-              </p>
+              <p className="text-[12px] text-[hsl(var(--success))]">{t('codeActive')}</p>
             </div>
           )}
           {savedCodeValue && (
@@ -375,13 +349,13 @@ function AccessTab({
           <div className="flex items-end gap-2">
             <div className="flex-1 space-y-1.5">
               <label className="text-[13px] font-medium text-tx-secondary">
-                {hasAccessCode ? "Nouveau code (remplace l'actuel)" : 'Nouveau code'}
+                {hasAccessCode ? t('newCodeReplace') : t('newCode')}
               </label>
               <Input
                 type="text"
                 value={accessCode}
                 onChange={(e) => setAccessCode(e.target.value)}
-                placeholder="Minimum 4 caractères"
+                placeholder={t('codePlaceholder')}
                 minLength={4}
                 className={inputClass}
               />
@@ -391,7 +365,7 @@ function AccessTab({
               onClick={handleSaveCode}
               disabled={accessCode.length < 4 || setCode.isPending}
             >
-              {codeSaved ? 'Sauvegardé !' : 'Sauvegarder'}
+              {codeSaved ? t('codeSaved') : t('codeSave')}
             </Button>
           </div>
           {hasAccessCode && (
@@ -403,7 +377,7 @@ function AccessTab({
               disabled={deleteCode.isPending}
             >
               <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-              Supprimer le code actuel
+              {t('deleteCurrentCode')}
             </Button>
           )}
         </div>
@@ -413,27 +387,25 @@ function AccessTab({
       {accessMode === 'invite' && (
         <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] p-5">
           <div className="mb-4">
-            <p className="text-[15px] font-semibold text-tx-primary">Membres invités</p>
-            <p className="mt-0.5 text-[13px] text-tx-muted">
-              Seuls les membres invités peuvent accéder à l&apos;assistant.
-            </p>
+            <p className="text-[15px] font-semibold text-tx-primary">{t('invitedMembers')}</p>
+            <p className="mt-0.5 text-[13px] text-tx-muted">{t('invitedMembersDescription')}</p>
           </div>
 
           {/* Invite form */}
           <form onSubmit={handleInvite} className="mb-5 flex items-end gap-2">
             <div className="flex-1 space-y-1.5">
-              <label className="text-[13px] font-medium text-tx-secondary">Email</label>
+              <label className="text-[13px] font-medium text-tx-secondary">{t('emailLabel')}</label>
               <Input
                 type="email"
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
-                placeholder="marie@exemple.com"
+                placeholder={t('emailPlaceholder')}
                 required
                 className={inputClass}
               />
             </div>
             <Button type="submit" size="sm" disabled={inviteMember.isPending}>
-              {inviteMember.isPending ? 'Invitation...' : 'Inviter'}
+              {inviteMember.isPending ? t('inviting') : t('invite')}
             </Button>
           </form>
           {inviteError && (
@@ -448,7 +420,7 @@ function AccessTab({
               ))}
             </div>
           ) : !members || members.length === 0 ? (
-            <p className="text-[13px] text-tx-muted">Aucun membre invité pour l&apos;instant.</p>
+            <p className="text-[13px] text-tx-muted">{t('noMembers')}</p>
           ) : (
             <div className="space-y-2">
               {members.map((grant) => (
@@ -472,7 +444,7 @@ function AccessTab({
                           : 'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]'
                       )}
                     >
-                      {grant.endUser.emailVerified ? 'Actif' : 'En attente'}
+                      {grant.endUser.emailVerified ? t('memberActive') : t('memberPending')}
                     </Badge>
                     <Button
                       size="sm"
@@ -481,7 +453,7 @@ function AccessTab({
                       onClick={() => handleRevoke(grant.endUser.id)}
                       disabled={revokeMember.isPending}
                     >
-                      Révoquer
+                      {t('revoke')}
                     </Button>
                   </div>
                 </div>
@@ -495,6 +467,7 @@ function AccessTab({
 }
 
 export default function AISettingsPage() {
+  const t = useTranslations('aiSettings');
   const params = useParams();
   const router = useRouter();
   const aiId = params.id as string;
@@ -571,7 +544,7 @@ export default function AISettingsPage() {
         setTimeout(() => setSaveStatus('idle'), 2000);
       } catch (err) {
         setSaveStatus('error');
-        setSaveError(err instanceof Error ? err.message : 'Une erreur est survenue');
+        setSaveError(err instanceof Error ? err.message : t('errorGeneric'));
       }
     },
     [
@@ -598,7 +571,7 @@ export default function AISettingsPage() {
       const result = await generateSuggestionsMutation.mutateAsync(aiId);
       setSuggestions(result);
     } catch {
-      setGenerateError('Aucun document indexé ou erreur lors de la génération.');
+      setGenerateError(t('generateError'));
     }
   };
 
@@ -623,7 +596,7 @@ export default function AISettingsPage() {
       router.push('/ais');
     } catch (err) {
       setSaveStatus('error');
-      setSaveError(err instanceof Error ? err.message : 'Erreur lors de la suppression');
+      setSaveError(err instanceof Error ? err.message : t('dangerZone.deleteError'));
     }
   };
 
@@ -643,9 +616,9 @@ export default function AISettingsPage() {
     return (
       <div className="container max-w-4xl py-8">
         <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] p-12 text-center">
-          <p className="text-[13px] text-tx-muted">Assistant introuvable</p>
+          <p className="text-[13px] text-tx-muted">{t('notFound')}</p>
           <Button className="mt-4" size="sm" onClick={() => router.push('/ais')}>
-            Retour à la liste
+            {t('backToList')}
           </Button>
         </div>
       </div>
@@ -664,41 +637,41 @@ export default function AISettingsPage() {
             {ai.name}
           </button>
           <span className="text-tx-disabled">/</span>
-          <span>Paramètres</span>
+          <span>{t('breadcrumbSettings')}</span>
         </div>
         <div className="flex items-baseline justify-between gap-4">
-          <h1 className="text-2xl font-semibold tracking-tight text-tx-primary">Paramètres</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-tx-primary">
+            {t('pageTitle')}
+          </h1>
           <div className="min-h-[18px] text-[12px]">
-            {saveStatus === 'saving' && <span className="text-tx-disabled">Sauvegarde…</span>}
+            {saveStatus === 'saving' && <span className="text-tx-disabled">{t('saving')}</span>}
             {saveStatus === 'saved' && (
-              <span className="text-[hsl(var(--success))]">✓ Sauvegardé</span>
+              <span className="text-[hsl(var(--success))]">✓ {t('saved')}</span>
             )}
             {saveStatus === 'error' && (
               <span className="text-[hsl(var(--danger))]">{saveError}</span>
             )}
           </div>
         </div>
-        <p className="mt-1 text-sm text-tx-muted">
-          Configurez les paramètres de votre assistant IA.
-        </p>
+        <p className="mt-1 text-sm text-tx-muted">{t('pageDescription')}</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="inline-flex items-center gap-0.5 rounded-lg bg-[hsl(var(--surface-2))] p-1">
           <TabsTrigger value="general" className={tabTriggerClass}>
-            Général
+            {t('tabs.general')}
           </TabsTrigger>
           <TabsTrigger value="behavior" className={tabTriggerClass}>
-            Comportement
+            {t('tabs.behavior')}
           </TabsTrigger>
           <TabsTrigger value="appearance" className={tabTriggerClass}>
-            Apparence
+            {t('tabs.appearance')}
           </TabsTrigger>
           <TabsTrigger value="danger" className={tabTriggerClass}>
-            Zone danger
+            {t('tabs.danger')}
           </TabsTrigger>
           <TabsTrigger value="access" className={tabTriggerClass}>
-            Accès
+            {t('tabs.access')}
           </TabsTrigger>
         </TabsList>
 
@@ -707,16 +680,14 @@ export default function AISettingsPage() {
           {/* Informations de base */}
           <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] p-5">
             <div className="mb-5">
-              <p className="text-[15px] font-semibold text-tx-primary">Informations de base</p>
-              <p className="mt-0.5 text-[13px] text-tx-muted">
-                Modifiez le nom et la description de votre assistant.
-              </p>
+              <p className="text-[15px] font-semibold text-tx-primary">{t('basicInfo.title')}</p>
+              <p className="mt-0.5 text-[13px] text-tx-muted">{t('basicInfo.description')}</p>
             </div>
 
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <label htmlFor="name" className="text-[13px] font-medium text-tx-secondary">
-                  Nom de l&apos;assistant
+                  {t('basicInfo.nameLabel')}
                 </label>
                 <Input
                   id="name"
@@ -729,16 +700,16 @@ export default function AISettingsPage() {
               </div>
 
               <div className="space-y-1.5">
-                <p className="text-[13px] font-medium text-tx-secondary">URL personnalisée</p>
+                <p className="text-[13px] font-medium text-tx-secondary">
+                  {t('basicInfo.customUrl')}
+                </p>
                 <div className="flex items-center gap-2 text-[13px]">
                   <span className="text-tx-muted">corpusai.app/chat/</span>
                   <code className="rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-2))] px-2 py-0.5 font-mono text-[13px] text-tx-primary">
                     {ai.slug}
                   </code>
                 </div>
-                <p className="text-[12px] text-tx-disabled">
-                  Le slug ne peut pas être modifié après la création.
-                </p>
+                <p className="text-[12px] text-tx-disabled">{t('basicInfo.slugImmutable')}</p>
               </div>
 
               <div className="space-y-1.5">
@@ -747,7 +718,7 @@ export default function AISettingsPage() {
                     htmlFor="description"
                     className="text-[13px] font-medium text-tx-secondary"
                   >
-                    Description
+                    {t('basicInfo.descriptionLabel')}
                   </label>
                   <Button
                     type="button"
@@ -780,14 +751,12 @@ export default function AISettingsPage() {
                         <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
                       </svg>
                     )}
-                    Générer avec l&apos;IA
+                    {t('basicInfo.generateWithAI')}
                   </Button>
                 </div>
                 <Textarea
                   id="description"
-                  placeholder={
-                    suggestions.description ?? 'Une courte description de votre assistant...'
-                  }
+                  placeholder={suggestions.description ?? t('basicInfo.descriptionPlaceholder')}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   onBlur={() => save()}
@@ -825,22 +794,22 @@ export default function AISettingsPage() {
                     <kbd className="rounded border border-[hsl(var(--border-default))] px-1 font-mono text-[10px]">
                       Tab
                     </kbd>
-                    <span>pour accepter</span>
+                    <span>{t('basicInfo.tabToAccept')}</span>
                     <kbd className="rounded border border-[hsl(var(--border-default))] px-1 font-mono text-[10px]">
                       Esc
                     </kbd>
-                    <span>pour ignorer</span>
+                    <span>{t('basicInfo.escToIgnore')}</span>
                   </p>
                 ) : (
                   <p className="text-[12px] text-tx-disabled">
-                    {description.length}/500 caractères
+                    {description.length}/500 {t('basicInfo.characters')}
                   </p>
                 )}
               </div>
 
               <div className="space-y-1.5">
                 <label htmlFor="category" className="text-[13px] font-medium text-tx-secondary">
-                  Catégorie
+                  {t('basicInfo.categoryLabel')}
                 </label>
                 <select
                   id="category"
@@ -849,66 +818,64 @@ export default function AISettingsPage() {
                   onBlur={() => save()}
                   className="h-9 w-full rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] px-3 text-[13px] text-tx-primary focus:border-[hsl(var(--accent-500)/0.4)] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--accent-500)/0.15)]"
                 >
-                  {CATEGORY_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
+                  {CATEGORY_VALUES.map((val) => (
+                    <option key={val} value={val}>
+                      {t(`categories.${val}`)}
                     </option>
                   ))}
                 </select>
-                <p className="text-[12px] text-tx-disabled">
-                  Aide les utilisateurs à découvrir votre IA sur la marketplace.
-                </p>
+                <p className="text-[12px] text-tx-disabled">{t('basicInfo.categoryHint')}</p>
               </div>
             </div>
           </div>
 
-          {/* Statut */}
+          {/* Status */}
           <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] p-5">
             <div className="mb-5">
-              <p className="text-[15px] font-semibold text-tx-primary">Statut</p>
-              <p className="mt-0.5 text-[13px] text-tx-muted">
-                Contrôlez la visibilité et l&apos;accessibilité de votre assistant.
-              </p>
+              <p className="text-[15px] font-semibold text-tx-primary">{t('status.title')}</p>
+              <p className="mt-0.5 text-[13px] text-tx-muted">{t('status.description')}</p>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {statusOptions.map((option) => (
+              {STATUS_VALUES.map((value) => (
                 <button
-                  key={option.value}
+                  key={value}
                   type="button"
                   onClick={() => {
-                    setStatus(option.value);
-                    save({ status: option.value });
+                    setStatus(value);
+                    save({ status: value });
                   }}
                   className={cn(
                     'rounded-lg border p-4 text-left transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent-500)/0.5)]',
-                    status === option.value
+                    status === value
                       ? 'border-[hsl(var(--accent-500)/0.3)] bg-[hsl(var(--accent-500)/0.06)]'
                       : 'border-[hsl(var(--border-default))] hover:border-[hsl(var(--accent-500)/0.2)] hover:bg-[hsl(var(--surface-2))]'
                   )}
                 >
                   <div className="mb-1 flex items-center gap-2">
-                    <Badge className={option.color}>{option.label}</Badge>
+                    <Badge className={STATUS_COLORS[value]}>{t(`statuses.${value}`)}</Badge>
                   </div>
-                  <p className="text-[12px] text-tx-muted">{option.description}</p>
+                  <p className="text-[12px] text-tx-muted">{t(`statusDescriptions.${value}`)}</p>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Accès */}
+          {/* Access */}
           <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] p-5">
             <div className="mb-5">
-              <p className="text-[15px] font-semibold text-tx-primary">Accès</p>
-              <p className="mt-0.5 text-[13px] text-tx-muted">
-                Définissez qui peut accéder à votre assistant.
+              <p className="text-[15px] font-semibold text-tx-primary">
+                {t('accessSection.title')}
               </p>
+              <p className="mt-0.5 text-[13px] text-tx-muted">{t('accessSection.description')}</p>
             </div>
             <div className="flex items-center justify-between rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-2))] px-4 py-3">
               <div>
-                <p className="text-[13px] font-medium text-tx-primary">Accès public</p>
+                <p className="text-[13px] font-medium text-tx-primary">
+                  {t('accessSection.publicAccess')}
+                </p>
                 <p className="mt-0.5 text-[12px] text-tx-disabled">
-                  Tout le monde peut utiliser cet assistant.
+                  {t('accessSection.publicAccessHint')}
                 </p>
               </div>
               <Switch
@@ -924,13 +891,15 @@ export default function AISettingsPage() {
 
         {/* Behavior Tab */}
         <TabsContent value="behavior" className="space-y-6">
-          {/* Prompt système */}
+          {/* System prompt */}
           <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] p-5">
             <div className="mb-5 flex items-start justify-between gap-3">
               <div>
-                <p className="text-[15px] font-semibold text-tx-primary">Prompt système</p>
+                <p className="text-[15px] font-semibold text-tx-primary">
+                  {t('behaviorTab.systemPrompt')}
+                </p>
                 <p className="mt-0.5 text-[13px] text-tx-muted">
-                  Instructions de base pour guider le comportement de l&apos;IA.
+                  {t('behaviorTab.systemPromptDescription')}
                 </p>
               </div>
               <Button
@@ -964,18 +933,18 @@ export default function AISettingsPage() {
                     <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
                   </svg>
                 )}
-                Générer avec l&apos;IA
+                {t('basicInfo.generateWithAI')}
               </Button>
             </div>
 
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <label htmlFor="systemPrompt" className="text-[13px] font-medium text-tx-secondary">
-                  Instructions
+                  {t('behaviorTab.instructionsLabel')}
                 </label>
                 <Textarea
                   id="systemPrompt"
-                  placeholder={suggestions.systemPrompt ?? 'Tu es un assistant spécialisé dans...'}
+                  placeholder={suggestions.systemPrompt ?? t('behaviorTab.systemPromptPlaceholder')}
                   value={systemPrompt}
                   onChange={(e) => setSystemPrompt(e.target.value)}
                   onBlur={() => save()}
@@ -1013,15 +982,15 @@ export default function AISettingsPage() {
                     <kbd className="rounded border border-[hsl(var(--border-default))] px-1 font-mono text-[10px]">
                       Tab
                     </kbd>
-                    <span>pour accepter</span>
+                    <span>{t('basicInfo.tabToAccept')}</span>
                     <kbd className="rounded border border-[hsl(var(--border-default))] px-1 font-mono text-[10px]">
                       Esc
                     </kbd>
-                    <span>pour ignorer</span>
+                    <span>{t('basicInfo.escToIgnore')}</span>
                   </p>
                 ) : (
                   <p className="text-[12px] text-tx-disabled">
-                    {systemPrompt.length}/4000 caractères
+                    {systemPrompt.length}/4000 {t('basicInfo.characters')}
                   </p>
                 )}
               </div>
@@ -1031,12 +1000,12 @@ export default function AISettingsPage() {
                   htmlFor="welcomeMessage"
                   className="text-[13px] font-medium text-tx-secondary"
                 >
-                  Message d&apos;accueil
+                  {t('behaviorTab.welcomeMessageLabel')}
                 </label>
                 <Textarea
                   id="welcomeMessage"
                   placeholder={
-                    suggestions.welcomeMessage ?? 'Bonjour ! Comment puis-je vous aider ?'
+                    suggestions.welcomeMessage ?? t('behaviorTab.welcomeMessagePlaceholder')
                   }
                   value={welcomeMessage}
                   onChange={(e) => setWelcomeMessage(e.target.value)}
@@ -1075,34 +1044,36 @@ export default function AISettingsPage() {
                     <kbd className="rounded border border-[hsl(var(--border-default))] px-1 font-mono text-[10px]">
                       Tab
                     </kbd>
-                    <span>pour accepter</span>
+                    <span>{t('basicInfo.tabToAccept')}</span>
                     <kbd className="rounded border border-[hsl(var(--border-default))] px-1 font-mono text-[10px]">
                       Esc
                     </kbd>
-                    <span>pour ignorer</span>
+                    <span>{t('basicInfo.escToIgnore')}</span>
                   </p>
                 ) : (
                   <p className="text-[12px] text-tx-disabled">
-                    {welcomeMessage.length}/500 caractères
+                    {welcomeMessage.length}/500 {t('basicInfo.characters')}
                   </p>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Paramètres avancés */}
+          {/* Advanced settings */}
           <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] p-5">
             <div className="mb-5">
-              <p className="text-[15px] font-semibold text-tx-primary">Paramètres avancés</p>
+              <p className="text-[15px] font-semibold text-tx-primary">
+                {t('behaviorTab.advancedSettings')}
+              </p>
               <p className="mt-0.5 text-[13px] text-tx-muted">
-                Ajustez le comportement de génération de l&apos;IA.
+                {t('behaviorTab.advancedDescription')}
               </p>
             </div>
 
             <div className="space-y-6">
               <div className="space-y-1.5">
                 <label htmlFor="language" className="text-[13px] font-medium text-tx-secondary">
-                  Langue des réponses
+                  {t('behaviorTab.responseLanguage')}
                 </label>
                 <select
                   id="language"
@@ -1111,18 +1082,18 @@ export default function AISettingsPage() {
                   onBlur={() => save()}
                   className="h-9 w-full rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] px-3 text-[13px] text-tx-primary focus:border-[hsl(var(--accent-500)/0.4)] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--accent-500)/0.15)]"
                 >
-                  <option value="fr">Français</option>
-                  <option value="en">English</option>
+                  <option value="fr">{t('behaviorTab.french')}</option>
+                  <option value="en">{t('behaviorTab.english')}</option>
                 </select>
                 <p className="text-[12px] text-tx-disabled">
-                  Détermine la langue des instructions système de l&apos;IA.
+                  {t('behaviorTab.responseLanguageHint')}
                 </p>
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label htmlFor="maxTokens" className="text-[13px] font-medium text-tx-secondary">
-                    Tokens maximum
+                    {t('behaviorTab.maxTokens')}
                   </label>
                   <span className="rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-2))] px-1.5 py-0.5 text-[12px] tabular-nums text-tx-muted">
                     {maxTokens}
@@ -1139,9 +1110,7 @@ export default function AISettingsPage() {
                   onBlur={() => save()}
                   className="w-full accent-indigo-500"
                 />
-                <p className="text-[12px] text-tx-disabled">
-                  Longueur maximale des réponses générées.
-                </p>
+                <p className="text-[12px] text-tx-disabled">{t('behaviorTab.maxTokensHint')}</p>
               </div>
 
               <div className="space-y-2">
@@ -1150,7 +1119,7 @@ export default function AISettingsPage() {
                     htmlFor="temperature"
                     className="text-[13px] font-medium text-tx-secondary"
                   >
-                    Température
+                    {t('behaviorTab.temperature')}
                   </label>
                   <span className="rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-2))] px-1.5 py-0.5 text-[12px] tabular-nums text-tx-muted">
                     {temperature.toFixed(1)}
@@ -1167,9 +1136,7 @@ export default function AISettingsPage() {
                   onBlur={() => save()}
                   className="w-full accent-indigo-500"
                 />
-                <p className="text-[12px] text-tx-disabled">
-                  0 = précis et déterministe, 1 = créatif et varié.
-                </p>
+                <p className="text-[12px] text-tx-disabled">{t('behaviorTab.temperatureHint')}</p>
               </div>
 
               <div className="space-y-2">
@@ -1178,7 +1145,7 @@ export default function AISettingsPage() {
                     htmlFor="scoreThreshold"
                     className="text-[13px] font-medium text-tx-secondary"
                   >
-                    Seuil de pertinence RAG
+                    {t('behaviorTab.ragThreshold')}
                   </label>
                   <span className="rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-2))] px-1.5 py-0.5 text-[12px] tabular-nums text-tx-muted">
                     {scoreThreshold.toFixed(1)}
@@ -1195,10 +1162,7 @@ export default function AISettingsPage() {
                   onBlur={() => save()}
                   className="w-full accent-indigo-500"
                 />
-                <p className="text-[12px] text-tx-disabled">
-                  Score minimum pour inclure un document dans le contexte. 0.3 = permissif, 0.9 =
-                  très strict.
-                </p>
+                <p className="text-[12px] text-tx-disabled">{t('behaviorTab.ragThresholdHint')}</p>
               </div>
             </div>
           </div>
@@ -1208,16 +1172,16 @@ export default function AISettingsPage() {
         <TabsContent value="appearance" className="space-y-6">
           <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] p-5">
             <div className="mb-5">
-              <p className="text-[15px] font-semibold text-tx-primary">Personnalisation</p>
-              <p className="mt-0.5 text-[13px] text-tx-muted">
-                Personnalisez l&apos;apparence de votre assistant.
+              <p className="text-[15px] font-semibold text-tx-primary">
+                {t('appearanceTab.title')}
               </p>
+              <p className="mt-0.5 text-[13px] text-tx-muted">{t('appearanceTab.description')}</p>
             </div>
 
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <label htmlFor="primaryColor" className="text-[13px] font-medium text-tx-secondary">
-                  Couleur principale
+                  {t('appearanceTab.primaryColor')}
                 </label>
                 <div className="flex items-center gap-3">
                   <input
@@ -1241,7 +1205,7 @@ export default function AISettingsPage() {
               {/* Preview */}
               <div className="mt-6 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-2))] p-4">
                 <p className="mb-3 text-[12px] font-semibold uppercase tracking-wide text-tx-disabled">
-                  Aperçu
+                  {t('appearanceTab.preview')}
                 </p>
                 <div className="flex items-start gap-3">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-400/20 to-indigo-600/10 text-[13px] font-semibold text-[hsl(var(--accent-500))] ring-1 ring-[hsl(var(--accent-500)/0.2)]">
@@ -1249,7 +1213,7 @@ export default function AISettingsPage() {
                   </div>
                   <div className="flex-1">
                     <div className="max-w-[80%] rounded-2xl rounded-tl-sm bg-[hsl(var(--surface-1))] px-3.5 py-2 text-[13px] leading-relaxed text-tx-primary">
-                      {welcomeMessage || 'Bonjour ! Comment puis-je vous aider ?'}
+                      {welcomeMessage || t('appearanceTab.defaultWelcome')}
                     </div>
                   </div>
                 </div>
@@ -1262,30 +1226,28 @@ export default function AISettingsPage() {
         <TabsContent value="danger" className="space-y-6">
           <div className="rounded-xl border border-[hsl(var(--danger)/0.2)] bg-[hsl(var(--danger)/0.04)] p-5">
             <div className="mb-5">
-              <p className="text-[15px] font-semibold text-[hsl(var(--danger))]">Zone de danger</p>
-              <p className="mt-0.5 text-[13px] text-tx-muted">
-                Actions irréversibles. Procédez avec précaution.
+              <p className="text-[15px] font-semibold text-[hsl(var(--danger))]">
+                {t('dangerZone.title')}
               </p>
+              <p className="mt-0.5 text-[13px] text-tx-muted">{t('dangerZone.description')}</p>
             </div>
 
             <div className="rounded-lg border border-[hsl(var(--danger)/0.3)] bg-[hsl(var(--danger)/0.06)] p-4">
               <h4 className="mb-2 text-[13px] font-semibold text-[hsl(var(--danger))]">
-                Supprimer cet assistant
+                {t('dangerZone.deleteTitle')}
               </h4>
-              <p className="mb-4 text-[13px] text-tx-muted">
-                Cette action supprimera définitivement l&apos;assistant, tous ses documents,
-                conversations et données associées. Cette action est irréversible.
-              </p>
+              <p className="mb-4 text-[13px] text-tx-muted">{t('dangerZone.deleteDescription')}</p>
 
               {!showDeleteConfirm ? (
                 <Button variant="destructive" size="sm" onClick={() => setShowDeleteConfirm(true)}>
-                  Supprimer l&apos;assistant
+                  {t('dangerZone.deleteButton')}
                 </Button>
               ) : (
                 <div className="space-y-3">
                   <p className="text-[13px] text-tx-secondary">
-                    Pour confirmer, tapez <strong className="text-tx-primary">{ai.name}</strong>{' '}
-                    ci-dessous :
+                    {t('dangerZone.confirmPrompt')}{' '}
+                    <strong className="text-tx-primary">{ai.name}</strong>{' '}
+                    {t('dangerZone.confirmPromptSuffix')}
                   </p>
                   <Input
                     value={deleteConfirmText}
@@ -1300,7 +1262,9 @@ export default function AISettingsPage() {
                       onClick={handleDelete}
                       disabled={deleteConfirmText !== ai.name || deleteAI.isPending}
                     >
-                      {deleteAI.isPending ? 'Suppression...' : 'Confirmer la suppression'}
+                      {deleteAI.isPending
+                        ? t('dangerZone.deleting')
+                        : t('dangerZone.confirmDelete')}
                     </Button>
                     <Button
                       variant="outline"
@@ -1310,7 +1274,7 @@ export default function AISettingsPage() {
                         setDeleteConfirmText('');
                       }}
                     >
-                      Annuler
+                      {t('dangerZone.cancel')}
                     </Button>
                   </div>
                 </div>
@@ -1343,7 +1307,7 @@ export default function AISettingsPage() {
       {/* Actions */}
       <div className="mt-8">
         <Button variant="outline" size="sm" onClick={() => router.push(`/ais/${aiId}`)}>
-          Retour
+          {t('back')}
         </Button>
       </div>
     </PageWrapper>

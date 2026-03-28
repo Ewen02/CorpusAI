@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useTranslations } from 'next-intl';
 import { Lock, ExternalLink } from 'lucide-react';
 import {
   Card,
@@ -27,6 +28,7 @@ interface IntegrationTabProps {
 }
 
 export function IntegrationTab({ ai }: IntegrationTabProps) {
+  const t = useTranslations('integration');
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://corpusai.io';
 
   const [theme, setTheme] = React.useState<'light' | 'dark' | 'system'>('system');
@@ -55,14 +57,14 @@ export function IntegrationTab({ ai }: IntegrationTabProps) {
       {isReady ? (
         <div className="flex items-center gap-3 rounded-lg border border-green-500/20 bg-green-500/5 px-4 py-3">
           <div className="h-2 w-2 animate-pulse rounded-full bg-green-500" />
-          <p className="text-sm font-medium text-green-500">Ton AI est public et accessible</p>
+          <p className="text-sm font-medium text-green-500">{t('aiPublicAccessible')}</p>
           <a
             href={chatUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="ml-auto text-xs text-green-500/70 underline hover:text-green-500"
           >
-            Voir la page →
+            {t('viewPage')}
           </a>
         </div>
       ) : (
@@ -70,17 +72,15 @@ export function IntegrationTab({ ai }: IntegrationTabProps) {
           <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-muted">
             <Lock className="h-5 w-5 text-muted-foreground" />
           </div>
-          <p className="text-sm font-medium text-foreground">Options de partage verrouillées</p>
+          <p className="text-sm font-medium text-foreground">{t('sharingLocked')}</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {ai.status !== 'ACTIVE'
-              ? 'Ton AI doit être en statut Actif pour être partageable.'
-              : "Rends ton AI public dans les paramètres pour débloquer le partage et l'intégration."}
+            {ai.status !== 'ACTIVE' ? t('mustBeActive') : t('makePublicToUnlock')}
           </p>
           <a
             href={`/ais/${ai.id}/settings`}
             className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
           >
-            Aller aux paramètres →
+            {t('goToSettings')}
           </a>
         </div>
       )}
@@ -91,15 +91,15 @@ export function IntegrationTab({ ai }: IntegrationTabProps) {
           <AnalyticsCard>
             <SectionHeader
               number={1}
-              title="Lien direct"
-              description="Partager un lien direct vers l'assistant"
+              title={t('directLink')}
+              description={t('directLinkDescription')}
             />
             <div className="space-y-3">
               <div className="flex items-center gap-2 rounded-lg bg-[hsl(var(--surface-0))] p-1 pl-3">
                 <span className="flex-1 truncate font-mono text-sm text-tx-secondary">
                   {chatUrl}
                 </span>
-                <CopyButton value={chatUrl} label="Copier" />
+                <CopyButton value={chatUrl} label={t('copy')} />
               </div>
               <a
                 href={chatUrl}
@@ -108,7 +108,7 @@ export function IntegrationTab({ ai }: IntegrationTabProps) {
                 className="inline-flex items-center gap-1.5 text-xs text-[hsl(var(--accent-400))] transition-colors hover:text-[hsl(var(--accent-500))]"
               >
                 <ExternalLink className="h-3.5 w-3.5" />
-                Ouvrir dans un nouvel onglet
+                {t('openNewTab')}
               </a>
             </div>
           </AnalyticsCard>
@@ -117,9 +117,9 @@ export function IntegrationTab({ ai }: IntegrationTabProps) {
           <AnalyticsCard>
             <SectionHeader
               number={2}
-              title="Intégrer sur ton site"
-              description="Idéal pour une page dédiée ou une section de votre site"
-              badge="Recommandé"
+              title={t('embedOnSite')}
+              description={t('embedOnSiteDescription')}
+              badge={t('recommended')}
             />
 
             {/* Controls + Preview side by side */}
@@ -128,7 +128,7 @@ export function IntegrationTab({ ai }: IntegrationTabProps) {
               <div className="col-span-2 min-w-0 space-y-4 self-start rounded-lg bg-[hsl(var(--surface-0))] p-4">
                 <div className="space-y-3">
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-tx-muted">Thème</Label>
+                    <Label className="text-xs text-tx-muted">{t('theme')}</Label>
                     <Select
                       value={theme}
                       onValueChange={(v) => setTheme(v as 'light' | 'dark' | 'system')}
@@ -137,15 +137,15 @@ export function IntegrationTab({ ai }: IntegrationTabProps) {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="system">Système</SelectItem>
-                        <SelectItem value="light">Clair</SelectItem>
-                        <SelectItem value="dark">Sombre</SelectItem>
+                        <SelectItem value="system">{t('themeSystem')}</SelectItem>
+                        <SelectItem value="light">{t('themeLight')}</SelectItem>
+                        <SelectItem value="dark">{t('themeDark')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-tx-muted">Hauteur (px)</Label>
+                    <Label className="text-xs text-tx-muted">{t('height')}</Label>
                     <Input
                       type="number"
                       value={height}
@@ -157,7 +157,7 @@ export function IntegrationTab({ ai }: IntegrationTabProps) {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-tx-muted">Couleur principale</Label>
+                    <Label className="text-xs text-tx-muted">{t('primaryColor')}</Label>
                     <div className="flex items-center gap-2">
                       <label className="shrink-0 cursor-pointer">
                         <input
@@ -183,11 +183,11 @@ export function IntegrationTab({ ai }: IntegrationTabProps) {
 
                 <div className="space-y-2.5 border-t border-[hsl(var(--border-subtle))] pt-3">
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs text-tx-muted">En-tête</Label>
+                    <Label className="text-xs text-tx-muted">{t('header')}</Label>
                     <Switch checked={!hideHeader} onCheckedChange={(v) => setHideHeader(!v)} />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs text-tx-muted">Branding CorpusAI</Label>
+                    <Label className="text-xs text-tx-muted">{t('branding')}</Label>
                     <Switch checked={!hideFooter} onCheckedChange={(v) => setHideFooter(!v)} />
                   </div>
                 </div>
@@ -221,7 +221,7 @@ export function IntegrationTab({ ai }: IntegrationTabProps) {
 
             {/* Generated code — full width below */}
             <div className="mt-4 space-y-2">
-              <Label className="text-xs text-tx-muted">Code à coller</Label>
+              <Label className="text-xs text-tx-muted">{t('codeToPaste')}</Label>
               <div className="relative">
                 <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg bg-[hsl(var(--surface-0))] p-4 font-mono text-xs leading-relaxed text-tx-secondary">
                   {iframeCode}
@@ -233,21 +233,19 @@ export function IntegrationTab({ ai }: IntegrationTabProps) {
               {/* Contextual note based on access mode */}
               {ai.inviteOnly ? (
                 <p className="rounded-md border border-[hsl(var(--warning)/0.2)] bg-[hsl(var(--warning)/0.05)] px-3 py-2 text-[12px] text-[hsl(var(--warning))]">
-                  Cet assistant nécessite une connexion. Partagez le lien directement avec vos
-                  membres invités — l&apos;iframe seule ne fonctionnera pas pour les utilisateurs
-                  non connectés.
+                  {t('inviteOnlyNote')}
                 </p>
               ) : (
                 <p className="rounded-md border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface-0))] px-3 py-2 text-[12px] text-tx-muted">
-                  Pour les modes avec code d&apos;accès ou lien secret, ajoutez{' '}
+                  {t('accessCodeNote')}{' '}
                   <code className="rounded bg-[hsl(var(--surface-2))] px-1 font-mono">
-                    ?code=VOTRE_CODE
+                    ?code=YOUR_CODE
                   </code>{' '}
-                  ou{' '}
+                  {t('or')}{' '}
                   <code className="rounded bg-[hsl(var(--surface-2))] px-1 font-mono">
-                    ?t=VOTRE_TOKEN
+                    ?t=YOUR_TOKEN
                   </code>{' '}
-                  à l&apos;URL de l&apos;iframe.
+                  {t('toIframeUrl')}
                 </p>
               )}
             </div>
@@ -260,18 +258,15 @@ export function IntegrationTab({ ai }: IntegrationTabProps) {
                 3
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[15px] font-semibold text-tx-primary">Widget flottant</p>
-                <p className="text-[12px] text-tx-muted">
-                  Un bouton flottant sur votre site qui ouvre l'assistant au clic
-                </p>
+                <p className="text-[15px] font-semibold text-tx-primary">{t('floatingWidget')}</p>
+                <p className="text-[12px] text-tx-muted">{t('floatingWidgetDescription')}</p>
               </div>
               <Badge variant="secondary" className="shrink-0 text-[10px]">
-                Bientôt
+                {t('comingSoon')}
               </Badge>
             </div>
             <p className="mt-4 text-xs text-muted-foreground">
-              Cette option permettra d'ajouter automatiquement un bouton flottant sur votre site
-              sans iframe. Elle est en cours de développement.
+              {t('floatingWidgetComingSoonNote')}
             </p>
           </div>
         </>

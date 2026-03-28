@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { Card, CardHeader, CardTitle, CardContent, Skeleton, Badge, Button } from '@corpusai/ui';
 import { apiClient } from '@/lib/api-client';
 import {
@@ -28,6 +29,8 @@ import { formatUptime } from '../utils';
 import { ServiceCard, StatusBadge, RefreshOverlay } from './service-card';
 
 export function MonitoringTab() {
+  const t = useTranslations('admin.monitoring');
+  const locale = useLocale();
   const [data, setData] = React.useState<HealthData | null>(null);
   const [testData, setTestData] = React.useState<TestStatus | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -88,10 +91,10 @@ export function MonitoringTab() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <p className="text-[13px] text-tx-muted">
-          Statut temps réel de toutes les dépendances.
+          {t('statusDescription')}
           {lastRefresh && (
             <span className="ml-2 text-tx-disabled">
-              Mis à jour {lastRefresh.toLocaleTimeString('fr-FR')}
+              {t('updatedAt', { time: lastRefresh.toLocaleTimeString(locale) })}
             </span>
           )}
         </p>
@@ -101,7 +104,7 @@ export function MonitoringTab() {
           className="flex items-center gap-1.5 rounded-lg border border-[hsl(var(--border-default))] px-3 py-1.5 text-[13px] text-tx-muted transition-colors hover:bg-[hsl(var(--surface-2))] disabled:opacity-50"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-          Rafraîchir
+          {t('refresh')}
         </button>
       </div>
 
@@ -115,15 +118,13 @@ export function MonitoringTab() {
                 className={`h-3 w-3 rounded-full ${data.status === 'healthy' ? 'bg-[hsl(var(--success))] shadow-[0_0_8px_hsl(var(--success)/0.5)]' : 'bg-[hsl(var(--warning))] shadow-[0_0_8px_hsl(var(--warning)/0.5)]'}`}
               />
               <span className="text-[15px] font-semibold text-tx-primary">
-                {data.status === 'healthy'
-                  ? 'Tous les services opérationnels'
-                  : 'Services dégradés'}
+                {data.status === 'healthy' ? t('allOperational') : t('degraded')}
               </span>
             </div>
             <div className="flex items-center gap-6 text-[12px] text-tx-muted">
               <span className="flex items-center gap-1">
                 <Activity className="h-3.5 w-3.5" />
-                Uptime {formatUptime(data.uptime)}
+                {t('uptime', { duration: formatUptime(data.uptime) })}
               </span>
               <span className="flex items-center gap-1">
                 <Zap className="h-3.5 w-3.5" />
@@ -147,8 +148,14 @@ export function MonitoringTab() {
               extra={
                 data.services.qdrant.status === 'connected' && (
                   <div className="flex gap-4 text-[12px] text-tx-muted">
-                    <span>{data.services.qdrant.collections} collection(s)</span>
-                    <span>{data.services.qdrant.totalPoints?.toLocaleString()} vectors</span>
+                    <span>
+                      {t('collections', { count: data.services.qdrant.collections ?? 0 })}
+                    </span>
+                    <span>
+                      {t('vectors', {
+                        count: (data.services.qdrant.totalPoints ?? 0).toLocaleString(),
+                      })}
+                    </span>
                   </div>
                 )
               }
@@ -166,18 +173,18 @@ export function MonitoringTab() {
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-[15px]">
               <FileText className="h-4 w-4 text-tx-muted" />
-              File de traitement des documents
+              {t('documentQueue')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-4">
-              <QueueStat value={data.documentQueue.pending} label="En attente" color="warning" />
+              <QueueStat value={data.documentQueue.pending} label={t('pending')} color="warning" />
               <QueueStat
                 value={data.documentQueue.processing}
-                label="En cours"
+                label={t('processing')}
                 color="accent-500"
               />
-              <QueueStat value={data.documentQueue.failed} label="Échoués" color="danger" />
+              <QueueStat value={data.documentQueue.failed} label={t('failed')} color="danger" />
             </div>
           </CardContent>
         </Card>
@@ -192,7 +199,7 @@ export function MonitoringTab() {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-[15px]">
               <CheckCircle2 className="h-4 w-4 text-tx-muted" />
-              Tests unitaires
+              {t('unitTests')}
             </CardTitle>
             <button
               onClick={fetchTests}
@@ -202,12 +209,12 @@ export function MonitoringTab() {
               {isRunningTests ? (
                 <>
                   <RefreshCw className="h-3 w-3 animate-spin" />
-                  Exécution...
+                  {t('running')}
                 </>
               ) : (
                 <>
                   <Activity className="h-3 w-3" />
-                  Lancer les tests
+                  {t('runTests')}
                 </>
               )}
             </button>
@@ -215,9 +222,7 @@ export function MonitoringTab() {
         </CardHeader>
         <CardContent>
           {!testData && !isRunningTests && (
-            <p className="py-4 text-center text-[13px] text-tx-disabled">
-              Cliquez sur &quot;Lancer les tests&quot; pour exécuter les suites de tests.
-            </p>
+            <p className="py-4 text-center text-[13px] text-tx-disabled">{t('runTestsHint')}</p>
           )}
           {isRunningTests && !testData && (
             <div className="space-y-3 py-4">
@@ -231,7 +236,7 @@ export function MonitoringTab() {
                 <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-[hsl(var(--background)/0.7)] backdrop-blur-[2px]">
                   <div className="flex items-center gap-2 text-[13px] text-tx-muted">
                     <RefreshCw className="h-4 w-4 animate-spin" />
-                    Mise à jour en cours...
+                    {t('updating')}
                   </div>
                 </div>
               )}
@@ -240,13 +245,15 @@ export function MonitoringTab() {
                   className={`h-3 w-3 rounded-full ${testData.status === 'all_passed' ? 'bg-[hsl(var(--success))]' : 'bg-[hsl(var(--danger))]'}`}
                 />
                 <span className="text-[14px] font-semibold text-tx-primary">
-                  {testData.totalPassed}/{testData.totalTests} tests passés
+                  {t('testsPassed', { passed: testData.totalPassed, total: testData.totalTests })}
                 </span>
                 {testData.totalFailed > 0 && (
-                  <Badge variant="destructive">{testData.totalFailed} échoués</Badge>
+                  <Badge variant="destructive">
+                    {t('testsFailed', { count: testData.totalFailed })}
+                  </Badge>
                 )}
                 <span className="ml-auto text-[11px] text-tx-disabled">
-                  {new Date(testData.timestamp).toLocaleTimeString('fr-FR')}
+                  {new Date(testData.timestamp).toLocaleTimeString(locale)}
                 </span>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -264,11 +271,15 @@ export function MonitoringTab() {
                       />
                     </div>
                     <div className="mt-2 flex gap-4 text-[12px] text-tx-muted">
-                      <span className="text-[hsl(var(--success))]">{suite.passed} passés</span>
+                      <span className="text-[hsl(var(--success))]">
+                        {t('suitePassed', { count: suite.passed })}
+                      </span>
                       {suite.failed > 0 && (
-                        <span className="text-[hsl(var(--danger))]">{suite.failed} échoués</span>
+                        <span className="text-[hsl(var(--danger))]">
+                          {t('suiteFailed', { count: suite.failed })}
+                        </span>
                       )}
-                      <span>{suite.files} fichiers</span>
+                      <span>{t('suiteFiles', { count: suite.files })}</span>
                     </div>
                     {suite.error && (
                       <p className="mt-2 truncate text-[11px] text-[hsl(var(--danger))]">
@@ -287,6 +298,7 @@ export function MonitoringTab() {
 }
 
 function FailedJobsSection() {
+  const t = useTranslations('admin.monitoring');
   const { data, isLoading } = useFailedJobs();
   const retryJob = useRetryFailedJob();
   const discardJob = useDiscardFailedJob();
@@ -302,7 +314,7 @@ function FailedJobsSection() {
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-[15px]">
           <AlertTriangle className="h-4 w-4 text-tx-muted" />
-          Jobs en échec
+          {t('failedJobs')}
           {jobs.length > 0 && (
             <Badge variant="destructive" className="ml-2">
               {data?.total ?? jobs.length}
@@ -312,9 +324,7 @@ function FailedJobsSection() {
       </CardHeader>
       <CardContent>
         {jobs.length === 0 ? (
-          <p className="py-4 text-center text-[13px] text-tx-disabled">
-            Aucun job en échec dans la file.
-          </p>
+          <p className="py-4 text-center text-[13px] text-tx-disabled">{t('noFailedJobs')}</p>
         ) : (
           <div className="space-y-3">
             {jobs.map((job) => (
@@ -347,14 +357,16 @@ function FailedJobRow({
   isRetrying: boolean;
   isDiscarding: boolean;
 }) {
+  const t = useTranslations('admin.monitoring');
+  const locale = useLocale();
   return (
     <div className="flex items-start justify-between gap-3 rounded-lg border border-[hsl(var(--border-subtle))] p-4">
       <div className="min-w-0 flex-1">
         <p className="truncate text-[13px] font-semibold text-tx-primary">{job.filename}</p>
         <p className="mt-1 truncate text-[12px] text-[hsl(var(--danger))]">{job.error}</p>
         <div className="mt-1.5 flex gap-3 text-[11px] text-tx-disabled">
-          <span>{job.attemptsMade} tentatives</span>
-          {job.failedAt && <span>{new Date(job.failedAt).toLocaleString('fr-FR')}</span>}
+          <span>{t('attempts', { count: job.attemptsMade })}</span>
+          {job.failedAt && <span>{new Date(job.failedAt).toLocaleString(locale)}</span>}
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2">
@@ -364,7 +376,7 @@ function FailedJobRow({
           className="h-8 w-8"
           onClick={onRetry}
           disabled={isRetrying}
-          title="Réessayer"
+          title={t('retryTitle')}
         >
           <RotateCcw className={`h-4 w-4 ${isRetrying ? 'animate-spin' : ''}`} />
         </Button>
@@ -374,7 +386,7 @@ function FailedJobRow({
           className="h-8 w-8 text-tx-muted hover:text-[hsl(var(--danger))]"
           onClick={onDiscard}
           disabled={isDiscarding}
-          title="Supprimer"
+          title={t('discardTitle')}
         >
           <Trash2 className="h-4 w-4" />
         </Button>

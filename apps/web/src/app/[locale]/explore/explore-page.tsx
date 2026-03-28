@@ -2,27 +2,26 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { ExploreAICard, Skeleton, cn } from '@corpusai/ui';
 import { useExploreAIs, useFeaturedAIs } from '@/lib/queries';
 import { SearchIcon } from '@/lib/icons';
 import type { AICategory } from '@corpusai/types';
 
-const CATEGORIES: { value: AICategory | 'ALL'; label: string }[] = [
-  { value: 'ALL', label: 'Tout' },
-  { value: 'SUPPORT', label: 'Support' },
-  { value: 'EDUCATION', label: 'Éducation' },
-  { value: 'LEGAL', label: 'Juridique' },
-  { value: 'FINANCE', label: 'Finance' },
-  { value: 'HEALTH', label: 'Santé' },
-  { value: 'TECH', label: 'Tech' },
+const CATEGORY_VALUES: (AICategory | 'ALL')[] = [
+  'ALL',
+  'SUPPORT',
+  'EDUCATION',
+  'LEGAL',
+  'FINANCE',
+  'HEALTH',
+  'TECH',
 ];
 
-const SORT_OPTIONS = [
-  { value: 'popular', label: 'Populaires' },
-  { value: 'newest', label: 'Récents' },
-] as const;
+const SORT_VALUES = ['popular', 'newest'] as const;
 
 export default function ExplorePage() {
+  const t = useTranslations('explore');
   const router = useRouter();
   const [search, setSearch] = React.useState('');
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
@@ -71,13 +70,13 @@ export default function ExplorePage() {
               href="/sign-in"
               className="text-[13px] font-medium text-tx-muted transition-colors hover:text-tx-primary"
             >
-              Se connecter
+              {t('signIn')}
             </a>
             <a
               href="/sign-up"
               className="rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-600 px-3.5 py-1.5 text-[13px] font-medium text-white shadow-accent transition-all hover:opacity-90"
             >
-              Créer le mien
+              {t('createMine')}
             </a>
           </div>
         </div>
@@ -88,19 +87,16 @@ export default function ExplorePage() {
         <div className="mb-12 text-center">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[hsl(var(--accent-500)/0.25)] bg-[hsl(var(--accent-500)/0.07)] px-3 py-1">
             <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
-            <span className="text-[12px] font-medium text-indigo-400">
-              Marketplace communautaire
-            </span>
+            <span className="text-[12px] font-medium text-indigo-400">{t('badge')}</span>
           </div>
           <h1 className="mb-3 text-4xl font-bold tracking-tight text-tx-primary sm:text-5xl">
-            Découvrez des AIs{' '}
+            {t('heroTitle')}{' '}
             <span className="bg-gradient-to-r from-indigo-400 to-indigo-300 bg-clip-text text-transparent">
-              créés par la communauté
+              {t('heroTitleHighlight')}
             </span>
           </h1>
           <p className="mx-auto max-w-lg text-[15px] leading-relaxed text-tx-muted">
-            Des assistants alimentés par des documents réels, créés et partagés librement. Trouvez
-            l&apos;AI qui répond à vos questions.
+            {t('heroDescription')}
           </p>
         </div>
 
@@ -108,7 +104,7 @@ export default function ExplorePage() {
         {showFeatured && (
           <section className="mb-12">
             <div className="mb-5 flex items-center gap-3">
-              <h2 className="text-[13px] font-semibold text-tx-primary">Populaires</h2>
+              <h2 className="text-[13px] font-semibold text-tx-primary">{t('popular')}</h2>
               <div className="h-px flex-1 bg-gradient-to-r from-[hsl(var(--border-default))] to-transparent" />
             </div>
             {isFeaturedLoading ? (
@@ -143,7 +139,7 @@ export default function ExplorePage() {
             <SearchIcon className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-tx-disabled" />
             <input
               type="text"
-              placeholder="Rechercher un assistant..."
+              placeholder={t('searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-9 w-full rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] pl-8 pr-4 text-[13px] text-tx-primary placeholder:text-tx-disabled focus:border-[hsl(var(--accent-500)/0.4)] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--accent-500)/0.15)]"
@@ -152,18 +148,18 @@ export default function ExplorePage() {
 
           {/* Sort — pill segment */}
           <div className="flex items-center gap-0.5 rounded-lg bg-[hsl(var(--surface-2))] p-1">
-            {SORT_OPTIONS.map((opt) => (
+            {SORT_VALUES.map((sortValue) => (
               <button
-                key={opt.value}
-                onClick={() => setSort(opt.value)}
+                key={sortValue}
+                onClick={() => setSort(sortValue)}
                 className={cn(
                   'rounded-md px-3 py-1.5 text-[12px] font-medium transition-all duration-150',
-                  sort === opt.value
+                  sort === sortValue
                     ? 'bg-[hsl(var(--surface-1))] text-tx-primary shadow-sm ring-1 ring-[hsl(var(--border-default))]'
                     : 'text-tx-muted hover:text-tx-secondary'
                 )}
               >
-                {opt.label}
+                {t(`sort.${sortValue}`)}
               </button>
             ))}
           </div>
@@ -171,18 +167,18 @@ export default function ExplorePage() {
 
         {/* Category filters */}
         <div className="mb-6 flex flex-wrap gap-2">
-          {CATEGORIES.map((cat) => (
+          {CATEGORY_VALUES.map((catValue) => (
             <button
-              key={cat.value}
-              onClick={() => setCategory(cat.value)}
+              key={catValue}
+              onClick={() => setCategory(catValue)}
               className={cn(
                 'rounded-full border px-3.5 py-1.5 text-[12px] font-medium transition-all duration-150',
-                category === cat.value
+                category === catValue
                   ? 'border-[hsl(var(--accent-500)/0.4)] bg-[hsl(var(--accent-500)/0.1)] text-indigo-400'
                   : 'border-[hsl(var(--border-default))] text-tx-muted hover:border-[hsl(var(--border-strong))] hover:text-tx-secondary'
               )}
             >
-              {cat.label}
+              {t(`category.${catValue}`)}
             </button>
           ))}
         </div>
@@ -199,10 +195,8 @@ export default function ExplorePage() {
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[hsl(var(--surface-2))]">
               <SearchIcon className="h-5 w-5 text-tx-disabled" />
             </div>
-            <p className="mt-4 text-sm font-medium text-tx-secondary">Aucun résultat</p>
-            <p className="mt-1 text-[13px] text-tx-muted">
-              Aucun assistant ne correspond à ces critères.
-            </p>
+            <p className="mt-4 text-sm font-medium text-tx-secondary">{t('noResults')}</p>
+            <p className="mt-1 text-[13px] text-tx-muted">{t('noResultsDescription')}</p>
             <button
               onClick={() => {
                 setSearch('');
@@ -210,14 +204,14 @@ export default function ExplorePage() {
               }}
               className="mt-4 text-[13px] font-medium text-indigo-400 hover:text-indigo-300 hover:underline"
             >
-              Réinitialiser les filtres
+              {t('resetFilters')}
             </button>
           </div>
         ) : (
           <>
             {results && results.meta.total > 0 && (
               <p className="mb-4 text-[12px] text-tx-disabled">
-                {results.meta.total} assistant{results.meta.total > 1 ? 's' : ''}
+                {t('resultCount', { count: results.meta.total })}
               </p>
             )}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -244,7 +238,7 @@ export default function ExplorePage() {
                   onClick={() => setPage((p) => p - 1)}
                   className="rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] px-4 py-2 text-[13px] font-medium text-tx-muted transition-all hover:border-[hsl(var(--border-strong))] hover:text-tx-primary disabled:pointer-events-none disabled:opacity-40"
                 >
-                  ← Précédent
+                  {t('previous')}
                 </button>
                 <span className="text-[12px] text-tx-muted">
                   {page} / {results.meta.totalPages}
@@ -254,7 +248,7 @@ export default function ExplorePage() {
                   onClick={() => setPage((p) => p + 1)}
                   className="rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] px-4 py-2 text-[13px] font-medium text-tx-muted transition-all hover:border-[hsl(var(--border-strong))] hover:text-tx-primary disabled:pointer-events-none disabled:opacity-40"
                 >
-                  Suivant →
+                  {t('next')}
                 </button>
               </div>
             )}

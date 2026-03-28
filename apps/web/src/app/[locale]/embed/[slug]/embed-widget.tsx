@@ -3,6 +3,7 @@
 import * as React from 'react';
 import Image from 'next/image';
 import { useParams, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { ChatInterface, ChatInterfaceSkeleton, Skeleton } from '@corpusai/ui';
 import type { ChatMessage } from '@corpusai/ui';
 import { apiClient, type StreamDoneData } from '@/lib/api-client';
@@ -52,6 +53,7 @@ function useEmbedConfig(): EmbedConfig & { accessToken?: string; accessCode?: st
 // ============================================
 
 export default function EmbedPage() {
+  const t = useTranslations('chatPublic');
   const params = useParams();
   const slug = params.slug as string;
   const config = useEmbedConfig();
@@ -74,7 +76,7 @@ export default function EmbedPage() {
         setAI(data);
       } catch (err) {
         console.error('Failed to fetch AI:', err);
-        setError('Assistant introuvable.');
+        setError(t('notFound'));
       } finally {
         setIsLoading(false);
       }
@@ -103,7 +105,7 @@ export default function EmbedPage() {
         setConversationId(response.id);
       } catch (err) {
         console.error('Failed to start conversation:', err);
-        setError('Impossible de démarrer la conversation.');
+        setError(t('startError'));
       }
     }
 
@@ -167,7 +169,7 @@ export default function EmbedPage() {
               msg.id === assistantId
                 ? {
                     ...msg,
-                    content: "Désolé, une erreur s'est produite.",
+                    content: t('streamError'),
                     isStreaming: false,
                   }
                 : msg
@@ -213,7 +215,7 @@ export default function EmbedPage() {
         <div className="flex flex-1 items-center justify-center p-4">
           <div className="text-center">
             <div className="mb-4 text-4xl">:(</div>
-            <h1 className="mb-2 text-xl font-semibold">Oops!</h1>
+            <h1 className="mb-2 text-xl font-semibold">{t('oops')}</h1>
             <p className="text-muted-foreground">{error}</p>
           </div>
         </div>
@@ -248,12 +250,10 @@ export default function EmbedPage() {
           messages={messages}
           onSendMessage={handleSendMessage}
           isLoading={isStreaming}
-          welcomeMessage={
-            ai.welcomeMessage ?? `Bonjour ! Je suis ${ai.name}. Comment puis-je vous aider ?`
-          }
+          welcomeMessage={ai.welcomeMessage ?? t('welcomeMessage', { name: ai.name })}
           aiName={ai.name}
           aiAvatar={ai.avatar ?? undefined}
-          placeholder="Posez votre question..."
+          placeholder={t('placeholder')}
         />
       </div>
       {!config.hideFooter && <EmbedFooter />}

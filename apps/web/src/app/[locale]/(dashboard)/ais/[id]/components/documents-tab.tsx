@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useTranslations } from 'next-intl';
 import {
   DocumentUploader,
   Badge,
@@ -45,19 +46,7 @@ interface DocumentsTabProps {
   onRetryDocument: (documentId: string) => void;
 }
 
-const PROCESSING_STEPS = [
-  { key: 'PARSING', label: 'Lecture' },
-  { key: 'CHUNKING', label: 'Analyse' },
-  { key: 'EMBEDDING', label: 'Compréhension' },
-  { key: 'STORING', label: 'Enregistrement' },
-] as const;
-
-const STEP_LABELS: Record<string, string> = {
-  PARSING: 'Lecture du document…',
-  CHUNKING: 'Découpage en sections…',
-  EMBEDDING: 'Compréhension du contenu…',
-  STORING: 'Enregistrement…',
-};
+const PROCESSING_STEP_KEYS = ['PARSING', 'CHUNKING', 'EMBEDDING', 'STORING'] as const;
 
 // ============================================
 // Main
@@ -73,6 +62,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({
   onDeleteDocument,
   onRetryDocument,
 }: DocumentsTabProps) {
+  const t = useTranslations('documents');
   const indexedCount = documents?.filter((d) => d.status === 'INDEXED').length ?? 0;
   const processingCount =
     documents?.filter((d) => d.status === 'PROCESSING' || d.status === 'PENDING').length ?? 0;
@@ -88,8 +78,8 @@ export const DocumentsTab = React.memo(function DocumentsTab({
       <div>
         <p className="mb-3 text-sm text-muted-foreground">
           {documentCount === 0
-            ? 'Aucun document dans la base de connaissances'
-            : `${indexedCount} document(s) prêt(s)${processingCount > 0 ? ` · ${processingCount} en traitement` : ''}`}
+            ? t('noDocumentsInKnowledgeBase')
+            : `${t('ready', { count: indexedCount })}${processingCount > 0 ? ` · ${t('processing', { count: processingCount })}` : ''}`}
         </p>
         {isLoading ? (
           <div className="space-y-3">
@@ -113,11 +103,12 @@ export const DocumentsTab = React.memo(function DocumentsTab({
 });
 
 const EmptyDocumentsState = React.memo(function EmptyDocumentsState() {
+  const t = useTranslations('documents');
   return (
     <div className="py-8 text-center text-muted-foreground">
       <DocumentIcon className="mx-auto mb-4 h-12 w-12 opacity-50" />
-      <p>Aucun document ajouté</p>
-      <p className="text-sm">Importez vos fichiers pour que votre assistant puisse y répondre.</p>
+      <p>{t('empty')}</p>
+      <p className="text-sm">{t('emptyDescription')}</p>
     </div>
   );
 });
@@ -159,20 +150,37 @@ const DocumentItem = React.memo(function DocumentItem({
   onDelete: () => void;
   onRetry: () => void;
 }) {
+  const t = useTranslations('documents');
   const statusConfig = DOCUMENT_STATUS_CONFIG[doc.status as DocumentStatus];
   const isInProgress = doc.status === 'PROCESSING' || doc.status === 'PENDING';
   const isIndexed = doc.status === 'INDEXED';
   const isFailed = doc.status === 'FAILED';
 
   const currentStep = uploadInfo?.currentStep ?? null;
-  const stepIndex = currentStep ? PROCESSING_STEPS.findIndex((s) => s.key === currentStep) : -1;
+  const stepIndex = currentStep
+    ? PROCESSING_STEP_KEYS.indexOf(currentStep as (typeof PROCESSING_STEP_KEYS)[number])
+    : -1;
 
   // Progress by step: each completed step = 25%, current step = halfway
   const stepProgress = isInProgress
     ? stepIndex >= 0
-      ? ((stepIndex + 0.5) / PROCESSING_STEPS.length) * 100
+      ? ((stepIndex + 0.5) / PROCESSING_STEP_KEYS.length) * 100
       : 5
     : 0;
+
+  const STEP_LABEL_KEYS: Record<string, string> = {
+    PARSING: 'stepLabels.parsing',
+    CHUNKING: 'stepLabels.chunking',
+    EMBEDDING: 'stepLabels.embedding',
+    STORING: 'stepLabels.storing',
+  };
+
+  const STEP_SHORT_KEYS: Record<string, string> = {
+    PARSING: 'stepShort.parsing',
+    CHUNKING: 'stepShort.chunking',
+    EMBEDDING: 'stepShort.embedding',
+    STORING: 'stepShort.storing',
+  };
 
   return (
     <div
@@ -218,19 +226,17 @@ const DocumentItem = React.memo(function DocumentItem({
             {/* Success metadata */}
             {isIndexed && (
               <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-green-400/80">
-                <span>Analyse terminée</span>
+                <span>{t('analysisComplete')}</span>
                 {doc.pageCount != null && doc.pageCount > 0 && (
                   <>
                     <span>·</span>
-                    <span>
-                      {doc.pageCount} {doc.pageCount === 1 ? 'page analysée' : 'pages analysées'}
-                    </span>
+                    <span>{t('pagesAnalyzed', { count: doc.pageCount })}</span>
                   </>
                 )}
                 {doc.wordCount != null && doc.wordCount > 0 && (
                   <>
                     <span>·</span>
-                    <span>{doc.wordCount.toLocaleString()} mots extraits</span>
+                    <span>{t('wordsExtracted', { count: doc.wordCount.toLocaleString() })}</span>
                   </>
                 )}
               </div>
@@ -241,13 +247,13 @@ const DocumentItem = React.memo(function DocumentItem({
               <div className="mt-3 space-y-2">
                 {/* Step icons row */}
                 <div className="flex items-start justify-between">
-                  {PROCESSING_STEPS.map((step, i) => {
+                  {PROCESSING_STEP_KEYS.map((stepKey, i) => {
                     const isCompleted = stepIndex > i;
                     const isCurrent = stepIndex === i;
                     const renderIcon = STEP_ICONS[i] ?? StepPendingIcon;
 
                     return (
-                      <div key={step.key} className="flex flex-col items-center gap-1">
+                      <div key={stepKey} className="flex flex-col items-center gap-1">
                         <div className="flex h-6 w-6 items-center justify-center">
                           {isCompleted ? (
                             <StepCompletedIcon />
@@ -263,7 +269,7 @@ const DocumentItem = React.memo(function DocumentItem({
                             isCurrent ? 'text-blue-400' : 'text-muted-foreground'
                           )}
                         >
-                          {step.label}
+                          {t(STEP_SHORT_KEYS[stepKey] as never)}
                         </span>
                       </div>
                     );
@@ -280,7 +286,9 @@ const DocumentItem = React.memo(function DocumentItem({
 
                 {/* Step label */}
                 <p className="text-xs text-blue-400/80">
-                  {currentStep ? (STEP_LABELS[currentStep] ?? 'Traitement…') : 'En attente…'}
+                  {currentStep
+                    ? (t(STEP_LABEL_KEYS[currentStep] as never) ?? t('processingFallback'))
+                    : t('waiting')}
                 </p>
               </div>
             )}
@@ -297,7 +305,7 @@ const DocumentItem = React.memo(function DocumentItem({
                   <RefreshIcon className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Réessayer l&apos;analyse</TooltipContent>
+              <TooltipContent>{t('retryAnalysis')}</TooltipContent>
             </Tooltip>
           )}
           <Tooltip>
@@ -311,7 +319,7 @@ const DocumentItem = React.memo(function DocumentItem({
                 <TrashIcon className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Supprimer le document</TooltipContent>
+            <TooltipContent>{t('deleteDocument')}</TooltipContent>
           </Tooltip>
         </div>
       </div>

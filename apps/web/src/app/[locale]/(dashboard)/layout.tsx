@@ -22,6 +22,7 @@ import {
   ShieldIcon,
   CompassIcon,
 } from '@/lib/icons';
+import { LanguageSwitcher } from '@/components/language-switcher';
 
 export default function DashboardLayoutWrapper({ children }: { children: React.ReactNode }) {
   const t = useTranslations('nav');
@@ -150,6 +151,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
       onCreateAI={handleCreateAI}
       onUpgrade={handleUpgrade}
       onSignOut={handleSignOut}
+      logo={<LanguageSwitcher />}
     >
       {children}
     </DashboardLayout>

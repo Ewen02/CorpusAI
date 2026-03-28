@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations, useLocale } from 'next-intl';
 import { ExploreAICard, Avatar, AvatarFallback, AvatarImage, Skeleton } from '@corpusai/ui';
 import { useCreatorProfile } from '@/lib/queries';
 
@@ -10,6 +11,8 @@ interface ProfilePageProps {
 }
 
 export default function ProfilePage({ username }: ProfilePageProps) {
+  const t = useTranslations('profile');
+  const locale = useLocale();
   const router = useRouter();
   const { data: creator, isLoading, isError } = useCreatorProfile(username);
 
@@ -29,13 +32,13 @@ export default function ProfilePage({ username }: ProfilePageProps) {
               href="/explore"
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
-              Explorer
+              {t('explore')}
             </a>
             <a
               href="/sign-up"
               className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
-              Créer le mien
+              {t('createMine')}
             </a>
           </div>
         </div>
@@ -46,9 +49,9 @@ export default function ProfilePage({ username }: ProfilePageProps) {
           <ProfileSkeleton />
         ) : isError || !creator ? (
           <div className="py-20 text-center">
-            <p className="text-muted-foreground">Profil introuvable.</p>
+            <p className="text-muted-foreground">{t('notFound')}</p>
             <a href="/explore" className="mt-4 inline-block text-sm text-primary underline">
-              ← Retour à l'exploration
+              {t('backToExplore')}
             </a>
           </div>
         ) : (
@@ -72,14 +75,13 @@ export default function ProfilePage({ username }: ProfilePageProps) {
                   </p>
                 )}
                 <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground/60">
+                  <span>{t('publicAIs', { count: creator.ais.length })}</span>
                   <span>
-                    {creator.ais.length} AI{creator.ais.length > 1 ? 's' : ''} publics
-                  </span>
-                  <span>
-                    Membre depuis{' '}
-                    {new Date(creator.createdAt).toLocaleDateString('fr-FR', {
-                      month: 'long',
-                      year: 'numeric',
+                    {t('memberSince', {
+                      date: new Date(creator.createdAt).toLocaleDateString(locale, {
+                        month: 'long',
+                        year: 'numeric',
+                      }),
                     })}
                   </span>
                 </div>
@@ -89,9 +91,7 @@ export default function ProfilePage({ username }: ProfilePageProps) {
             {/* AI grid */}
             {creator.ais.length === 0 ? (
               <div className="py-16 text-center">
-                <p className="text-sm text-muted-foreground">
-                  Ce créateur n'a pas encore partagé d'AI public.
-                </p>
+                <p className="text-sm text-muted-foreground">{t('noPublicAIs')}</p>
               </div>
             ) : (
               <div className="stagger-children grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
