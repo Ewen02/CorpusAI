@@ -1,6 +1,7 @@
 import { Injectable, Inject, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { prisma, DocumentStatus, type TransactionClient } from '@corpusai/database';
 import { assertCanAddDocument, assertCanUploadDocument } from '../../shared/subscription-checks';
+import { canAddDocument, canUploadDocument } from '@corpusai/subscription';
 import { SUPPORTED_DOCUMENT_TYPES, type SupportedDocumentType } from '@corpusai/types';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
@@ -276,6 +277,111 @@ export class DocumentsService {
 
     this.logger.log(`Uploaded document ${document.id} queued for processing`);
     return document;
+  }
+
+  async createFromBulkUpload(userId: string, aiId: string, files: Express.Multer.File[]) {
+    const ai = await prisma.aI.findFirst({
+      where: { id: aiId, userId },
+      include: {
+        user: { select: { subscriptionPlan: true } },
+        _count: { select: { documents: true } },
+      },
+    });
+
+    if (!ai) {
+      throw new NotFoundException('AI not found');
+    }
+
+    const plan = ai.user.subscriptionPlan;
+
+    // Validate all files upfront before creating any records
+    const errors: { filename: string; reason: string }[] = [];
+
+    if (!canAddDocument(plan, ai._count.documents + files.length - 1)) {
+      throw new BadRequestException(
+        `Adding ${files.length} documents would exceed the ${plan} plan limit. ` +
+          `Current: ${ai._count.documents}, trying to add: ${files.length}.`
+      );
+    }
+
+    for (const file of files) {
+      const sizeMB = file.size / (1024 * 1024);
+      if (!canUploadDocument(plan, sizeMB)) {
+        errors.push({
+          filename: file.originalname,
+          reason: `File exceeds the maximum upload size for the ${plan} plan`,
+        });
+        continue;
+      }
+
+      if (!SUPPORTED_DOCUMENT_TYPES.includes(file.mimetype as SupportedDocumentType)) {
+        errors.push({
+          filename: file.originalname,
+          reason: `Unsupported file type: ${file.mimetype}`,
+        });
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new BadRequestException({ message: 'Some files failed validation', errors });
+    }
+
+    // Create all documents in a single transaction
+    const documents = await prisma.$transaction(async (tx: TransactionClient) => {
+      const created = [];
+      for (const file of files) {
+        const doc = await tx.document.create({
+          data: {
+            aiId,
+            filename: file.originalname,
+            mimeType: file.mimetype,
+            size: file.size,
+            status: DocumentStatus.PENDING,
+          },
+        });
+        created.push(doc);
+      }
+
+      await tx.aI.update({
+        where: { id: aiId },
+        data: { documentCount: { increment: files.length } },
+      });
+
+      await incrementDailyStats(tx, userId, aiId, 'documentCount', files.length);
+
+      return created;
+    });
+
+    // Write files to disk and enqueue jobs
+    const tmpDir = path.join(os.tmpdir(), 'corpusai-uploads');
+    await fs.mkdir(tmpDir, { recursive: true });
+
+    for (let i = 0; i < documents.length; i++) {
+      const doc = documents[i]!;
+      const file = files[i]!;
+      const filePath = path.join(tmpDir, `${doc.id}-${file.originalname}`);
+      await fs.writeFile(filePath, file.buffer);
+
+      try {
+        await this.documentQueue.add(
+          'process',
+          {
+            documentId: doc.id,
+            aiId,
+            filename: file.originalname,
+            mimeType: file.mimetype,
+            filePath,
+          },
+          JOB_RETRY_CONFIG
+        );
+      } catch (error) {
+        await fs.unlink(filePath).catch(() => {});
+        throw error;
+      }
+    }
+
+    this.logger.log(`Bulk upload: ${documents.length} documents queued for processing`);
+    return documents.map((d) => ({ id: d.id, filename: d.filename }));
   }
 
   async getProgress(userId: string, documentId: string) {

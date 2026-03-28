@@ -10,12 +10,13 @@ import {
   UseGuards,
   UseInterceptors,
   UploadedFile,
+  UploadedFiles,
   ParseFilePipe,
   MaxFileSizeValidator,
   BadRequestException,
   MessageEvent,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
@@ -139,6 +140,44 @@ export class DocumentsController {
     }
 
     return this.documentsService.createFromUpload(user.id, aiId, file);
+  }
+
+  @Post('upload-bulk')
+  @ApiOperation({ summary: 'Upload multiple document files at once' })
+  @ApiParam({ name: 'aiId', description: 'AI ID' })
+  @ApiResponse({ status: 201, description: 'Files uploaded and documents created' })
+  @ApiResponse({ status: 400, description: 'No files provided or validation failed' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'AI not found' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        files: {
+          type: 'array',
+          items: { type: 'string', format: 'binary' },
+          description: 'Document files (PDF, DOCX, TXT, MD)',
+        },
+      },
+      required: ['files'],
+    },
+  })
+  @UseInterceptors(
+    FilesInterceptor('files', 10, {
+      limits: { fileSize: 500 * 1024 * 1024 },
+    })
+  )
+  async uploadBulk(
+    @CurrentUser() user: CurrentUserData,
+    @Param('aiId') aiId: string,
+    @UploadedFiles() files: Express.Multer.File[]
+  ) {
+    if (!files || files.length === 0) {
+      throw new BadRequestException('No files provided');
+    }
+
+    return this.documentsService.createFromBulkUpload(user.id, aiId, files);
   }
 
   @Delete(':id')

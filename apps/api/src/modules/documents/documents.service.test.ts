@@ -50,6 +50,12 @@ vi.mock('@corpusai/queue', () => ({
   JOB_RETRY_CONFIG: { attempts: 3, backoff: { type: 'exponential', delay: 5000 } },
 }));
 
+vi.mock('node:fs/promises', () => ({
+  mkdir: vi.fn().mockResolvedValue(undefined),
+  writeFile: vi.fn().mockResolvedValue(undefined),
+  unlink: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('../../shared/daily-stats', () => ({
   incrementDailyStats: vi.fn(),
 }));
@@ -248,6 +254,128 @@ describe('DocumentsService', () => {
       });
 
       await expect(service.retryProcessing('user-1', 'doc-1')).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('createFromBulkUpload', () => {
+    const makeFile = (name: string, mime: string, size = 1024): Express.Multer.File =>
+      ({
+        originalname: name,
+        mimetype: mime,
+        size,
+        buffer: Buffer.from('test'),
+      }) as Express.Multer.File;
+
+    const aiWithPlan = (docCount: number, plan = 'FREE') => ({
+      id: 'ai-1',
+      userId: 'user-1',
+      user: { subscriptionPlan: plan },
+      _count: { documents: docCount },
+    });
+
+    it('should create multiple documents and queue all jobs', async () => {
+      mockAI.findFirst.mockResolvedValue(aiWithPlan(2));
+      let callCount = 0;
+      (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation(
+        async (fn: (tx: unknown) => unknown) =>
+          fn({
+            document: {
+              create: vi.fn().mockImplementation(() => {
+                callCount++;
+                return { id: `doc-${callCount}`, aiId: 'ai-1', filename: `file${callCount}.pdf` };
+              }),
+            },
+            aI: { update: vi.fn() },
+            dailyStats: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+          })
+      );
+
+      const files = [
+        makeFile('a.pdf', 'application/pdf'),
+        makeFile('b.pdf', 'application/pdf'),
+        makeFile('c.pdf', 'application/pdf'),
+      ];
+
+      const result = await service.createFromBulkUpload('user-1', 'ai-1', files);
+      expect(result).toHaveLength(3);
+      expect(result[0]).toEqual(expect.objectContaining({ id: 'doc-1' }));
+      expect(mockQueue.add).toHaveBeenCalledTimes(3);
+    });
+
+    it('should throw when AI not found', async () => {
+      mockAI.findFirst.mockResolvedValue(null);
+      const files = [makeFile('a.pdf', 'application/pdf')];
+      await expect(service.createFromBulkUpload('user-1', 'ai-1', files)).rejects.toThrow(
+        NotFoundException
+      );
+    });
+
+    it('should throw when adding files would exceed plan limit', async () => {
+      mockAI.findFirst.mockResolvedValue(aiWithPlan(48, 'CREATOR'));
+      (canAddDocument as ReturnType<typeof vi.fn>).mockReturnValue(false);
+
+      const files = [
+        makeFile('a.pdf', 'application/pdf'),
+        makeFile('b.pdf', 'application/pdf'),
+        makeFile('c.pdf', 'application/pdf'),
+      ];
+
+      await expect(service.createFromBulkUpload('user-1', 'ai-1', files)).rejects.toThrow(
+        BadRequestException
+      );
+      expect(mockQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('should reject batch when one file has unsupported MIME type', async () => {
+      mockAI.findFirst.mockResolvedValue(aiWithPlan(0));
+
+      const files = [
+        makeFile('good.pdf', 'application/pdf'),
+        makeFile('bad.exe', 'application/x-msdownload'),
+      ];
+
+      await expect(service.createFromBulkUpload('user-1', 'ai-1', files)).rejects.toThrow(
+        BadRequestException
+      );
+      expect(mockQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('should reject batch when one file exceeds size limit', async () => {
+      mockAI.findFirst.mockResolvedValue(aiWithPlan(0));
+      (canUploadDocument as ReturnType<typeof vi.fn>).mockImplementation(
+        (_plan: string, sizeMB: number) => sizeMB <= 50
+      );
+
+      const files = [
+        makeFile('small.pdf', 'application/pdf', 1024),
+        makeFile('huge.pdf', 'application/pdf', 200 * 1024 * 1024),
+      ];
+
+      await expect(service.createFromBulkUpload('user-1', 'ai-1', files)).rejects.toThrow(
+        BadRequestException
+      );
+      expect(mockQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('should include per-file error details in rejection', async () => {
+      mockAI.findFirst.mockResolvedValue(aiWithPlan(0));
+
+      const files = [
+        makeFile('good.pdf', 'application/pdf'),
+        makeFile('bad.exe', 'application/x-msdownload'),
+      ];
+
+      try {
+        await service.createFromBulkUpload('user-1', 'ai-1', files);
+        expect.unreachable('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(BadRequestException);
+        const response = (error as BadRequestException).getResponse() as {
+          errors: { filename: string; reason: string }[];
+        };
+        expect(response.errors).toHaveLength(1);
+        expect(response.errors[0]!.filename).toBe('bad.exe');
+      }
     });
   });
 });
