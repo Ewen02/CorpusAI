@@ -2,7 +2,7 @@ FROM node:20-slim AS base
 RUN corepack enable && corepack prepare pnpm@9 --activate
 WORKDIR /app
 
-# Dependencies
+# ── Dependencies ──────────────────────────────────────────────
 FROM base AS deps
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/ai-worker/package.json ./apps/ai-worker/
@@ -15,18 +15,27 @@ COPY packages/queue/package.json ./packages/queue/
 COPY tooling/typescript-config/package.json ./tooling/typescript-config/
 RUN pnpm install --frozen-lockfile
 
-# Build
+# ── Build ─────────────────────────────────────────────────────
 FROM base AS build
-COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/ ./
 COPY . .
 RUN pnpm --filter @corpusai/database db:generate
 RUN pnpm --filter @corpusai/ai-worker... build
+RUN pnpm --filter @corpusai/ai-worker deploy --prod /app/deploy
+# Copy generated Prisma client into deployed node_modules
+RUN cp -r $(find /app/node_modules/.pnpm -path '*/@prisma/client' -type d | head -1)/../../.prisma /app/deploy/node_modules/.prisma
 
-# Runtime
+# ── Runtime ───────────────────────────────────────────────────
 FROM node:20-slim AS runtime
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
+
+COPY --from=build /app/deploy/node_modules ./node_modules
 COPY --from=build /app/apps/ai-worker/dist ./dist
-COPY --from=build /app/node_modules ./node_modules
 
 ENV NODE_ENV=production
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD node -e "process.exit(0)" || exit 1
+
 CMD ["node", "dist/index.js"]
