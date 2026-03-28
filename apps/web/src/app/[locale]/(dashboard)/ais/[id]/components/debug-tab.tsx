@@ -94,8 +94,8 @@ export const DebugTab = React.memo(function DebugTab({ aiId }: DebugTabProps) {
         <CardHeader>
           <CardTitle>Debug RAG</CardTitle>
           <CardDescription>
-            Testez une question pour voir les chunks recuperes et leurs scores de similarite.
-            Cela permet de diagnostiquer les problemes de retrieval sans appeler le LLM.
+            Testez une question pour voir les chunks recuperes et leurs scores de similarite. Cela
+            permet de diagnostiquer les problemes de retrieval sans appeler le LLM.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -114,7 +114,7 @@ export const DebugTab = React.memo(function DebugTab({ aiId }: DebugTabProps) {
 
           <div className="flex flex-wrap gap-6 text-sm">
             <div className="flex items-center gap-3">
-              <Label htmlFor="threshold" className="text-muted-foreground whitespace-nowrap">
+              <Label htmlFor="threshold" className="whitespace-nowrap text-muted-foreground">
                 Seuil de pertinence:
               </Label>
               <input
@@ -130,7 +130,7 @@ export const DebugTab = React.memo(function DebugTab({ aiId }: DebugTabProps) {
               <span className="w-8 text-center font-mono">{threshold.toFixed(1)}</span>
             </div>
             <div className="flex items-center gap-3">
-              <Label htmlFor="topK" className="text-muted-foreground whitespace-nowrap">
+              <Label htmlFor="topK" className="whitespace-nowrap text-muted-foreground">
                 Nombre de resultats:
               </Label>
               <input
@@ -140,7 +140,7 @@ export const DebugTab = React.memo(function DebugTab({ aiId }: DebugTabProps) {
                 max="20"
                 value={topK}
                 onChange={(e) => setTopK(parseInt(e.target.value) || 5)}
-                className="w-16 bg-background border border-border rounded px-2 py-1 text-center"
+                className="w-16 rounded border border-border bg-background px-2 py-1 text-center"
               />
             </div>
           </div>
@@ -165,21 +165,21 @@ export const DebugTab = React.memo(function DebugTab({ aiId }: DebugTabProps) {
               <CardTitle className="text-lg">Analyse</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                <div className="p-3 rounded-lg bg-muted/50">
-                  <p className="text-xs text-muted-foreground mb-1">Chunks</p>
+              <div className="mb-4 grid grid-cols-2 gap-4 md:grid-cols-4">
+                <div className="rounded-lg bg-muted/50 p-3">
+                  <p className="mb-1 text-xs text-muted-foreground">Chunks</p>
                   <p className="text-2xl font-bold">{result.resultsCount}</p>
                 </div>
-                <div className="p-3 rounded-lg bg-muted/50">
-                  <p className="text-xs text-muted-foreground mb-1">Score moyen</p>
+                <div className="rounded-lg bg-muted/50 p-3">
+                  <p className="mb-1 text-xs text-muted-foreground">Score moyen</p>
                   <p className="text-2xl font-bold">{result.analysis.avgScore.toFixed(2)}</p>
                 </div>
-                <div className="p-3 rounded-lg bg-muted/50">
-                  <p className="text-xs text-muted-foreground mb-1">Score max</p>
+                <div className="rounded-lg bg-muted/50 p-3">
+                  <p className="mb-1 text-xs text-muted-foreground">Score max</p>
                   <p className="text-2xl font-bold">{result.analysis.maxScore.toFixed(2)}</p>
                 </div>
-                <div className="p-3 rounded-lg bg-muted/50">
-                  <p className="text-xs text-muted-foreground mb-1">Au-dessus seuil</p>
+                <div className="rounded-lg bg-muted/50 p-3">
+                  <p className="mb-1 text-xs text-muted-foreground">Au-dessus seuil</p>
                   <Badge
                     className={
                       result.analysis.allAboveThreshold
@@ -191,8 +191,8 @@ export const DebugTab = React.memo(function DebugTab({ aiId }: DebugTabProps) {
                   </Badge>
                 </div>
               </div>
-              <div className="p-4 rounded-lg bg-muted/30 border border-border">
-                <p className="text-sm font-medium mb-1">Recommandation</p>
+              <div className="rounded-lg border border-border bg-muted/30 p-4">
+                <p className="mb-1 text-sm font-medium">Recommandation</p>
                 <p className="text-sm text-muted-foreground">{result.analysis.recommendation}</p>
               </div>
             </CardContent>
@@ -210,9 +210,9 @@ export const DebugTab = React.memo(function DebugTab({ aiId }: DebugTabProps) {
               {result.results.map((r) => (
                 <div
                   key={`${r.documentId}-${r.rank}`}
-                  className="p-4 rounded-lg border border-border hover:border-muted-foreground/30 transition-colors"
+                  className="rounded-lg border border-border p-4 transition-colors hover:border-muted-foreground/30"
                 >
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="mb-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-muted-foreground">#{r.rank}</span>
                       <Badge variant="outline" className="font-normal">
@@ -220,7 +220,7 @@ export const DebugTab = React.memo(function DebugTab({ aiId }: DebugTabProps) {
                       </Badge>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+                      <div className="h-2 w-24 overflow-hidden rounded-full bg-muted">
                         <div
                           className={`h-full ${getScoreBgColor(r.score)} transition-all`}
                           style={{ width: `${r.score * 100}%` }}
@@ -229,13 +229,13 @@ export const DebugTab = React.memo(function DebugTab({ aiId }: DebugTabProps) {
                       <Badge className={getScoreColor(r.score)}>{r.score.toFixed(3)}</Badge>
                     </div>
                   </div>
-                  <p className="text-sm text-muted-foreground line-clamp-4">{r.excerpt}</p>
+                  <p className="line-clamp-4 text-sm text-muted-foreground">{r.excerpt}</p>
                 </div>
               ))}
               {result.results.length === 0 && (
                 <div className="py-8 text-center">
                   <p className="text-muted-foreground">Aucun chunk trouve pour cette question.</p>
-                  <p className="text-sm text-muted-foreground/70 mt-1">
+                  <p className="mt-1 text-sm text-muted-foreground/70">
                     Verifiez que des documents sont indexes pour cet assistant.
                   </p>
                 </div>
@@ -252,7 +252,7 @@ export const DebugTab = React.memo(function DebugTab({ aiId }: DebugTabProps) {
             <p className="text-muted-foreground">
               Entrez une question ci-dessus pour analyser la pertinence des documents.
             </p>
-            <p className="text-sm text-muted-foreground/70 mt-2">
+            <p className="mt-2 text-sm text-muted-foreground/70">
               Le seuil par defaut est 0.6. Les scores en dessous seront filtres lors des vraies
               requetes.
             </p>

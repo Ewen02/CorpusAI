@@ -1,27 +1,53 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import createIntlMiddleware from 'next-intl/middleware';
+import { routing } from '@/i18n/routing';
+
+const intlMiddleware = createIntlMiddleware(routing);
 
 // Routes that require creator authentication (Better Auth)
-const protectedRoutes = ['/dashboard', '/ais', '/settings', '/onboarding'];
+const protectedPaths = [
+  '/dashboard',
+  '/ais',
+  '/settings',
+  '/onboarding',
+  '/admin',
+  '/analytics',
+  '/explore',
+];
 
 // Routes that should redirect to dashboard if already authenticated
-const authRoutes = ['/sign-in', '/sign-up'];
+const authPaths = ['/sign-in', '/sign-up'];
 
 // Portal routes that are auth pages — must NOT be protected
-const portalAuthRoutes = ['/portal/sign-in', '/portal/auth'];
+const portalAuthPaths = ['/portal/sign-in', '/portal/auth'];
+
+/**
+ * Strip locale prefix from pathname to get the "logical" path.
+ * e.g. /fr/dashboard → /dashboard, /en/sign-in → /sign-in
+ */
+function stripLocale(pathname: string): string {
+  const match = pathname.match(/^\/(fr|en)(\/.*)?$/);
+  return match ? match[2] || '/' : pathname;
+}
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Let next-intl handle locale detection + redirect first
+  const response = intlMiddleware(request);
+
+  // After intl middleware, check auth on the locale-stripped path
+  const logicalPath = stripLocale(pathname);
+
   // ——— Portal end-user auth ———
-  // Protect all /portal/* except the auth pages themselves
-  const isPortalRoute = pathname.startsWith('/portal');
-  const isPortalAuthRoute = portalAuthRoutes.some((route) => pathname.startsWith(route));
+  const isPortalRoute = logicalPath.startsWith('/portal');
+  const isPortalAuthRoute = portalAuthPaths.some((p) => logicalPath.startsWith(p));
   const isPortalProtected = isPortalRoute && !isPortalAuthRoute;
   if (isPortalProtected) {
     const euSession = request.cookies.get('eu_session')?.value;
     if (!euSession) {
-      const signInUrl = new URL('/portal/sign-in', request.url);
+      const signInUrl = new URL(`/${pathname.split('/')[1]}/portal/sign-in`, request.url);
       signInUrl.searchParams.set('callbackUrl', pathname);
       return NextResponse.redirect(signInUrl);
     }
@@ -31,31 +57,23 @@ export function middleware(request: NextRequest) {
   const sessionToken = request.cookies.get('better-auth.session_token')?.value;
   const isAuthenticated = !!sessionToken;
 
-  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
+  const isProtectedRoute = protectedPaths.some((p) => logicalPath.startsWith(p));
   if (isProtectedRoute && !isAuthenticated) {
-    const signInUrl = new URL('/sign-in', request.url);
+    const locale = pathname.split('/')[1] || 'fr';
+    const signInUrl = new URL(`/${locale}/sign-in`, request.url);
     signInUrl.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(signInUrl);
   }
 
-  const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
+  const isAuthRoute = authPaths.some((p) => logicalPath.startsWith(p));
   if (isAuthRoute && isAuthenticated) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    const locale = pathname.split('/')[1] || 'fr';
+    return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
   }
 
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\..*|public).*)',
-  ],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\..*|public).*)'],
 };

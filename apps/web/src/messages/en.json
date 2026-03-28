@@ -1,0 +1,198 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "create": "Create",
+    "edit": "Edit",
+    "back": "Back",
+    "next": "Next",
+    "error": "Error",
+    "success": "Success",
+    "search": "Search",
+    "noResults": "No results",
+    "confirm": "Confirm",
+    "close": "Close",
+    "retry": "Retry",
+    "poweredBy": "Powered by CorpusAI"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "myAIs": "My AIs",
+    "analytics": "Analytics",
+    "explore": "Explore",
+    "settings": "Settings",
+    "admin": "Admin",
+    "documentation": "Documentation",
+    "signOut": "Sign out",
+    "createAI": "Create an AI",
+    "upgrade": "Upgrade plan"
+  },
+  "auth": {
+    "signIn": {
+      "title": "Sign in",
+      "description": "Sign in to your CorpusAI account",
+      "email": "Email",
+      "emailPlaceholder": "you@example.com",
+      "password": "Password",
+      "passwordPlaceholder": "••••••••",
+      "submit": "Sign in",
+      "submitting": "Signing in...",
+      "forgotPassword": "Forgot password?",
+      "noAccount": "Don't have an account?",
+      "createAccount": "Create an account",
+      "errorGeneric": "Sign in failed",
+      "errorSocial": "Failed to sign in with {provider}",
+      "or": "or"
+    },
+    "signUp": {
+      "title": "Create an account",
+      "description": "Join CorpusAI and create your first AI assistant",
+      "name": "Name",
+      "namePlaceholder": "John Doe",
+      "email": "Email",
+      "emailPlaceholder": "you@example.com",
+      "password": "Password",
+      "passwordPlaceholder": "••••••••",
+      "passwordHint": "Minimum 8 characters",
+      "submit": "Create my account",
+      "submitting": "Creating...",
+      "hasAccount": "Already have an account?",
+      "signIn": "Sign in",
+      "terms": "Terms of service",
+      "privacy": "Privacy policy",
+      "agreeTerms": "By creating an account, you agree to our",
+      "and": "and our",
+      "errorGeneric": "Failed to create account",
+      "errorPasswordLength": "Password must be at least 8 characters"
+    },
+    "forgotPassword": {
+      "title": "Forgot password",
+      "description": "Enter your email to receive a reset link",
+      "email": "Email",
+      "submit": "Send reset link",
+      "submitting": "Sending...",
+      "sent": "Email sent",
+      "sentDescription": "Check your inbox. The link expires in 15 minutes.",
+      "backToSignIn": "Back to sign in",
+      "errorGeneric": "Failed to send email"
+    },
+    "resetPassword": {
+      "title": "New password",
+      "password": "New password",
+      "confirm": "Confirm password",
+      "submit": "Reset password",
+      "submitting": "Resetting...",
+      "success": "Password changed successfully",
+      "errorMismatch": "Passwords don't match",
+      "errorGeneric": "Failed to reset password",
+      "invalidLink": "Invalid or expired link"
+    }
+  },
+  "dashboard": {
+    "welcome": "Welcome! Here's an overview of your activity.",
+    "totalAIs": "AIs",
+    "totalDocuments": "Documents",
+    "totalConversations": "Conversations",
+    "totalQuestions": "Questions",
+    "recentActivity": "Recent activity",
+    "noActivity": "No recent activity",
+    "quickActions": "Quick actions",
+    "createFirstAI": "Create your first AI assistant"
+  },
+  "ai": {
+    "create": {
+      "title": "Create an AI assistant",
+      "subtitle": "Configure your assistant and start adding documents.",
+      "name": "Assistant name",
+      "slug": "Unique identifier",
+      "description": "Description",
+      "submit": "Create assistant",
+      "submitting": "Creating...",
+      "tabGeneral": "General",
+      "tabBehavior": "Behavior",
+      "tabAppearance": "Appearance"
+    },
+    "list": {
+      "title": "My AIs",
+      "empty": "No assistants created",
+      "emptyDescription": "Create your first AI assistant to get started."
+    },
+    "detail": {
+      "chat": "Chat",
+      "documents": "Documents",
+      "conversations": "Conversations",
+      "analytics": "Analytics",
+      "debug": "Debug",
+      "integration": "Integration",
+      "settings": "Settings"
+    }
+  },
+  "documents": {
+    "title": "Documents",
+    "dropzone": "Drag your files here",
+    "dropzoneHint": "or click to select",
+    "maxFileSize": "Max {size} per file",
+    "remainingFiles": "{count} file(s) remaining",
+    "empty": "No documents added",
+    "emptyDescription": "Upload your files so your assistant can answer questions from them.",
+    "ready": "{count} document(s) ready",
+    "processing": "{count} processing",
+    "status": {
+      "pending": "Pending",
+      "uploading": "Uploading...",
+      "processing": "Processing...",
+      "indexed": "Indexed",
+      "error": "Error"
+    },
+    "steps": {
+      "parsing": "Reading document…",
+      "chunking": "Splitting into sections…",
+      "embedding": "Understanding content…",
+      "storing": "Saving…"
+    }
+  },
+  "chat": {
+    "placeholder": "Ask your question...",
+    "send": "Send",
+    "sendShortcut": "Send (Enter)",
+    "streaming": "Responding",
+    "notFound": "Assistant not found.",
+    "startError": "Failed to start conversation.",
+    "accessDenied": {
+      "token": "Invalid or expired link.",
+      "code": "This chat requires an access code.",
+      "inviteOnly": "Invite only access.",
+      "inactive": "This assistant is currently unavailable."
+    },
+    "saveBanner": {
+      "title": "Save this conversation?",
+      "description": "Create an account to keep your conversations.",
+      "action": "Sign in",
+      "dismiss": "Later"
+    },
+    "conversations": "Conversations",
+    "noConversations": "No conversations",
+    "newConversation": "New",
+    "startConversation": "Start"
+  },
+  "settings": {
+    "title": "Settings",
+    "profile": "Profile",
+    "security": "Security",
+    "billing": "Billing",
+    "notifications": "Notifications",
+    "name": "Full name",
+    "username": "Username",
+    "bio": "Bio",
+    "email": "Email",
+    "viewProfile": "View public profile",
+    "language": "Language",
+    "saved": "Changes saved"
+  },
+  "metadata": {
+    "title": "CorpusAI — Build your AI from your documents",
+    "description": "Transform your documents into a conversational AI assistant"
+  }
+}

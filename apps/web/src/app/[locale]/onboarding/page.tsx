@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@corpusai/ui';
 import { authClient } from '@/lib/auth-client';
-import { useDocumentUpload } from '@/app/(dashboard)/ais/[id]/hooks/use-document-upload';
+import { useDocumentUpload } from '@/app/[locale]/(dashboard)/ais/[id]/hooks/use-document-upload';
 import { StepWelcome } from './components/step-welcome';
 import { StepCreateAI, type CreatedAI } from './components/step-create-ai';
 import { StepPersonalize } from './components/step-personalize';

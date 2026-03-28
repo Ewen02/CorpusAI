@@ -51,12 +51,16 @@ export function useChatState({ aiSlug }: UseChatStateOptions) {
         content: msg.content,
         createdAt: new Date(msg.createdAt),
         confidence: msg.confidence as ConfidenceLevel | undefined,
-        sources: msg.sources ? deduplicateSources(msg.sources.map((s: MessageSource) => ({
-          documentId: s.chunkId,
-          documentName: s.documentSource,
-          excerpt: s.excerpt,
-          relevanceScore: s.score,
-        }))) : undefined,
+        sources: msg.sources
+          ? deduplicateSources(
+              msg.sources.map((s: MessageSource) => ({
+                documentId: s.chunkId,
+                documentName: s.documentSource,
+                excerpt: s.excerpt,
+                relevanceScore: s.score,
+              }))
+            )
+          : undefined,
       }));
       setMessages(formattedMessages);
     }
@@ -66,9 +70,7 @@ export function useChatState({ aiSlug }: UseChatStateOptions) {
   React.useEffect(() => {
     if (isStreaming && streamingMessageId && streamingContent) {
       setMessages((prev) =>
-        prev.map((m) =>
-          m.id === streamingMessageId ? { ...m, content: streamingContent } : m
-        )
+        prev.map((m) => (m.id === streamingMessageId ? { ...m, content: streamingContent } : m))
       );
     }
   }, [isStreaming, streamingMessageId, streamingContent]);
@@ -112,18 +114,18 @@ export function useChatState({ aiSlug }: UseChatStateOptions) {
         sendStream(convId, content, {
           onToken: (_token, fullContent) => {
             setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantMessageId ? { ...m, content: fullContent } : m
-              )
+              prev.map((m) => (m.id === assistantMessageId ? { ...m, content: fullContent } : m))
             );
           },
           onSources: (sources) => {
-            const formattedSources = deduplicateSources(sources.map((s) => ({
-              documentId: s.chunkId,
-              documentName: s.documentSource,
-              excerpt: s.excerpt,
-              relevanceScore: s.score,
-            })));
+            const formattedSources = deduplicateSources(
+              sources.map((s) => ({
+                documentId: s.chunkId,
+                documentName: s.documentSource,
+                excerpt: s.excerpt,
+                relevanceScore: s.score,
+              }))
+            );
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === assistantMessageId ? { ...m, sources: formattedSources } : m
@@ -141,12 +143,14 @@ export function useChatState({ aiSlug }: UseChatStateOptions) {
                   };
                 }
                 if (m.id === assistantMessageId) {
-                  const formattedSources = deduplicateSources(data.assistantMessage.sources.map((s) => ({
-                    documentId: s.chunkId,
-                    documentName: s.documentSource,
-                    excerpt: s.excerpt,
-                    relevanceScore: s.score,
-                  })));
+                  const formattedSources = deduplicateSources(
+                    data.assistantMessage.sources.map((s) => ({
+                      documentId: s.chunkId,
+                      documentName: s.documentSource,
+                      excerpt: s.excerpt,
+                      relevanceScore: s.score,
+                    }))
+                  );
                   return {
                     ...m,
                     id: data.assistantMessage.id,

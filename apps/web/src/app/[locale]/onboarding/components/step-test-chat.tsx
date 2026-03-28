@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { FileText } from 'lucide-react';
 import { Button, Card, CardContent, ChatInterface } from '@corpusai/ui';
-import { useChatState } from '@/app/(dashboard)/ais/[id]/hooks/use-chat-state';
+import { useChatState } from '@/app/[locale]/(dashboard)/ais/[id]/hooks/use-chat-state';
 import type { CreatedAI } from './step-create-ai';
 import { IndexingBanner } from './indexing-banner';
 

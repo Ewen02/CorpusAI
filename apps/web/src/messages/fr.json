@@ -1,0 +1,198 @@
+{
+  "common": {
+    "loading": "Chargement...",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "create": "Créer",
+    "edit": "Modifier",
+    "back": "Retour",
+    "next": "Suivant",
+    "error": "Erreur",
+    "success": "Succès",
+    "search": "Rechercher",
+    "noResults": "Aucun résultat",
+    "confirm": "Confirmer",
+    "close": "Fermer",
+    "retry": "Réessayer",
+    "poweredBy": "Propulsé par CorpusAI"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "myAIs": "Mes AIs",
+    "analytics": "Analytics",
+    "explore": "Explorer",
+    "settings": "Paramètres",
+    "admin": "Admin",
+    "documentation": "Documentation",
+    "signOut": "Déconnexion",
+    "createAI": "Créer un AI",
+    "upgrade": "Passer au plan supérieur"
+  },
+  "auth": {
+    "signIn": {
+      "title": "Connexion",
+      "description": "Connectez-vous à votre compte CorpusAI",
+      "email": "Email",
+      "emailPlaceholder": "vous@exemple.com",
+      "password": "Mot de passe",
+      "passwordPlaceholder": "••••••••",
+      "submit": "Se connecter",
+      "submitting": "Connexion...",
+      "forgotPassword": "Mot de passe oublié ?",
+      "noAccount": "Pas encore de compte ?",
+      "createAccount": "Créer un compte",
+      "errorGeneric": "Erreur de connexion",
+      "errorSocial": "Erreur lors de la connexion avec {provider}",
+      "or": "ou"
+    },
+    "signUp": {
+      "title": "Créer un compte",
+      "description": "Rejoignez CorpusAI et créez votre premier assistant IA",
+      "name": "Nom",
+      "namePlaceholder": "Jean Dupont",
+      "email": "Email",
+      "emailPlaceholder": "vous@exemple.com",
+      "password": "Mot de passe",
+      "passwordPlaceholder": "••••••••",
+      "passwordHint": "Minimum 8 caractères",
+      "submit": "Créer mon compte",
+      "submitting": "Création...",
+      "hasAccount": "Déjà un compte ?",
+      "signIn": "Se connecter",
+      "terms": "Conditions d'utilisation",
+      "privacy": "Politique de confidentialité",
+      "agreeTerms": "En créant un compte, vous acceptez nos",
+      "and": "et notre",
+      "errorGeneric": "Erreur lors de la création du compte",
+      "errorPasswordLength": "Le mot de passe doit contenir au moins 8 caractères"
+    },
+    "forgotPassword": {
+      "title": "Mot de passe oublié",
+      "description": "Entrez votre email pour recevoir un lien de réinitialisation",
+      "email": "Email",
+      "submit": "Envoyer le lien",
+      "submitting": "Envoi...",
+      "sent": "Email envoyé",
+      "sentDescription": "Vérifiez votre boîte mail. Le lien expire dans 15 minutes.",
+      "backToSignIn": "Retour à la connexion",
+      "errorGeneric": "Erreur lors de l'envoi"
+    },
+    "resetPassword": {
+      "title": "Nouveau mot de passe",
+      "password": "Nouveau mot de passe",
+      "confirm": "Confirmer le mot de passe",
+      "submit": "Réinitialiser",
+      "submitting": "Réinitialisation...",
+      "success": "Mot de passe modifié avec succès",
+      "errorMismatch": "Les mots de passe ne correspondent pas",
+      "errorGeneric": "Erreur lors de la réinitialisation",
+      "invalidLink": "Lien invalide ou expiré"
+    }
+  },
+  "dashboard": {
+    "welcome": "Bienvenue ! Voici un aperçu de votre activité.",
+    "totalAIs": "AIs",
+    "totalDocuments": "Documents",
+    "totalConversations": "Conversations",
+    "totalQuestions": "Questions",
+    "recentActivity": "Activité récente",
+    "noActivity": "Aucune activité récente",
+    "quickActions": "Actions rapides",
+    "createFirstAI": "Créez votre premier assistant IA"
+  },
+  "ai": {
+    "create": {
+      "title": "Créer un assistant IA",
+      "subtitle": "Configurez votre assistant et commencez à lui ajouter des documents.",
+      "name": "Nom de l'assistant",
+      "slug": "Identifiant unique",
+      "description": "Description",
+      "submit": "Créer l'assistant",
+      "submitting": "Création...",
+      "tabGeneral": "Général",
+      "tabBehavior": "Comportement",
+      "tabAppearance": "Apparence"
+    },
+    "list": {
+      "title": "Mes AIs",
+      "empty": "Aucun assistant créé",
+      "emptyDescription": "Créez votre premier assistant IA pour commencer."
+    },
+    "detail": {
+      "chat": "Chat",
+      "documents": "Documents",
+      "conversations": "Conversations",
+      "analytics": "Analytics",
+      "debug": "Debug",
+      "integration": "Intégration",
+      "settings": "Paramètres"
+    }
+  },
+  "documents": {
+    "title": "Documents",
+    "dropzone": "Glissez vos fichiers ici",
+    "dropzoneHint": "ou cliquez pour sélectionner",
+    "maxFileSize": "Max {size} par fichier",
+    "remainingFiles": "{count} fichier(s) restant(s)",
+    "empty": "Aucun document ajouté",
+    "emptyDescription": "Importez vos fichiers pour que votre assistant puisse y répondre.",
+    "ready": "{count} document(s) prêt(s)",
+    "processing": "{count} en traitement",
+    "status": {
+      "pending": "En attente",
+      "uploading": "Upload...",
+      "processing": "Traitement...",
+      "indexed": "Indexé",
+      "error": "Erreur"
+    },
+    "steps": {
+      "parsing": "Lecture du document…",
+      "chunking": "Découpage en sections…",
+      "embedding": "Compréhension du contenu…",
+      "storing": "Enregistrement…"
+    }
+  },
+  "chat": {
+    "placeholder": "Posez votre question...",
+    "send": "Envoyer",
+    "sendShortcut": "Envoyer (Entrée)",
+    "streaming": "Réponse en cours",
+    "notFound": "Assistant introuvable.",
+    "startError": "Impossible de démarrer la conversation.",
+    "accessDenied": {
+      "token": "Lien invalide ou expiré.",
+      "code": "Ce chat nécessite un code d'accès.",
+      "inviteOnly": "Accès sur invitation uniquement.",
+      "inactive": "Cet assistant n'est pas disponible actuellement."
+    },
+    "saveBanner": {
+      "title": "Sauvegarder cette conversation ?",
+      "description": "Créez un compte pour retrouver vos conversations.",
+      "action": "Se connecter",
+      "dismiss": "Plus tard"
+    },
+    "conversations": "Conversations",
+    "noConversations": "Aucune conversation",
+    "newConversation": "Nouvelle",
+    "startConversation": "Démarrer"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "profile": "Profil",
+    "security": "Sécurité",
+    "billing": "Abonnement",
+    "notifications": "Notifications",
+    "name": "Nom complet",
+    "username": "Nom d'utilisateur",
+    "bio": "Bio",
+    "email": "Email",
+    "viewProfile": "Voir mon profil public",
+    "language": "Langue",
+    "saved": "Modifications enregistrées"
+  },
+  "metadata": {
+    "title": "CorpusAI — Créez votre IA depuis vos documents",
+    "description": "Transformez vos documents en assistant IA conversationnel"
+  }
+}

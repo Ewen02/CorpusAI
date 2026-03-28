@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
 import './globals.css';
-import { Providers } from '@/components/providers';
 
 const geist = Geist({
   subsets: ['latin'],
@@ -35,11 +34,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html className="dark">
       <body
         className={`${geist.variable} ${geistMono.variable} ${instrumentSerif.variable} font-sans antialiased`}
       >
-        <Providers>{children}</Providers>
+        {children}
       </body>
     </html>
   );

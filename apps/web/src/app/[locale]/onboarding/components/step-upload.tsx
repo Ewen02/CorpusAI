@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Button, DocumentUploader } from '@corpusai/ui';
-import type { useDocumentUpload } from '@/app/(dashboard)/ais/[id]/hooks/use-document-upload';
+import type { useDocumentUpload } from '@/app/[locale]/(dashboard)/ais/[id]/hooks/use-document-upload';
 
 interface StepUploadProps {
   uploadedFiles: ReturnType<typeof useDocumentUpload>['uploadedFiles'];
