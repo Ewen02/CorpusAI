@@ -1,10 +1,13 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { AuthLayout, AuthForm, AuthLink, Button, Input, Label } from '@corpusai/ui';
+import { useRouter } from '@/i18n/routing';
 
 export default function ForgotPasswordPage() {
+  const t = useTranslations('auth.forgotPassword');
+  const tSignIn = useTranslations('auth.signIn');
   const router = useRouter();
   const [email, setEmail] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
@@ -28,11 +31,11 @@ export default function ForgotPasswordPage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        throw new Error(data?.message || "Erreur lors de l'envoi");
+        throw new Error(data?.message || t('errorGeneric'));
       }
       setSent(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur lors de l'envoi");
+      setError(err instanceof Error ? err.message : t('errorGeneric'));
     } finally {
       setIsLoading(false);
     }
@@ -41,13 +44,13 @@ export default function ForgotPasswordPage() {
   if (sent) {
     return (
       <AuthLayout
-        title="Email envoye"
-        description="Si un compte existe avec cette adresse, vous recevrez un lien de reinitialisation."
+        title={t('sent')}
+        description={t('sentDescription')}
         showBackLink
         onBack={() => router.push('/sign-in')}
       >
         <Button variant="outline" className="w-full" onClick={() => router.push('/sign-in')}>
-          Retour a la connexion
+          {t('backToSignIn')}
         </Button>
       </AuthLayout>
     );
@@ -55,15 +58,15 @@ export default function ForgotPasswordPage() {
 
   return (
     <AuthLayout
-      title="Mot de passe oublie"
-      description="Entrez votre email pour recevoir un lien de reinitialisation"
+      title={t('title')}
+      description={t('description')}
       showBackLink
       onBack={() => router.push('/sign-in')}
       footer={
         <p>
-          Vous vous souvenez ?{' '}
+          {tSignIn('noAccount')}{' '}
           <AuthLink href="/sign-in" onClick={() => router.push('/sign-in')}>
-            Se connecter
+            {tSignIn('submit')}
           </AuthLink>
         </p>
       }
@@ -74,11 +77,11 @@ export default function ForgotPasswordPage() {
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">{t('email')}</Label>
           <Input
             id="email"
             type="email"
-            placeholder="vous@exemple.com"
+            placeholder="you@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -87,7 +90,7 @@ export default function ForgotPasswordPage() {
         </div>
 
         <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? 'Envoi...' : 'Envoyer le lien'}
+          {isLoading ? t('submitting') : t('submit')}
         </Button>
       </AuthForm>
     </AuthLayout>

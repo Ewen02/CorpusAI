@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   AuthLayout,
   AuthForm,
@@ -13,8 +13,10 @@ import {
   Label,
 } from '@corpusai/ui';
 import { authClient } from '@/lib/auth-client';
+import { useRouter } from '@/i18n/routing';
 
 export default function SignUpPage() {
+  const t = useTranslations('auth.signUp');
   const router = useRouter();
   const [isLoading, setIsLoading] = React.useState(false);
   const [name, setName] = React.useState('');
@@ -28,7 +30,7 @@ export default function SignUpPage() {
     setError('');
 
     if (password.length < 8) {
-      setError('Le mot de passe doit contenir au moins 8 caractères');
+      setError(t('errorPasswordLength'));
       setIsLoading(false);
       return;
     }
@@ -41,12 +43,12 @@ export default function SignUpPage() {
       });
 
       if (authError) {
-        throw new Error(authError.message || "Erreur lors de l'inscription");
+        throw new Error(authError.message || t('errorGeneric'));
       }
 
       router.push('/onboarding');
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur lors de l'inscription");
+      setError(err instanceof Error ? err.message : t('errorGeneric'));
     } finally {
       setIsLoading(false);
     }
@@ -56,24 +58,24 @@ export default function SignUpPage() {
     try {
       await authClient.signIn.social({
         provider,
-        callbackURL: 'http://localhost:3000/onboarding',
+        callbackURL: `${window.location.origin}/onboarding`,
       });
-    } catch (err) {
-      setError('Erreur lors de la connexion avec ' + provider);
+    } catch {
+      setError(t('errorGeneric'));
     }
   };
 
   return (
     <AuthLayout
-      title="Créer un compte"
-      description="Commencez à créer vos assistants IA"
+      title={t('title')}
+      description={t('description')}
       showBackLink
       onBack={() => router.push('/')}
       footer={
         <p>
-          Déjà un compte ?{' '}
+          {t('hasAccount')}{' '}
           <AuthLink href="/sign-in" onClick={() => router.push('/sign-in')}>
-            Se connecter
+            {t('signIn')}
           </AuthLink>
         </p>
       }
@@ -91,11 +93,11 @@ export default function SignUpPage() {
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="name">Nom</Label>
+          <Label htmlFor="name">{t('name')}</Label>
           <Input
             id="name"
             type="text"
-            placeholder="Jean Dupont"
+            placeholder={t('namePlaceholder')}
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
@@ -104,11 +106,11 @@ export default function SignUpPage() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">{t('email')}</Label>
           <Input
             id="email"
             type="email"
-            placeholder="vous@exemple.com"
+            placeholder={t('emailPlaceholder')}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -117,31 +119,31 @@ export default function SignUpPage() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password">Mot de passe</Label>
+          <Label htmlFor="password">{t('password')}</Label>
           <Input
             id="password"
             type="password"
-            placeholder="••••••••"
+            placeholder={t('passwordPlaceholder')}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
             disabled={isLoading}
           />
-          <p className="text-xs text-muted-foreground">Minimum 8 caractères</p>
+          <p className="text-xs text-muted-foreground">{t('passwordHint')}</p>
         </div>
 
         <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? 'Création...' : 'Créer mon compte'}
+          {isLoading ? t('submitting') : t('submit')}
         </Button>
 
         <p className="text-center text-xs text-muted-foreground">
-          En créant un compte, vous acceptez nos{' '}
+          {t('agreeTerms')}{' '}
           <AuthLink href="/terms" onClick={() => router.push('/terms')}>
-            Conditions d&apos;utilisation
+            {t('terms')}
           </AuthLink>{' '}
-          et notre{' '}
+          {t('and')}{' '}
           <AuthLink href="/privacy" onClick={() => router.push('/privacy')}>
-            Politique de confidentialité
+            {t('privacy')}
           </AuthLink>
         </p>
       </AuthForm>

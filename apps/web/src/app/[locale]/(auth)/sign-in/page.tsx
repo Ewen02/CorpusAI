@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   AuthLayout,
   AuthForm,
@@ -13,8 +13,10 @@ import {
   Label,
 } from '@corpusai/ui';
 import { authClient } from '@/lib/auth-client';
+import { useRouter } from '@/i18n/routing';
 
 export default function SignInPage() {
+  const t = useTranslations('auth.signIn');
   const router = useRouter();
   const [isLoading, setIsLoading] = React.useState(false);
   const [email, setEmail] = React.useState('');
@@ -33,12 +35,12 @@ export default function SignInPage() {
       });
 
       if (authError) {
-        throw new Error(authError.message || 'Erreur de connexion');
+        throw new Error(authError.message || t('errorGeneric'));
       }
 
       router.push('/dashboard');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur de connexion');
+      setError(err instanceof Error ? err.message : t('errorGeneric'));
     } finally {
       setIsLoading(false);
     }
@@ -48,24 +50,24 @@ export default function SignInPage() {
     try {
       await authClient.signIn.social({
         provider,
-        callbackURL: 'http://localhost:3000/dashboard',
+        callbackURL: `${window.location.origin}/dashboard`,
       });
-    } catch (err) {
-      setError('Erreur lors de la connexion avec ' + provider);
+    } catch {
+      setError(t('errorSocial', { provider }));
     }
   };
 
   return (
     <AuthLayout
-      title="Connexion"
-      description="Connectez-vous à votre compte CorpusAI"
+      title={t('title')}
+      description={t('description')}
       showBackLink
       onBack={() => router.push('/')}
       footer={
         <p>
-          Pas encore de compte ?{' '}
+          {t('noAccount')}{' '}
           <AuthLink href="/sign-up" onClick={() => router.push('/sign-up')}>
-            Créer un compte
+            {t('createAccount')}
           </AuthLink>
         </p>
       }
@@ -83,11 +85,11 @@ export default function SignInPage() {
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">{t('email')}</Label>
           <Input
             id="email"
             type="email"
-            placeholder="vous@exemple.com"
+            placeholder={t('emailPlaceholder')}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -97,15 +99,15 @@ export default function SignInPage() {
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label htmlFor="password">Mot de passe</Label>
+            <Label htmlFor="password">{t('password')}</Label>
             <AuthLink href="/forgot-password" onClick={() => router.push('/forgot-password')}>
-              Mot de passe oublié ?
+              {t('forgotPassword')}
             </AuthLink>
           </div>
           <Input
             id="password"
             type="password"
-            placeholder="••••••••"
+            placeholder={t('passwordPlaceholder')}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -114,7 +116,7 @@ export default function SignInPage() {
         </div>
 
         <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? 'Connexion...' : 'Se connecter'}
+          {isLoading ? t('submitting') : t('submit')}
         </Button>
       </AuthForm>
     </AuthLayout>
