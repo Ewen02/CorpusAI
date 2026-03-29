@@ -602,6 +602,51 @@
       "directLink": "Direct link",
       "embedOnSite": "Embed on your site",
       "finish": "Go to my assistant"
+    },
+    "templates": {
+      "title": "Choose a template",
+      "subtitle": "Select an assistant type to pre-fill the configuration, or start from scratch.",
+      "skip": "Start from scratch",
+      "support": {
+        "name": "Customer Support",
+        "description": "Answer user questions from your product documentation.",
+        "systemPrompt": "You are a customer support assistant. You help users solve their problems based on the provided product documentation.",
+        "welcomeMessage": "Hello! How can I help you?"
+      },
+      "education": {
+        "name": "Course / Training",
+        "description": "Help students understand concepts from your course materials.",
+        "systemPrompt": "You are a pedagogical assistant. You explain concepts clearly and progressively based on the provided course materials.",
+        "welcomeMessage": "Welcome! What concept would you like to explore?"
+      },
+      "legal": {
+        "name": "Legal Assistant",
+        "description": "Inform users based on legal texts and documentation.",
+        "systemPrompt": "You are a legal assistant. You provide information based on the legal texts and documentation provided. You do not give personalized legal advice.",
+        "welcomeMessage": "Hello, what legal question can I clarify?"
+      },
+      "finance": {
+        "name": "Financial Advisor",
+        "description": "Analyze financial documents and answer accounting and tax questions.",
+        "systemPrompt": "You are a financial assistant. You analyze financial documents and answer questions about accounting, taxation, and financial management.",
+        "welcomeMessage": "Hello! What financial question can I help with?"
+      },
+      "health": {
+        "name": "Health Assistant",
+        "description": "Provide health information based on your medical documentation.",
+        "systemPrompt": "You are a health assistant. You provide information based on the provided medical documentation. You do not diagnose and do not replace medical advice.",
+        "welcomeMessage": "Hello, how can I inform you?"
+      },
+      "tech": {
+        "name": "Technical Documentation",
+        "description": "Help developers understand your documentation, APIs, and code.",
+        "systemPrompt": "You are a technical assistant. You help developers understand the documentation, APIs, and code based on the provided documents.",
+        "welcomeMessage": "Hey! What technical question do you have?"
+      },
+      "custom": {
+        "name": "Custom",
+        "description": "Configure everything manually as you wish."
+      }
     }
   },
   "aiSettings": {

@@ -14,6 +14,7 @@ import {
 } from '@corpusai/ui';
 import { useTranslations } from 'next-intl';
 import { apiClient } from '@/lib/api-client';
+import type { TemplateSelection } from './step-template';
 
 const SLUG_FORBIDDEN = /[^a-z0-9\s-]/g;
 const SLUG_SPACES = /\s+/g;
@@ -38,13 +39,14 @@ export interface CreatedAI {
 
 interface StepCreateAIProps {
   onCreated: (ai: CreatedAI) => void;
+  template?: TemplateSelection | null;
 }
 
-export function StepCreateAI({ onCreated }: StepCreateAIProps) {
+export function StepCreateAI({ onCreated, template }: StepCreateAIProps) {
   const t = useTranslations('onboarding.createAI');
-  const [name, setName] = React.useState('');
-  const [slug, setSlug] = React.useState('');
-  const [description, setDescription] = React.useState('');
+  const [name, setName] = React.useState(template?.name ?? '');
+  const [slug, setSlug] = React.useState(template?.name ? slugify(template.name) : '');
+  const [description, setDescription] = React.useState(template?.description ?? '');
   const [language, setLanguage] = React.useState<'fr' | 'en'>('fr');
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -68,6 +70,11 @@ export function StepCreateAI({ onCreated }: StepCreateAIProps) {
           description: description.trim() || undefined,
           language,
           isPublic: true,
+          ...(template && {
+            systemPrompt: template.systemPrompt || undefined,
+            welcomeMessage: template.welcomeMessage || undefined,
+            category: template.category || undefined,
+          }),
         });
         if (description.trim()) ai.description = description.trim();
         onCreated(ai);

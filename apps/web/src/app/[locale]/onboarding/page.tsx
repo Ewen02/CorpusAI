@@ -8,6 +8,7 @@ import { useTranslations } from 'next-intl';
 import { authClient } from '@/lib/auth-client';
 import { useDocumentUpload } from '@/app/[locale]/(dashboard)/ais/[id]/hooks/use-document-upload';
 import { StepWelcome } from './components/step-welcome';
+import { StepTemplate, type TemplateSelection } from './components/step-template';
 import { StepCreateAI, type CreatedAI } from './components/step-create-ai';
 import { StepPersonalize } from './components/step-personalize';
 import { StepUpload } from './components/step-upload';
@@ -16,9 +17,9 @@ import { StepShare } from './components/step-share';
 
 // ─── Constants ────────────────────────────────────────────────
 
-const STEP_COUNT = 5;
+const STEP_COUNT = 6;
 
-type WizardStep = 0 | 1 | 2 | 3 | 4 | 5;
+type WizardStep = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 const DEBUG_AI: CreatedAI = {
   id: 'debug-ai-id',
@@ -64,6 +65,7 @@ function OnboardingPage() {
   const { data: session, isPending } = authClient.useSession();
   const [step, setStep] = React.useState<WizardStep>(isDebug ? 1 : 0);
   const [createdAI, setCreatedAI] = React.useState<CreatedAI | null>(isDebug ? DEBUG_AI : null);
+  const [selectedTemplate, setSelectedTemplate] = React.useState<TemplateSelection | null>(null);
   const [hasDocuments, setHasDocuments] = React.useState(false);
 
   const { uploadedFiles, uploadFiles, removeFile, indexingProgress } = useDocumentUpload({
@@ -84,9 +86,14 @@ function OnboardingPage() {
     totalCount > 0 &&
     uploadedFiles.some((f) => f.status === 'uploading' || f.status === 'processing');
 
+  const handleTemplateSelect = React.useCallback((template: TemplateSelection | null) => {
+    setSelectedTemplate(template);
+    setStep(2);
+  }, []);
+
   const handleAICreated = React.useCallback((ai: CreatedAI) => {
     setCreatedAI(ai);
-    setStep(2);
+    setStep(3);
   }, []);
 
   const handleFinish = React.useCallback(() => {
@@ -109,7 +116,7 @@ function OnboardingPage() {
         <div className="fixed bottom-4 right-4 z-50 rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-3">
           <p className="mb-2 text-xs font-semibold text-yellow-400">Debug — step navigation</p>
           <div className="flex gap-1">
-            {([0, 1, 2, 3, 4, 5] as WizardStep[]).map((s) => (
+            {([0, 1, 2, 3, 4, 5, 6] as WizardStep[]).map((s) => (
               <button
                 key={s}
                 onClick={() => setStep(s)}
@@ -132,26 +139,30 @@ function OnboardingPage() {
 
         {step === 0 && <StepWelcome firstName={firstName} onNext={() => setStep(1)} />}
 
-        {step === 1 && <StepCreateAI onCreated={handleAICreated} />}
-
-        {step === 2 && createdAI && (
-          <StepPersonalize ai={createdAI} onNext={() => setStep(3)} onSkip={() => setStep(3)} />
+        {step === 1 && (
+          <StepTemplate onSelect={handleTemplateSelect} onSkip={() => handleTemplateSelect(null)} />
         )}
 
+        {step === 2 && <StepCreateAI onCreated={handleAICreated} template={selectedTemplate} />}
+
         {step === 3 && createdAI && (
+          <StepPersonalize ai={createdAI} onNext={() => setStep(4)} onSkip={() => setStep(4)} />
+        )}
+
+        {step === 4 && createdAI && (
           <StepUpload
             uploadedFiles={uploadedFiles}
             uploadFiles={uploadFiles}
             removeFile={removeFile}
             onNext={() => {
               setHasDocuments(true);
-              setStep(4);
+              setStep(5);
             }}
-            onSkip={() => setStep(4)}
+            onSkip={() => setStep(5)}
           />
         )}
 
-        {step === 4 && createdAI && (
+        {step === 5 && createdAI && (
           <StepTestChat
             ai={createdAI}
             hasDocuments={hasDocuments}
@@ -159,12 +170,12 @@ function OnboardingPage() {
             indexedCount={indexedCount}
             totalCount={totalCount}
             indexingProgress={indexingProgress}
-            onNext={() => setStep(5)}
-            onBack={() => setStep(3)}
+            onNext={() => setStep(6)}
+            onBack={() => setStep(4)}
           />
         )}
 
-        {step === 5 && createdAI && (
+        {step === 6 && createdAI && (
           <StepShare
             ai={createdAI}
             isIndexing={isIndexing}

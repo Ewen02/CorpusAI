@@ -602,6 +602,51 @@
       "directLink": "Lien direct",
       "embedOnSite": "Intégrer sur votre site",
       "finish": "Accéder à mon assistant"
+    },
+    "templates": {
+      "title": "Choisissez un modèle",
+      "subtitle": "Sélectionnez un type d'assistant pour pré-remplir la configuration, ou partez de zéro.",
+      "skip": "Partir de zéro",
+      "support": {
+        "name": "Support Client",
+        "description": "Répondez aux questions de vos utilisateurs à partir de votre documentation produit.",
+        "systemPrompt": "Tu es un assistant de support client. Tu aides les utilisateurs à résoudre leurs problèmes en te basant sur la documentation produit fournie.",
+        "welcomeMessage": "Bonjour ! Comment puis-je vous aider ?"
+      },
+      "education": {
+        "name": "Formation / Cours",
+        "description": "Aidez vos étudiants à comprendre les concepts à partir de vos supports de cours.",
+        "systemPrompt": "Tu es un assistant pédagogique. Tu expliques les concepts de manière claire et progressive en te basant sur les supports de cours fournis.",
+        "welcomeMessage": "Bienvenue ! Quelle notion souhaitez-vous explorer ?"
+      },
+      "legal": {
+        "name": "Assistant Juridique",
+        "description": "Informez vos utilisateurs à partir de textes de loi et documentation juridique.",
+        "systemPrompt": "Tu es un assistant juridique. Tu fournis des informations basées sur les textes de loi et la documentation juridique fournie. Tu ne donnes pas de conseil juridique personnalisé.",
+        "welcomeMessage": "Bonjour, quelle question juridique puis-je clarifier ?"
+      },
+      "finance": {
+        "name": "Conseiller Financier",
+        "description": "Analysez des documents financiers et répondez aux questions comptables et fiscales.",
+        "systemPrompt": "Tu es un assistant financier. Tu analyses les documents financiers et réponds aux questions sur la comptabilité, la fiscalité et la gestion financière.",
+        "welcomeMessage": "Bonjour ! Quelle question financière puis-je éclaircir ?"
+      },
+      "health": {
+        "name": "Assistant Santé",
+        "description": "Fournissez des informations de santé basées sur votre documentation médicale.",
+        "systemPrompt": "Tu es un assistant santé. Tu fournis des informations basées sur la documentation médicale fournie. Tu ne poses pas de diagnostic et ne remplaces pas un avis médical.",
+        "welcomeMessage": "Bonjour, comment puis-je vous informer ?"
+      },
+      "tech": {
+        "name": "Documentation Technique",
+        "description": "Aidez les développeurs à comprendre votre documentation, APIs et code.",
+        "systemPrompt": "Tu es un assistant technique. Tu aides les développeurs à comprendre la documentation, les APIs et le code en te basant sur les documents fournis.",
+        "welcomeMessage": "Hey ! Quelle question technique as-tu ?"
+      },
+      "custom": {
+        "name": "Custom",
+        "description": "Configurez tout manuellement à votre guise."
+      }
     }
   },
   "aiSettings": {
