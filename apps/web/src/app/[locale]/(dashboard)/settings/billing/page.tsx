@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useTranslations, useLocale } from 'next-intl';
+import { useSearchParams } from 'next/navigation';
 import {
   Button,
   Badge,
@@ -27,10 +28,14 @@ import {
   type SubscriptionPlanType,
 } from '@corpusai/subscription';
 import { PageWrapper } from '@/components/page-wrapper';
+import { FormAlert } from '@/components/form-alert';
 
 export default function SettingsBillingPage() {
   const t = useTranslations('billing');
   const locale = useLocale();
+  const searchParams = useSearchParams();
+  const checkoutSuccess = searchParams.get('success') === 'true';
+  const checkoutCanceled = searchParams.get('canceled') === 'true';
   const { data: stats, isLoading } = useDashboardStats();
   const { data: invoices } = useInvoices();
   const createCheckout = useCreateCheckout();
@@ -71,6 +76,9 @@ export default function SettingsBillingPage() {
 
   return (
     <PageWrapper className="space-y-6">
+      {checkoutSuccess && <FormAlert message={t('checkoutSuccess')} variant="success" />}
+      {checkoutCanceled && <FormAlert message={t('checkoutCanceled')} variant="warning" />}
+
       {/* Current Plan */}
       <Card variant="glass">
         <CardHeader>

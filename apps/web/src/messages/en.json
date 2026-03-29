@@ -396,7 +396,9 @@
     "communitySupport": "Community support",
     "customWidget": "Custom widget",
     "customBranding": "Custom branding",
-    "month": "month"
+    "month": "month",
+    "checkoutSuccess": "Your subscription has been activated! Welcome to your new plan.",
+    "checkoutCanceled": "Checkout was canceled. No charges were made."
   },
   "notifications": {
     "emailTitle": "Email notifications",

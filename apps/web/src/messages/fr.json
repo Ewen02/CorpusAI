@@ -396,7 +396,9 @@
     "communitySupport": "Support communautaire",
     "customWidget": "Widget personnalisé",
     "customBranding": "Branding personnalisé",
-    "month": "mois"
+    "month": "mois",
+    "checkoutSuccess": "Votre abonnement a été activé ! Bienvenue sur votre nouveau plan.",
+    "checkoutCanceled": "Le paiement a été annulé. Aucun frais n'a été prélevé."
   },
   "notifications": {
     "emailTitle": "Notifications par email",

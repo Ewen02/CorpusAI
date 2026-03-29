@@ -21,17 +21,17 @@ export interface FeatureLimits {
 
 export const FEATURE_LIMITS: Record<SubscriptionPlanType, FeatureLimits> = {
   FREE: {
-    maxAIs: -1, // Unlimited (dev mode)
-    maxDocumentsPerAI: -1, // Unlimited (dev mode)
-    maxDocumentSizeMB: 500,
-    maxQuestionsPerDay: -1, // Unlimited (dev mode)
-    maxEndUsers: -1, // Unlimited (dev mode)
-    canMonetize: true,
-    canCustomizeBranding: true,
+    maxAIs: 1,
+    maxDocumentsPerAI: 5,
+    maxDocumentSizeMB: 10,
+    maxQuestionsPerDay: 20,
+    maxEndUsers: 10,
+    canMonetize: false,
+    canCustomizeBranding: false,
     canUseWidget: true,
-    retentionDays: -1, // Unlimited (dev mode)
-    sla: true,
-    dedicatedSupport: true,
+    retentionDays: 30,
+    sla: false,
+    dedicatedSupport: false,
   },
   CREATOR: {
     maxAIs: 3,
