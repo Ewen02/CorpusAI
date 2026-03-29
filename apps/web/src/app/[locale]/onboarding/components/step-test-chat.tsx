@@ -2,6 +2,7 @@ import * as React from 'react';
 import { FileText } from 'lucide-react';
 import { Button, Card, CardContent, ChatInterface } from '@corpusai/ui';
 import { useTranslations } from 'next-intl';
+import { authClient } from '@/lib/auth-client';
 import { useChatState } from '@/app/[locale]/(dashboard)/ais/[id]/hooks/use-chat-state';
 import type { CreatedAI } from './step-create-ai';
 import { IndexingBanner } from './indexing-banner';
@@ -27,7 +28,13 @@ export function StepTestChat({
   onBack,
 }: StepTestChatProps) {
   const t = useTranslations('onboarding.testChat');
-  const { messages, isStreaming, sendMessage } = useChatState({ aiSlug: ai.slug });
+  const { data: session } = authClient.useSession();
+  const sessionUsername =
+    ((session?.user as Record<string, unknown> | undefined)?.username as string) ?? '';
+  const { messages, isStreaming, sendMessage } = useChatState({
+    aiSlug: ai.slug,
+    username: sessionUsername,
+  });
 
   if (totalCount === 0) {
     return (

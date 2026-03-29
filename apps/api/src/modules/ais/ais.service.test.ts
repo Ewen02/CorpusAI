@@ -100,23 +100,23 @@ describe('AIsService', () => {
     });
   });
 
-  describe('findBySlug', () => {
-    it('should return active AI by slug', async () => {
+  describe('findByUserAndSlug', () => {
+    it('should return active AI by username and slug', async () => {
       const ai = { id: 'ai-1', slug: 'test-ai', status: 'ACTIVE' };
-      mockAI.findUnique.mockResolvedValue(ai);
+      mockAI.findFirst.mockResolvedValue(ai);
 
-      const result = await service.findBySlug('test-ai');
+      const result = await service.findByUserAndSlug('jean', 'test-ai');
       expect(result).toBe(ai);
     });
 
     it('should throw when AI is not active', async () => {
-      mockAI.findUnique.mockResolvedValue({ id: 'ai-1', slug: 'test', status: 'DRAFT' });
-      await expect(service.findBySlug('test')).rejects.toThrow(NotFoundException);
+      mockAI.findFirst.mockResolvedValue({ id: 'ai-1', slug: 'test', status: 'DRAFT' });
+      await expect(service.findByUserAndSlug('jean', 'test')).rejects.toThrow(NotFoundException);
     });
 
     it('should throw when slug not found', async () => {
-      mockAI.findUnique.mockResolvedValue(null);
-      await expect(service.findBySlug('nope')).rejects.toThrow(NotFoundException);
+      mockAI.findFirst.mockResolvedValue(null);
+      await expect(service.findByUserAndSlug('jean', 'nope')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -146,7 +146,7 @@ describe('AIsService', () => {
 
     it('should throw ConflictException when slug is taken', async () => {
       mockUser.findUnique.mockResolvedValue({ subscriptionPlan: 'FREE', _count: { ais: 0 } });
-      mockAI.findUnique.mockResolvedValue({ id: 'existing' }); // slug taken
+      mockAI.findFirst.mockResolvedValue({ id: 'existing' }); // slug taken for this user
 
       await expect(service.create('user-1', dto)).rejects.toThrow(ConflictException);
     });

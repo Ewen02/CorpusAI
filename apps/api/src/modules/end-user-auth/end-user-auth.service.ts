@@ -7,7 +7,7 @@ import { MailService } from '../mail/mail.service';
 export class EndUserAuthService {
   constructor(private readonly mail: MailService) {}
 
-  async sendMagicLink(email: string, aiSlug?: string): Promise<void> {
+  async sendMagicLink(email: string, aiSlug?: string, username?: string): Promise<void> {
     // Upsert EndUser by email
     const endUser = await prisma.endUser.upsert({
       where: { email },
@@ -23,10 +23,13 @@ export class EndUserAuthService {
       data: { magicLinkToken: token, magicLinkExpires: expires },
     });
 
-    // Fetch AI name if slug provided
+    // Fetch AI name if slug and username provided
     let aiName: string | undefined;
-    if (aiSlug) {
-      const ai = await prisma.aI.findUnique({ where: { slug: aiSlug }, select: { name: true } });
+    if (aiSlug && username) {
+      const ai = await prisma.aI.findFirst({
+        where: { slug: aiSlug, user: { username }, deletedAt: null },
+        select: { name: true },
+      });
       aiName = ai?.name;
     }
 

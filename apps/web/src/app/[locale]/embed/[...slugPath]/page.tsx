@@ -1,16 +1,22 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
 import EmbedWidget from './embed-widget';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 interface EmbedPageProps {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ slugPath: string[] }>;
 }
 
-async function fetchAIInfo(slug: string) {
+function parseSlugPath(slugPath: string[]): { username: string; slug: string } | null {
+  const rawUsername = slugPath[0];
+  const slug = slugPath[1];
+  if (!rawUsername || !slug || !rawUsername.startsWith('@')) return null;
+  return { username: rawUsername.slice(1), slug };
+}
+
+async function fetchAIInfo(username: string, slug: string) {
   try {
-    const res = await fetch(`${API_URL}/chat/${slug}/info`, {
+    const res = await fetch(`${API_URL}/chat/${username}/${slug}/info`, {
       next: { revalidate: 300 },
     });
     if (!res.ok) return null;
@@ -21,8 +27,14 @@ async function fetchAIInfo(slug: string) {
 }
 
 export async function generateMetadata({ params }: EmbedPageProps): Promise<Metadata> {
-  const { slug } = await params;
-  const ai = await fetchAIInfo(slug);
+  const { slugPath } = await params;
+  const parsed = parseSlugPath(slugPath);
+
+  if (!parsed) {
+    return { title: 'CorpusAI Widget' };
+  }
+
+  const ai = await fetchAIInfo(parsed.username, parsed.slug);
 
   if (!ai) {
     return { title: 'CorpusAI Widget' };

@@ -109,7 +109,7 @@ model Verification {
 model AI {
   id          String   @id @default(cuid())
   userId      String
-  slug        String   @unique
+  slug        String
   name        String
   description String?
   createdAt   DateTime @default(now())

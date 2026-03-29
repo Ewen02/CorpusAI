@@ -52,10 +52,19 @@ function useEmbedConfig(): EmbedConfig & { accessToken?: string; accessCode?: st
 // Main Component
 // ============================================
 
+function parseSlugPath(slugPath: string[]): { username: string; slug: string } {
+  const rawUsername = slugPath[0] ?? '';
+  return {
+    username: rawUsername.replace('@', ''),
+    slug: slugPath[1] ?? '',
+  };
+}
+
 export default function EmbedPage() {
   const t = useTranslations('chatPublic');
   const params = useParams();
-  const slug = params.slug as string;
+  const slugPath = params.slugPath as string[];
+  const { username, slug } = parseSlugPath(slugPath);
   const config = useEmbedConfig();
 
   const [ai, setAI] = React.useState<AIPublicInfo | null>(null);
@@ -71,7 +80,7 @@ export default function EmbedPage() {
   React.useEffect(() => {
     async function fetchAI() {
       try {
-        const data = await apiClient.get<AIPublicInfo>(`/chat/${slug}/info`);
+        const data = await apiClient.get<AIPublicInfo>(`/chat/${username}/${slug}/info`);
 
         setAI(data);
       } catch (err) {
@@ -82,10 +91,10 @@ export default function EmbedPage() {
       }
     }
 
-    if (slug) {
+    if (username && slug) {
       fetchAI();
     }
-  }, [slug]);
+  }, [username, slug]);
 
   // Start conversation when AI is loaded
   React.useEffect(() => {
@@ -98,7 +107,7 @@ export default function EmbedPage() {
         if (config.accessCode) headers['x-access-code'] = config.accessCode;
 
         const response = await apiClient.post<StartConversationResponse>(
-          `/chat/${slug}/start`,
+          `/chat/${username}/${slug}/start`,
           undefined,
           { headers }
         );
@@ -110,7 +119,7 @@ export default function EmbedPage() {
     }
 
     startConversation();
-  }, [ai, slug, config.accessToken, config.accessCode]);
+  }, [ai, username, slug, config.accessToken, config.accessCode]);
 
   const handleSendMessage = React.useCallback(
     async (content: string) => {

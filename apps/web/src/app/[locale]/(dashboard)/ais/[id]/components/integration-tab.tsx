@@ -22,6 +22,7 @@ import {
   AnalyticsCard,
 } from '@corpusai/ui';
 import type { AI } from '@corpusai/types';
+import { authClient } from '@/lib/auth-client';
 
 interface IntegrationTabProps {
   ai: AI;
@@ -29,6 +30,9 @@ interface IntegrationTabProps {
 
 export function IntegrationTab({ ai }: IntegrationTabProps) {
   const t = useTranslations('integration');
+  const { data: session } = authClient.useSession();
+  const sessionUsername =
+    ((session?.user as Record<string, unknown> | undefined)?.username as string) ?? '';
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://corpusai.io';
 
   const [theme, setTheme] = React.useState<'light' | 'dark' | 'system'>('system');
@@ -37,7 +41,7 @@ export function IntegrationTab({ ai }: IntegrationTabProps) {
   const [hideFooter, setHideFooter] = React.useState(false);
   const [color, setColor] = React.useState(ai.primaryColor || '#3b82f6');
 
-  const chatUrl = `${origin}/chat/${ai.slug}`;
+  const chatUrl = `${origin}/chat/@${sessionUsername}/${ai.slug}`;
 
   const embedParams = new URLSearchParams();
   if (theme !== 'system') embedParams.set('theme', theme);
@@ -45,7 +49,7 @@ export function IntegrationTab({ ai }: IntegrationTabProps) {
   if (hideFooter) embedParams.set('hideFooter', '1');
   if (color && color !== '#3b82f6') embedParams.set('color', encodeURIComponent(color));
   const embedQuery = embedParams.toString();
-  const embedUrl = `${origin}/embed/${ai.slug}${embedQuery ? `?${embedQuery}` : ''}`;
+  const embedUrl = `${origin}/embed/@${sessionUsername}/${ai.slug}${embedQuery ? `?${embedQuery}` : ''}`;
 
   const iframeCode = `<iframe\n  src="${embedUrl}"\n  width="100%"\n  height="${height}"\n  frameborder="0"\n  allow="clipboard-write"\n  style="border: none; border-radius: 12px;"\n></iframe>`;
 

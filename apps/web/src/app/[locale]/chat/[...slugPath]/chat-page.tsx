@@ -8,11 +8,20 @@ import { useTranslations } from 'next-intl';
 import { ChatInterface, ChatInterfaceSkeleton, Skeleton, Button, Input } from '@corpusai/ui';
 import { usePublicChat } from '@/lib/hooks/use-public-chat';
 
+function parseSlugPath(slugPath: string[]): { username: string; slug: string } {
+  const rawUsername = slugPath[0] ?? '';
+  return {
+    username: rawUsername.replace('@', ''),
+    slug: slugPath[1] ?? '',
+  };
+}
+
 export default function ChatPage() {
   const t = useTranslations('chatPublic');
   const params = useParams();
   const searchParams = useSearchParams();
-  const slug = params.slug as string;
+  const slugPath = params.slugPath as string[];
+  const { username, slug } = parseSlugPath(slugPath);
   const accessToken = searchParams.get('t') ?? undefined;
 
   const {
@@ -27,7 +36,7 @@ export default function ChatPage() {
     unlockWithCode,
     sendMessage,
     dismissSaveBanner,
-  } = usePublicChat({ slug, accessToken });
+  } = usePublicChat({ username, slug, accessToken });
 
   const [accessCode, setAccessCode] = React.useState('');
   const [codeError, setCodeError] = React.useState('');
@@ -78,7 +87,7 @@ export default function ChatPage() {
           </div>
           <div className="space-y-3">
             <Link
-              href={`/portal/sign-in?callbackUrl=/chat/${slug}&aiSlug=${slug}`}
+              href={`/portal/sign-in?callbackUrl=/chat/@${username}/${slug}&aiSlug=${slug}`}
               className="block"
             >
               <Button className="w-full">{t('signInToAccess')}</Button>

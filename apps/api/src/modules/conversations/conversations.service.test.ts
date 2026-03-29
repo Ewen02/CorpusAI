@@ -90,7 +90,7 @@ describe('ConversationsService', () => {
 
   describe('getAIPublicInfo', () => {
     it('should return public AI info with avatar alias', async () => {
-      mockAI.findUnique.mockResolvedValue({
+      mockAI.findFirst.mockResolvedValue({
         id: 'ai-1',
         slug: 'test-ai',
         name: 'Test AI',
@@ -103,14 +103,14 @@ describe('ConversationsService', () => {
         accessType: 'FREE',
       });
 
-      const result = await service.getAIPublicInfo('test-ai');
+      const result = await service.getAIPublicInfo('jean', 'test-ai');
       expect(result.avatar).toBe('logo.png');
       expect(result.id).toBe('ai-1');
     });
 
     it('should throw when AI not found', async () => {
-      mockAI.findUnique.mockResolvedValue(null);
-      await expect(service.getAIPublicInfo('nope')).rejects.toThrow(NotFoundException);
+      mockAI.findFirst.mockResolvedValue(null);
+      await expect(service.getAIPublicInfo('jean', 'nope')).rejects.toThrow(NotFoundException);
     });
   });
 

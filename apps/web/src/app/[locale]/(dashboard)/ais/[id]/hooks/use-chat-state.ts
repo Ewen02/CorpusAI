@@ -25,13 +25,14 @@ function deduplicateSources(sources: ChatSource[]): ChatSource[] {
 
 interface UseChatStateOptions {
   aiSlug: string;
+  username: string;
 }
 
 /**
  * Custom hook to manage chat state, messages, and streaming.
  * Centralizes all chat-related logic for the AI detail page.
  */
-export function useChatState({ aiSlug }: UseChatStateOptions) {
+export function useChatState({ aiSlug, username }: UseChatStateOptions) {
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
   const [currentConversationId, setCurrentConversationId] = React.useState<string | null>(null);
   const [streamingMessageId, setStreamingMessageId] = React.useState<string | null>(null);
@@ -105,7 +106,7 @@ export function useChatState({ aiSlug }: UseChatStateOptions) {
         // Create conversation if needed
         let convId = currentConversationId;
         if (!convId) {
-          const convData = await startConversation.mutateAsync(aiSlug);
+          const convData = await startConversation.mutateAsync({ username, slug: aiSlug });
           convId = convData.id;
           setCurrentConversationId(convId);
         }
@@ -198,7 +199,7 @@ export function useChatState({ aiSlug }: UseChatStateOptions) {
         setStreamingMessageId(null);
       }
     },
-    [aiSlug, isStreaming, currentConversationId, startConversation, sendStream]
+    [aiSlug, username, isStreaming, currentConversationId, startConversation, sendStream]
   );
 
   // Select a conversation

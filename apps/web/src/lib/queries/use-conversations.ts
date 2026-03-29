@@ -33,8 +33,8 @@ export function useStartConversation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (aiSlug: string) =>
-      apiClient.post<StartConversationResponse>(`/chat/${aiSlug}/start`, undefined, {
+    mutationFn: ({ username, slug }: { username: string; slug: string }) =>
+      apiClient.post<StartConversationResponse>(`/chat/${username}/${slug}/start`, undefined, {
         headers: { 'x-conversation-source': 'DASHBOARD' },
       }),
     onSuccess: () => {

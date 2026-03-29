@@ -103,7 +103,7 @@ export default function ProfilePage({ username }: ProfilePageProps) {
                     description={ai.description}
                     category={ai.category}
                     conversationCount={ai.conversationCount}
-                    onTry={() => router.push(`/chat/${ai.slug}`)}
+                    onTry={() => router.push(`/chat/@${username}/${ai.slug}`)}
                   />
                 ))}
               </div>

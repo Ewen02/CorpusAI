@@ -68,17 +68,19 @@ export class ConversationsController {
   // Public endpoints (for widget/end users)
   // ============================================
 
-  @Get('chat/:aiSlug/info')
+  @Get('chat/:username/:aiSlug/info')
   @ApiOperation({ summary: 'Get public AI info for widget' })
+  @ApiParam({ name: 'username', description: 'AI creator username' })
   @ApiParam({ name: 'aiSlug', description: 'AI slug' })
   @ApiResponse({ status: 200, description: 'Public AI info returned' })
   @ApiResponse({ status: 404, description: 'AI not found' })
-  async getAIPublicInfo(@Param('aiSlug') aiSlug: string) {
-    return this.conversationsService.getAIPublicInfo(aiSlug);
+  async getAIPublicInfo(@Param('username') username: string, @Param('aiSlug') aiSlug: string) {
+    return this.conversationsService.getAIPublicInfo(username, aiSlug);
   }
 
-  @Post('chat/:aiSlug/start')
+  @Post('chat/:username/:aiSlug/start')
   @ApiOperation({ summary: 'Start a new conversation with an AI' })
+  @ApiParam({ name: 'username', description: 'AI creator username' })
   @ApiParam({ name: 'aiSlug', description: 'AI slug' })
   @ApiHeader({ name: 'x-access-token', required: false, description: 'Secret link token' })
   @ApiHeader({ name: 'x-access-code', required: false, description: 'Access code' })
@@ -91,6 +93,7 @@ export class ConversationsController {
   @ApiResponse({ status: 401, description: 'Access denied' })
   @ApiResponse({ status: 404, description: 'AI not found' })
   async startConversation(
+    @Param('username') username: string,
     @Param('aiSlug') aiSlug: string,
     @Req() req: Request,
     @Headers('x-access-token') accessToken?: string,
@@ -102,6 +105,7 @@ export class ConversationsController {
       'eu_session'
     ];
     return this.conversationsService.create(
+      username,
       aiSlug,
       euSession,
       conversationSource,

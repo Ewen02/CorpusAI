@@ -10,4 +10,9 @@ export class MagicLinkDto {
   @IsOptional()
   @IsString()
   aiSlug?: string;
+
+  @ApiPropertyOptional({ example: 'johndoe', description: 'AI creator username' })
+  @IsOptional()
+  @IsString()
+  username?: string;
 }

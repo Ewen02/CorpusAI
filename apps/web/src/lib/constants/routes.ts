@@ -16,8 +16,11 @@ export const ROUTES = {
     new: '/ais/new',
     detail: (id: string) => `/ais/${id}` as const,
     settings: (id: string) => `/ais/${id}/settings` as const,
-    chat: (slug: string) => `/chat/${slug}` as const,
+    chat: (username: string, slug: string) => `/chat/@${username}/${slug}` as const,
   },
+
+  // Public embed
+  embed: (username: string, slug: string) => `/embed/@${username}/${slug}` as const,
 
   // Analytics
   analytics: '/analytics',

@@ -21,6 +21,7 @@ import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import { useAI, useConversations, useDocuments } from '@/lib/queries';
 import { useNavigation } from '@/lib/hooks';
+import { authClient } from '@/lib/auth-client';
 import { useChatState, useDocumentUpload } from './hooks';
 import { AIHeader, ChatTab, ConversationsTab } from './components';
 
@@ -61,6 +62,9 @@ export default function AIDetailPage() {
   const { data: documents, isLoading: isLoadingDocuments } = useDocuments(aiId);
 
   const aiData = ai as AI | undefined;
+  const { data: session } = authClient.useSession();
+  const sessionUsername =
+    ((session?.user as Record<string, unknown> | undefined)?.username as string) ?? '';
 
   // Chat state management
   const {
@@ -70,7 +74,7 @@ export default function AIDetailPage() {
     sendMessage,
     selectConversation,
     startNewConversation,
-  } = useChatState({ aiSlug: aiData?.slug || '' });
+  } = useChatState({ aiSlug: aiData?.slug || '', username: sessionUsername });
 
   // Document upload management
   const { uploadedFiles, uploadFiles, removeFile, deleteIndexedDocument, retryFailedDocument } =

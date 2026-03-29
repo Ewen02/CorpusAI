@@ -6,6 +6,7 @@ import { AI_STATUS_CONFIG } from '@/lib/constants';
 import { getTimeAgo } from '@/lib/utils';
 import { FileIcon, MessageIcon, UsersIcon } from '@/lib/icons';
 import type { AI, AIStatus } from '@corpusai/types';
+import { authClient } from '@/lib/auth-client';
 
 /**
  * Full AI data for detailed card display.
@@ -20,6 +21,8 @@ interface AICardFullData {
   questionCount: number;
   conversationCount: number;
   updatedAt: string | Date;
+  /** Username of the AI owner, used for URL display */
+  username?: string | null;
 }
 
 /**
@@ -79,6 +82,11 @@ const AICardFull = React.memo(function AICardFull({
   ai: AI | AICardFullData;
   onClick: () => void;
 }) {
+  const { data: session } = authClient.useSession();
+  const displayUsername =
+    ('username' in ai && ai.username) ||
+    ((session?.user as Record<string, unknown> | undefined)?.username as string) ||
+    '';
   const status = AI_STATUS_CONFIG[ai.status];
   const updatedAt = new Date(ai.updatedAt);
   const timeAgo = getTimeAgo(updatedAt);
@@ -100,7 +108,9 @@ const AICardFull = React.memo(function AICardFull({
             <p className="truncate text-[15px] font-semibold leading-tight text-tx-primary">
               {ai.name}
             </p>
-            <p className="text-[12px] text-tx-muted">/chat/{ai.slug}</p>
+            <p className="text-[12px] text-tx-muted">
+              /chat/@{displayUsername}/{ai.slug}
+            </p>
           </div>
         </div>
 

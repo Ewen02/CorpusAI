@@ -108,9 +108,9 @@ export class ConversationsService {
   /**
    * Get public AI info for widget embed.
    */
-  async getAIPublicInfo(slug: string) {
-    const ai = await prisma.aI.findUnique({
-      where: { slug },
+  async getAIPublicInfo(username: string, slug: string) {
+    const ai = await prisma.aI.findFirst({
+      where: { slug, user: { username }, deletedAt: null },
       select: {
         id: true,
         slug: true,
@@ -236,14 +236,15 @@ export class ConversationsService {
   }
 
   async create(
+    username: string,
     aiSlug: string,
     endUserSessionToken?: string,
     source: ConversationSource = ConversationSource.DASHBOARD,
     accessToken?: string,
     accessCode?: string
   ) {
-    const ai = await prisma.aI.findUnique({
-      where: { slug: aiSlug },
+    const ai = await prisma.aI.findFirst({
+      where: { slug: aiSlug, user: { username }, deletedAt: null },
     });
 
     // Allow ACTIVE and DRAFT (for owner testing)

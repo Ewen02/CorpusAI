@@ -86,9 +86,9 @@ export class AIsService {
     };
   }
 
-  async findBySlug(slug: string) {
-    const ai = await prisma.aI.findUnique({
-      where: { slug },
+  async findByUserAndSlug(username: string, slug: string) {
+    const ai = await prisma.aI.findFirst({
+      where: { slug, user: { username }, deletedAt: null },
       select: {
         id: true,
         slug: true,
@@ -126,9 +126,9 @@ export class AIsService {
 
     assertCanCreateAI(user.subscriptionPlan, user._count.ais);
 
-    // Check slug uniqueness
-    const existingSlug = await prisma.aI.findUnique({
-      where: { slug: dto.slug },
+    // Check slug uniqueness per user
+    const existingSlug = await prisma.aI.findFirst({
+      where: { slug: dto.slug, userId },
     });
 
     if (existingSlug) {
@@ -412,8 +412,11 @@ export class AIsService {
     );
     const token = nanoid();
     await prisma.aI.update({ where: { id: aiId }, data: { accessToken: token } });
-    const ai = await prisma.aI.findUnique({ where: { id: aiId }, select: { slug: true } });
-    return { token, url: `${frontendUrl}/chat/${ai!.slug}?t=${token}` };
+    const ai = await prisma.aI.findUnique({
+      where: { id: aiId },
+      select: { slug: true, user: { select: { username: true } } },
+    });
+    return { token, url: `${frontendUrl}/chat/${ai!.user.username}/${ai!.slug}?t=${token}` };
   }
 
   async deleteAccessToken(userId: string, aiId: string) {
@@ -511,7 +514,11 @@ export class AIsService {
       update: { status: AccessStatus.ACTIVE, expiresAt: null },
     });
 
-    const accessUrl = `${frontendUrl}/chat/${ai.slug}`;
+    const owner = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { username: true },
+    });
+    const accessUrl = `${frontendUrl}/chat/${owner!.username}/${ai.slug}`;
     await mailService.sendInvite(email, ai.name, creatorName, accessUrl);
 
     return { success: true, endUserId: endUser.id };

@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Button, Card, CardHeader, CardTitle, CardContent, Input, CopyButton } from '@corpusai/ui';
 import { useTranslations } from 'next-intl';
+import { authClient } from '@/lib/auth-client';
 import type { CreatedAI } from './step-create-ai';
 import { IndexingBanner } from './indexing-banner';
 
@@ -22,9 +23,12 @@ export function StepShare({
   onFinish,
 }: StepShareProps) {
   const t = useTranslations('onboarding.share');
+  const { data: session } = authClient.useSession();
+  const sessionUsername =
+    ((session?.user as Record<string, unknown> | undefined)?.username as string) ?? '';
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://corpusai.io';
-  const chatUrl = `${origin}/chat/${ai.slug}`;
-  const embedCode = `<script src="${origin}/embed.js" data-ai="${ai.slug}" defer></script>`;
+  const chatUrl = `${origin}/chat/@${sessionUsername}/${ai.slug}`;
+  const embedCode = `<script src="${origin}/embed.js" data-username="${sessionUsername}" data-ai="${ai.slug}" defer></script>`;
 
   return (
     <div className="space-y-6">

@@ -15,6 +15,7 @@ export { getOrCreateSessionId, mapSourcesToChat } from '@/lib/utils/chat-session
 export type AccessDeniedReason = 'access_token' | 'access_code' | 'invite_only' | 'ai_inactive';
 
 interface UsePublicChatOptions {
+  username: string;
   slug: string;
   /** Secret token from URL ?t= param */
   accessToken?: string;
@@ -38,7 +39,11 @@ interface UsePublicChatReturn {
 // Hook
 // ============================================
 
-export function usePublicChat({ slug, accessToken }: UsePublicChatOptions): UsePublicChatReturn {
+export function usePublicChat({
+  username,
+  slug,
+  accessToken,
+}: UsePublicChatOptions): UsePublicChatReturn {
   const [ai, setAI] = React.useState<AIPublicInfo | null>(null);
   const [conversationId, setConversationId] = React.useState<string | null>(null);
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
@@ -67,7 +72,7 @@ export function usePublicChat({ slug, accessToken }: UsePublicChatOptions): UseP
   React.useEffect(() => {
     async function fetchAI() {
       try {
-        const data = await apiClient.get<AIPublicInfo>(`/chat/${slug}/info`);
+        const data = await apiClient.get<AIPublicInfo>(`/chat/${username}/${slug}/info`);
         setAI(data);
       } catch {
         setError('Assistant introuvable.');
@@ -76,8 +81,8 @@ export function usePublicChat({ slug, accessToken }: UsePublicChatOptions): UseP
       }
     }
 
-    if (slug) fetchAI();
-  }, [slug]);
+    if (username && slug) fetchAI();
+  }, [username, slug]);
 
   // Start conversation
   React.useEffect(() => {
@@ -89,7 +94,7 @@ export function usePublicChat({ slug, accessToken }: UsePublicChatOptions): UseP
         if (accessToken) headers['x-access-token'] = accessToken;
 
         const response = await apiClient.post<StartConversationResponse>(
-          `/chat/${slug}/start`,
+          `/chat/${username}/${slug}/start`,
           undefined,
           { headers }
         );
@@ -118,7 +123,7 @@ export function usePublicChat({ slug, accessToken }: UsePublicChatOptions): UseP
     }
 
     if (ai) startConversation();
-  }, [ai, slug, accessToken]);
+  }, [ai, username, slug, accessToken]);
 
   const unlockWithCode = React.useCallback(
     async (code: string): Promise<boolean> => {
@@ -131,7 +136,7 @@ export function usePublicChat({ slug, accessToken }: UsePublicChatOptions): UseP
         };
         if (accessToken) headers['x-access-token'] = accessToken;
         const response = await apiClient.post<StartConversationResponse>(
-          `/chat/${slug}/start`,
+          `/chat/${username}/${slug}/start`,
           undefined,
           { headers }
         );
@@ -149,7 +154,7 @@ export function usePublicChat({ slug, accessToken }: UsePublicChatOptions): UseP
         return false;
       }
     },
-    [ai, slug, accessToken]
+    [ai, username, slug, accessToken]
   );
 
   const sendMessage = React.useCallback(

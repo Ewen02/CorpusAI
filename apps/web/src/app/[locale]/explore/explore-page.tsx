@@ -125,7 +125,7 @@ export default function ExplorePage() {
                     creatorUsername={ai.user.username ?? undefined}
                     category={ai.category}
                     conversationCount={ai.conversationCount}
-                    onTry={() => router.push(`/chat/${ai.slug}`)}
+                    onTry={() => router.push(`/chat/@${ai.user.username}/${ai.slug}`)}
                   />
                 ))}
               </div>
@@ -225,7 +225,7 @@ export default function ExplorePage() {
                   creatorUsername={ai.user.username ?? undefined}
                   category={ai.category}
                   conversationCount={ai.conversationCount}
-                  onTry={() => router.push(`/chat/${ai.slug}`)}
+                  onTry={() => router.push(`/chat/@${ai.user.username}/${ai.slug}`)}
                 />
               ))}
             </div>

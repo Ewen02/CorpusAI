@@ -18,6 +18,7 @@ vi.mock('@corpusai/database', () => ({
     },
     aI: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
     },
   },
 }));
@@ -33,6 +34,7 @@ const mockEndUser = prisma.endUser as unknown as {
 
 const mockAI = prisma.aI as unknown as {
   findUnique: ReturnType<typeof vi.fn>;
+  findFirst: ReturnType<typeof vi.fn>;
 };
 
 describe('EndUserAuthService', () => {
@@ -91,18 +93,15 @@ describe('EndUserAuthService', () => {
       );
     });
 
-    it('should pass AI name when aiSlug is provided', async () => {
+    it('should pass AI name when aiSlug and username are provided', async () => {
       mockEndUser.upsert.mockResolvedValue({ id: 'eu-4', email: 'slug@test.com' });
       mockEndUser.update.mockResolvedValue({});
-      mockAI.findUnique.mockResolvedValue({ name: 'My Assistant' });
+      mockAI.findFirst.mockResolvedValue({ name: 'My Assistant' });
       mockMailService.sendMagicLink.mockResolvedValue(undefined);
 
-      await service.sendMagicLink('slug@test.com', 'my-assistant');
+      await service.sendMagicLink('slug@test.com', 'my-assistant', 'jean');
 
-      expect(mockAI.findUnique).toHaveBeenCalledWith({
-        where: { slug: 'my-assistant' },
-        select: { name: true },
-      });
+      expect(mockAI.findFirst).toHaveBeenCalled();
       expect(mockMailService.sendMagicLink).toHaveBeenCalledWith(
         'slug@test.com',
         'mock-token-hex-value',

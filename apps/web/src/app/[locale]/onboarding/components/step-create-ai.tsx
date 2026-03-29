@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from '@corpusai/ui';
 import { useTranslations } from 'next-intl';
+import { authClient } from '@/lib/auth-client';
 import { apiClient } from '@/lib/api-client';
 import type { TemplateSelection } from './step-template';
 
@@ -44,6 +45,9 @@ interface StepCreateAIProps {
 
 export function StepCreateAI({ onCreated, template }: StepCreateAIProps) {
   const t = useTranslations('onboarding.createAI');
+  const { data: session } = authClient.useSession();
+  const sessionUsername =
+    ((session?.user as Record<string, unknown> | undefined)?.username as string) ?? '';
   const [name, setName] = React.useState(template?.name ?? '');
   const [slug, setSlug] = React.useState(template?.name ? slugify(template.name) : '');
   const [description, setDescription] = React.useState(template?.description ?? '');
@@ -111,7 +115,9 @@ export function StepCreateAI({ onCreated, template }: StepCreateAIProps) {
             {slug && (
               <p className="text-xs text-[hsl(var(--text-muted))]">
                 {t('urlPrefix')}{' '}
-                <span className="font-mono text-[hsl(var(--text-secondary))]">/chat/{slug}</span>
+                <span className="font-mono text-[hsl(var(--text-secondary))]">
+                  /chat/@{sessionUsername}/{slug}
+                </span>
               </p>
             )}
           </div>

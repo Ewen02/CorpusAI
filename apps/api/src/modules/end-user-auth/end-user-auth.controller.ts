@@ -20,7 +20,7 @@ export class EndUserAuthController {
   @Throttle({ short: { limit: 3, ttl: 3600000 } })
   @ApiOperation({ summary: 'Send a magic link to end-user email' })
   async sendMagicLink(@Body() dto: MagicLinkDto) {
-    await this.service.sendMagicLink(dto.email, dto.aiSlug);
+    await this.service.sendMagicLink(dto.email, dto.aiSlug, dto.username);
     return { success: true };
   }
 

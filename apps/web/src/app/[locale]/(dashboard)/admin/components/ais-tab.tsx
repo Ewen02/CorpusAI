@@ -121,7 +121,7 @@ export function AIsTab() {
                             className="h-7 gap-1 text-[11px]"
                             asChild
                           >
-                            <Link href={`/chat/${ai.slug}`} target="_blank">
+                            <Link href={`/chat/@${ai.user.username}/${ai.slug}`} target="_blank">
                               <ExternalLink className="h-3 w-3" />
                               Tester
                             </Link>

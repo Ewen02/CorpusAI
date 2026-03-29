@@ -37,7 +37,7 @@ describe('usePublicChat', () => {
 
   it('should start in loading state', () => {
     mockGet.mockResolvedValue({ name: 'Test AI', description: 'A test AI' });
-    const { result } = renderHook(() => usePublicChat({ slug: 'test-ai' }));
+    const { result } = renderHook(() => usePublicChat({ username: 'jean', slug: 'test-ai' }));
 
     expect(result.current.isLoading).toBe(true);
     expect(result.current.ai).toBeNull();
@@ -49,7 +49,7 @@ describe('usePublicChat', () => {
     mockGet.mockResolvedValue(aiInfo);
     mockPost.mockResolvedValue({ id: 'conv-1' });
 
-    const { result } = renderHook(() => usePublicChat({ slug: 'test-ai' }));
+    const { result } = renderHook(() => usePublicChat({ username: 'jean', slug: 'test-ai' }));
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -63,7 +63,7 @@ describe('usePublicChat', () => {
   it('should set error when AI not found', async () => {
     mockGet.mockRejectedValue(new Error('Not found'));
 
-    const { result } = renderHook(() => usePublicChat({ slug: 'nonexistent' }));
+    const { result } = renderHook(() => usePublicChat({ username: 'jean', slug: 'nonexistent' }));
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -85,7 +85,7 @@ describe('usePublicChat', () => {
       })
     );
 
-    const { result } = renderHook(() => usePublicChat({ slug: 'gated-ai' }));
+    const { result } = renderHook(() => usePublicChat({ username: 'jean', slug: 'gated-ai' }));
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -103,7 +103,7 @@ describe('usePublicChat', () => {
     mockGet.mockResolvedValue(aiInfo);
     mockPost.mockResolvedValue({ id: 'conv-1' });
 
-    const { result } = renderHook(() => usePublicChat({ slug: 'test-ai' }));
+    const { result } = renderHook(() => usePublicChat({ username: 'jean', slug: 'test-ai' }));
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -116,7 +116,7 @@ describe('usePublicChat', () => {
   it('should dismiss save banner', async () => {
     mockGet.mockResolvedValue({ name: 'AI', description: '' });
 
-    const { result } = renderHook(() => usePublicChat({ slug: 'test-ai' }));
+    const { result } = renderHook(() => usePublicChat({ username: 'jean', slug: 'test-ai' }));
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -133,7 +133,7 @@ describe('usePublicChat', () => {
     mockGet.mockResolvedValue({ name: 'Public AI', description: '' });
     mockPost.mockResolvedValue({ id: 'conv-1' });
 
-    const { result } = renderHook(() => usePublicChat({ slug: 'public-ai' }));
+    const { result } = renderHook(() => usePublicChat({ username: 'jean', slug: 'public-ai' }));
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);

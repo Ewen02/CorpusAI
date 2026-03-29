@@ -53,7 +53,7 @@ export interface AdminAI {
   questionCount: number;
   createdAt: string;
   updatedAt: string;
-  user: { id: string; email: string; name: string | null };
+  user: { id: string; email: string; name: string | null; username: string | null };
 }
 
 interface PaginatedResponse<T> {
