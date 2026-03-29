@@ -151,6 +151,7 @@ export type { NotificationBarProps, NotificationBarItem } from './organisms/noti
 export { DashboardLayout, DashboardLayoutSkeleton } from './templates/dashboard-layout';
 export type {
   DashboardLayoutProps,
+  DashboardLayoutLabels,
   NavItem,
   AINavItem,
   UserData,

@@ -27,7 +27,8 @@
     "documentation": "Documentation",
     "signOut": "Sign out",
     "createAI": "Create an AI",
-    "upgrade": "Upgrade plan"
+    "upgrade": "Upgrade plan",
+    "planFree": "Free plan"
   },
   "auth": {
     "signIn": {
@@ -374,7 +375,27 @@
     "unknownDate": "Unknown date",
     "paid": "Paid",
     "noInvoices": "No invoices available",
-    "noInvoicesDescription": "Your invoices will appear here after your first payment."
+    "noInvoicesDescription": "Your invoices will appear here after your first payment.",
+    "planFree": "Free",
+    "planCreator": "Creator",
+    "planPro": "Pro",
+    "planEnterprise": "Enterprise",
+    "descFree": "To discover CorpusAI",
+    "descCreator": "For content creators",
+    "descPro": "For professionals",
+    "descEnterprise": "For teams",
+    "unlimitedAssistants": "Unlimited assistants",
+    "assistantCount": "{count} AI assistant(s)",
+    "unlimitedDocuments": "Unlimited documents",
+    "documentsPerAI": "{count} documents/AI",
+    "unlimitedQuestions": "Unlimited questions",
+    "questionsPerDayCount": "{count} questions/day",
+    "dedicatedSupport": "Dedicated support",
+    "prioritySupport": "Priority support",
+    "communitySupport": "Community support",
+    "customWidget": "Custom widget",
+    "customBranding": "Custom branding",
+    "month": "month"
   },
   "notifications": {
     "emailTitle": "Email notifications",

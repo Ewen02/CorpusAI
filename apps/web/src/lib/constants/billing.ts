@@ -1,8 +1,4 @@
-import {
-  PLAN_PRICING,
-  getFeatureLimits,
-  type SubscriptionPlanType,
-} from '@corpusai/subscription';
+import { PLAN_PRICING, getFeatureLimits, type SubscriptionPlanType } from '@corpusai/subscription';
 
 export interface PlanFeature {
   name: string;
@@ -19,57 +15,55 @@ export interface PlanDisplay {
   popular?: boolean;
 }
 
-export const PLAN_DISPLAY_NAMES: Record<SubscriptionPlanType, string> = {
-  FREE: 'Gratuit',
-  CREATOR: 'Createur',
-  PRO: 'Pro',
-  ENTERPRISE: 'Enterprise',
-};
+type TranslationFn = (key: string, values?: Record<string, string | number>) => string;
 
-export const PLAN_DESCRIPTIONS: Record<SubscriptionPlanType, string> = {
-  FREE: 'Pour decouvrir CorpusAI',
-  CREATOR: 'Pour les createurs de contenu',
-  PRO: 'Pour les professionnels',
-  ENTERPRISE: 'Pour les equipes',
-};
+export function getPlanDisplayName(plan: SubscriptionPlanType, t: TranslationFn): string {
+  const key = `plan${plan.charAt(0)}${plan.slice(1).toLowerCase()}`;
+  return t(key);
+}
 
-export function buildPlanFeatures(plan: SubscriptionPlanType): PlanFeature[] {
+export function getPlanDescription(plan: SubscriptionPlanType, t: TranslationFn): string {
+  const key = `desc${plan.charAt(0)}${plan.slice(1).toLowerCase()}`;
+  return t(key);
+}
+
+export function buildPlanFeatures(plan: SubscriptionPlanType, t: TranslationFn): PlanFeature[] {
   const limits = getFeatureLimits(plan);
   const isUnlimited = (val: number) => val === -1;
 
   return [
     {
       name: isUnlimited(limits.maxAIs)
-        ? 'Assistants illimites'
-        : `${limits.maxAIs} assistant${limits.maxAIs > 1 ? 's' : ''} IA`,
+        ? t('unlimitedAssistants')
+        : t('assistantCount', { count: limits.maxAIs }),
       included: true,
     },
     {
       name: isUnlimited(limits.maxDocumentsPerAI)
-        ? 'Documents illimites'
-        : `${limits.maxDocumentsPerAI} documents/AI`,
+        ? t('unlimitedDocuments')
+        : t('documentsPerAI', { count: limits.maxDocumentsPerAI }),
       included: true,
     },
     {
       name: isUnlimited(limits.maxQuestionsPerDay)
-        ? 'Questions illimitees'
-        : `${limits.maxQuestionsPerDay} questions/jour`,
+        ? t('unlimitedQuestions')
+        : t('questionsPerDayCount', { count: limits.maxQuestionsPerDay }),
       included: true,
     },
     {
       name: limits.dedicatedSupport
-        ? 'Support dedie'
+        ? t('dedicatedSupport')
         : limits.sla
-          ? 'Support prioritaire'
-          : 'Support communautaire',
+          ? t('prioritySupport')
+          : t('communitySupport'),
       included: true,
     },
     {
-      name: 'Widget personnalise',
+      name: t('customWidget'),
       included: limits.canUseWidget,
     },
     {
-      name: 'Branding personnalise',
+      name: t('customBranding'),
       included: limits.canCustomizeBranding,
     },
   ];
@@ -77,12 +71,14 @@ export function buildPlanFeatures(plan: SubscriptionPlanType): PlanFeature[] {
 
 export const PLAN_ORDER: SubscriptionPlanType[] = ['FREE', 'CREATOR', 'PRO', 'ENTERPRISE'];
 
-export const PLANS: PlanDisplay[] = PLAN_ORDER.map((planId) => ({
-  id: planId,
-  name: PLAN_DISPLAY_NAMES[planId],
-  price: PLAN_PRICING[planId].monthly,
-  period: 'mois',
-  description: PLAN_DESCRIPTIONS[planId],
-  features: buildPlanFeatures(planId),
-  popular: planId === 'PRO',
-}));
+export function buildPlans(t: TranslationFn): PlanDisplay[] {
+  return PLAN_ORDER.map((planId) => ({
+    id: planId,
+    name: getPlanDisplayName(planId, t),
+    price: PLAN_PRICING[planId].monthly,
+    period: t('month'),
+    description: getPlanDescription(planId, t),
+    features: buildPlanFeatures(planId, t),
+    popular: planId === 'PRO',
+  }));
+}

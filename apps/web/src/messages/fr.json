@@ -27,7 +27,8 @@
     "documentation": "Documentation",
     "signOut": "Déconnexion",
     "createAI": "Créer un AI",
-    "upgrade": "Passer au plan supérieur"
+    "upgrade": "Passer au plan supérieur",
+    "planFree": "Plan gratuit"
   },
   "auth": {
     "signIn": {
@@ -374,7 +375,27 @@
     "unknownDate": "Date inconnue",
     "paid": "Payé",
     "noInvoices": "Aucune facture disponible",
-    "noInvoicesDescription": "Vos factures apparaîtront ici après votre premier paiement."
+    "noInvoicesDescription": "Vos factures apparaîtront ici après votre premier paiement.",
+    "planFree": "Gratuit",
+    "planCreator": "Créateur",
+    "planPro": "Pro",
+    "planEnterprise": "Enterprise",
+    "descFree": "Pour découvrir CorpusAI",
+    "descCreator": "Pour les créateurs de contenu",
+    "descPro": "Pour les professionnels",
+    "descEnterprise": "Pour les équipes",
+    "unlimitedAssistants": "Assistants illimités",
+    "assistantCount": "{count} assistant(s) IA",
+    "unlimitedDocuments": "Documents illimités",
+    "documentsPerAI": "{count} documents/AI",
+    "unlimitedQuestions": "Questions illimitées",
+    "questionsPerDayCount": "{count} questions/jour",
+    "dedicatedSupport": "Support dédié",
+    "prioritySupport": "Support prioritaire",
+    "communitySupport": "Support communautaire",
+    "customWidget": "Widget personnalisé",
+    "customBranding": "Branding personnalisé",
+    "month": "mois"
   },
   "notifications": {
     "emailTitle": "Notifications par email",

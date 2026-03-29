@@ -20,7 +20,7 @@ import {
   useInvoices,
 } from '@/lib/queries';
 import { CheckIcon, XIcon, ReceiptIcon } from '@/lib/icons';
-import { PLANS, PLAN_DISPLAY_NAMES } from '@/lib/constants';
+import { buildPlans, getPlanDisplayName } from '@/lib/constants/billing';
 import {
   getFeatureLimits,
   getRemainingUsage,
@@ -37,6 +37,7 @@ export default function SettingsBillingPage() {
   const customerPortal = useCustomerPortal();
 
   const currentPlan = (stats?.subscriptionPlan || 'FREE') as SubscriptionPlanType;
+  const plans = React.useMemo(() => buildPlans(t), [t]);
 
   const handleUpgrade = (planId: SubscriptionPlanType) => {
     if (planId === 'FREE') return;
@@ -59,7 +60,7 @@ export default function SettingsBillingPage() {
     );
   }
 
-  const currentPlanData = PLANS.find((p) => p.id === currentPlan) ?? PLANS[0]!;
+  const currentPlanData = plans.find((p) => p.id === currentPlan) ?? plans[0]!;
   const currentLimits = getFeatureLimits(currentPlan);
 
   const aiRemaining = getRemainingUsage(currentPlan, 'ais', stats?.aiCount || 0);
@@ -136,7 +137,7 @@ export default function SettingsBillingPage() {
         </CardHeader>
         <CardContent>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {PLANS.map((plan) => {
+            {plans.map((plan) => {
               const isCurrent = plan.id === currentPlan;
               return (
                 <div

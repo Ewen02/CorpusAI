@@ -31,6 +31,13 @@ export interface UserData {
   plan: 'FREE' | 'CREATOR' | 'PRO' | 'ENTERPRISE';
 }
 
+export interface DashboardLayoutLabels {
+  myAIs?: string;
+  createAI?: string;
+  signOut?: string;
+  planLabels?: Record<string, string>;
+}
+
 export interface DashboardLayoutProps {
   children: React.ReactNode;
   navItems: NavItem[];
@@ -43,6 +50,7 @@ export interface DashboardLayoutProps {
   onUpgrade?: () => void;
   onSignOut?: () => void;
   logo?: React.ReactNode;
+  labels?: DashboardLayoutLabels;
 }
 
 // ============================================
@@ -70,7 +78,7 @@ function useSidebar() {
 // Plan label helper
 // ============================================
 
-const planLabel: Record<UserData['plan'], string> = {
+const DEFAULT_PLAN_LABELS: Record<UserData['plan'], string> = {
   FREE: 'Plan gratuit',
   CREATOR: 'Creator',
   PRO: 'Pro',
@@ -81,7 +89,15 @@ const planLabel: Record<UserData['plan'], string> = {
 // Sub-components
 // ============================================
 
-function SidebarHeader({ logo, user }: { logo?: React.ReactNode; user: UserData }) {
+function SidebarHeader({
+  logo,
+  user,
+  labels,
+}: {
+  logo?: React.ReactNode;
+  user: UserData;
+  labels?: DashboardLayoutLabels;
+}) {
   const { isCollapsed } = useSidebar();
 
   return (
@@ -99,7 +115,7 @@ function SidebarHeader({ logo, user }: { logo?: React.ReactNode; user: UserData 
               CorpusAI
             </span>
             <span className="text-tx-muted mt-[3px] text-[11px] leading-none">
-              {planLabel[user.plan]}
+              {labels?.planLabels?.[user.plan] ?? DEFAULT_PLAN_LABELS[user.plan]}
             </span>
           </div>
         )}
@@ -194,11 +210,13 @@ function SidebarAIList({
   currentPath,
   onNavigate,
   onCreateAI,
+  labels,
 }: {
   items: AINavItem[];
   currentPath: string;
   onNavigate: (href: string) => void;
   onCreateAI?: () => void;
+  labels?: DashboardLayoutLabels;
 }) {
   const { isCollapsed, setIsMobileOpen } = useSidebar();
 
@@ -214,7 +232,7 @@ function SidebarAIList({
       {/* Section header */}
       <div className="mb-1 flex items-center justify-between px-2 py-1">
         <p className="text-tx-disabled text-[10px] font-semibold uppercase tracking-[0.08em]">
-          Mes AIs
+          {labels?.myAIs ?? 'Mes AIs'}
         </p>
         {items.length > 0 && (
           <span className="text-tx-disabled text-[10px] tabular-nums">{items.length}</span>
@@ -260,14 +278,22 @@ function SidebarAIList({
           className="text-tx-disabled hover:text-tx-muted mt-1 flex w-full items-center gap-2.5 rounded-md border border-dashed border-[hsl(var(--border-subtle))] px-2.5 py-[7px] text-[13px] transition-all duration-100 hover:border-[hsl(var(--border-default))]"
         >
           <PlusIcon className="h-3.5 w-3.5 shrink-0" />
-          <span>Créer un AI</span>
+          <span>{labels?.createAI ?? 'Créer un AI'}</span>
         </button>
       )}
     </div>
   );
 }
 
-function SidebarUser({ user, onSignOut }: { user: UserData; onSignOut?: () => void }) {
+function SidebarUser({
+  user,
+  onSignOut,
+  labels,
+}: {
+  user: UserData;
+  onSignOut?: () => void;
+  labels?: DashboardLayoutLabels;
+}) {
   const { isCollapsed } = useSidebar();
   const [isOpen, setIsOpen] = React.useState(false);
 
@@ -316,7 +342,7 @@ function SidebarUser({ user, onSignOut }: { user: UserData; onSignOut?: () => vo
               className="text-tx-muted hover:bg-surface-3 hover:text-tx-primary flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-[13px] transition-colors duration-100"
             >
               <LogOutIcon className="text-danger/70 h-3.5 w-3.5" />
-              <span>Déconnexion</span>
+              <span>{labels?.signOut ?? 'Déconnexion'}</span>
             </button>
           )}
         </div>
@@ -335,6 +361,7 @@ function Sidebar({
   onCreateAI,
   onSignOut,
   logo,
+  labels,
 }: Omit<DashboardLayoutProps, 'children' | 'onUpgrade'>) {
   const { isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen } = useSidebar();
 
@@ -357,7 +384,7 @@ function Sidebar({
           isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >
-        <SidebarHeader logo={logo} user={user} />
+        <SidebarHeader logo={logo} user={user} labels={labels} />
 
         {/* Separator under header */}
         <div className="mx-3 h-px bg-gradient-to-r from-transparent via-[hsl(var(--border-subtle))] to-transparent" />
@@ -374,6 +401,7 @@ function Sidebar({
                 currentPath={currentPath}
                 onNavigate={onNavigate}
                 onCreateAI={onCreateAI}
+                labels={labels}
               />
             </>
           )}
@@ -390,7 +418,7 @@ function Sidebar({
         {/* Separator before user footer */}
         <div className="mx-3 h-px bg-gradient-to-r from-transparent via-[hsl(var(--border-subtle))] to-transparent" />
 
-        <SidebarUser user={user} onSignOut={onSignOut} />
+        <SidebarUser user={user} onSignOut={onSignOut} labels={labels} />
 
         {/* Collapse toggle — desktop only */}
         <button
@@ -438,6 +466,7 @@ export function DashboardLayout({
   onUpgrade,
   onSignOut,
   logo,
+  labels,
 }: DashboardLayoutProps) {
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
@@ -466,6 +495,7 @@ export function DashboardLayout({
           onCreateAI={onCreateAI}
           onSignOut={onSignOut}
           logo={logo}
+          labels={labels}
         />
 
         <div

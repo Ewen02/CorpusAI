@@ -152,6 +152,17 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
       onUpgrade={handleUpgrade}
       onSignOut={handleSignOut}
       logo={<LanguageSwitcher />}
+      labels={{
+        myAIs: t('myAIs'),
+        createAI: t('createAI'),
+        signOut: t('signOut'),
+        planLabels: {
+          FREE: t('planFree'),
+          CREATOR: 'Creator',
+          PRO: 'Pro',
+          ENTERPRISE: 'Enterprise',
+        },
+      }}
     >
       {children}
     </DashboardLayout>
