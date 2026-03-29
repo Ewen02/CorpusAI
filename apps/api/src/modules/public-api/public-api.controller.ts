@@ -1,10 +1,22 @@
-import { Controller, Get, Post, Delete, Body, Param, UseGuards, HttpCode } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Delete,
+  Body,
+  Param,
+  UseGuards,
+  UseInterceptors,
+  HttpCode,
+  createParamDecorator,
+  ExecutionContext,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiSecurity } from '@nestjs/swagger';
 import { AuthGuard, CurrentUser, type CurrentUserData } from '../auth';
 import { ApiKeyGuard, type ApiKeyRequest } from '../auth/api-key.guard';
 import { PublicApiService } from './public-api.service';
 import { QueryPublicApiDto } from './dto/query.dto';
-import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+import { ApiKeyRateLimitInterceptor } from './api-key-rate-limit.interceptor';
 
 // Decorator to extract userId from API key request
 const ApiKeyUser = createParamDecorator((_data: unknown, ctx: ExecutionContext): string => {
@@ -45,6 +57,7 @@ export class ApiKeysController {
 @ApiTags('v1')
 @ApiSecurity('api-key')
 @UseGuards(ApiKeyGuard)
+@UseInterceptors(ApiKeyRateLimitInterceptor)
 @Controller('v1')
 export class PublicApiController {
   constructor(private publicApiService: PublicApiService) {}

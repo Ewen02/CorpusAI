@@ -11,6 +11,7 @@ import type { Request } from 'express';
 
 export interface ApiKeyRequest extends Request {
   apiKeyUserId: string;
+  apiKeyHash: string;
 }
 
 function hashKey(key: string): string {
@@ -65,6 +66,7 @@ export class ApiKeyGuard implements CanActivate {
       );
 
     request.apiKeyUserId = apiKey.userId;
+    request.apiKeyHash = keyHash;
 
     return true;
   }

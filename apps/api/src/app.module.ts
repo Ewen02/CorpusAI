@@ -41,6 +41,7 @@ import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middle
         SENTRY_DSN: Joi.string().optional().allow(''),
         RESEND_API_KEY: Joi.string().optional().allow(''),
         RESEND_FROM_EMAIL: Joi.string().optional().allow(''),
+        API_KEY_RATE_LIMIT: Joi.number().default(60),
         NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
         PORT: Joi.number().default(3001),
       }),
