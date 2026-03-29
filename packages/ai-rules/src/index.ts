@@ -147,7 +147,13 @@ export function getFormatRules(language?: string): string {
 // SYSTEM PROMPT BUILDER
 // ============================================
 
-const DEFAULT_BASE_PROMPT = `Tu es un assistant technique pragmatique. Réponds comme un collègue dev qui explique naturellement.`;
+const DEFAULT_BASE_PROMPT_FR = `Tu es un assistant technique pragmatique. Réponds comme un collègue dev qui explique naturellement.`;
+const DEFAULT_BASE_PROMPT_EN = `You are a pragmatic technical assistant. Answer like a dev colleague explaining things naturally.`;
+
+function getDefaultBasePrompt(language?: string): string {
+  if (language === 'en') return DEFAULT_BASE_PROMPT_EN;
+  return DEFAULT_BASE_PROMPT_FR;
+}
 
 interface SystemPromptOptions {
   /** Prompt système personnalisé (remplace le prompt de base, mais les règles de format sont toujours ajoutées) */
@@ -165,7 +171,7 @@ export function buildSystemPrompt(options: SystemPromptOptions = {}): string {
   if (options.customPrompt) {
     return `${options.customPrompt}\n\n---\n\n${rules}`;
   }
-  return `${DEFAULT_BASE_PROMPT}\n\n${rules}`;
+  return `${getDefaultBasePrompt(options.language)}\n\n${rules}`;
 }
 
 // ============================================
