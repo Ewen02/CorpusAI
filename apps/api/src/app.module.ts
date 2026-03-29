@@ -20,6 +20,7 @@ import { ExploreModule } from './modules/explore';
 import { MailModule } from './modules/mail/mail.module';
 import { EndUserAuthModule } from './modules/end-user-auth/end-user-auth.module';
 import { PortalModule } from './modules/portal/portal.module';
+import { WebhooksModule } from './modules/webhooks';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middleware';
 
@@ -90,6 +91,7 @@ import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middle
     MailModule,
     EndUserAuthModule,
     PortalModule,
+    WebhooksModule,
   ],
   controllers: [AppController],
   providers: [

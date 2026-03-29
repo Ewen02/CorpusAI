@@ -241,6 +241,7 @@
     "billing": "Abonnement",
     "notifications": "Notifications",
     "apiKeys": "Clés API",
+    "webhooks": "Webhooks",
     "name": "Nom complet",
     "username": "Nom d'utilisateur",
     "bio": "Bio",
@@ -952,5 +953,29 @@
       "suiteFailed": "{count} échoués",
       "suiteFiles": "{count} fichiers"
     }
+  },
+  "webhooks": {
+    "title": "Webhooks",
+    "description": "Recevez des notifications en temps réel lorsque des événements se produisent dans votre compte.",
+    "createWebhook": "Créer un webhook",
+    "urlPlaceholder": "https://votre-serveur.com/webhook",
+    "events": "Événements",
+    "selectEvents": "Sélectionnez les événements à écouter",
+    "documentIndexed": "Document indexé",
+    "documentFailed": "Document échoué",
+    "conversationStarted": "Conversation démarrée",
+    "messageCreated": "Message créé",
+    "secret": "Secret (à copier maintenant, il ne sera plus affiché)",
+    "copied": "Copié",
+    "copy": "Copier",
+    "test": "Tester",
+    "testing": "Test...",
+    "delete": "Supprimer",
+    "noWebhooks": "Aucun webhook",
+    "noWebhooksDescription": "Créez un webhook pour recevoir des notifications en temps réel.",
+    "lastDeliveries": "Dernières livraisons",
+    "failures": "échecs",
+    "creating": "Création...",
+    "created": "Webhook créé avec succès !"
   }
 }

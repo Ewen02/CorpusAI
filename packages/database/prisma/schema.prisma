@@ -45,6 +45,7 @@ model User {
   sessions   Session[]
   accounts   Account[]
   apiKeys    ApiKey[]
+  webhooks   Webhook[]
   dailyStats DailyStats[]
 
   @@index([email])
@@ -424,6 +425,46 @@ model ApiKey {
 
   @@index([userId])
   @@index([keyHash])
+}
+
+// ============================================
+// WEBHOOKS
+// ============================================
+
+model Webhook {
+  id     String   @id @default(cuid())
+  userId String
+  url    String
+  events String[]
+  secret String
+  active Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lastDeliveredAt DateTime?
+  failureCount    Int       @default(0)
+
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveries WebhookDelivery[]
+
+  @@index([userId, active])
+}
+
+model WebhookDelivery {
+  id        String  @id @default(cuid())
+  webhookId String
+  eventType String
+  payload   Json
+  statusCode Int?
+  attempt   Int     @default(1)
+  success   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId, createdAt])
 }
 
 // ============================================

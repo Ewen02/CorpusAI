@@ -32,6 +32,7 @@ export const ROUTES = {
     security: '/settings/security',
     notifications: '/settings/notifications',
     apiKeys: '/settings/api-keys',
+    webhooks: '/settings/webhooks',
   },
 
   // External

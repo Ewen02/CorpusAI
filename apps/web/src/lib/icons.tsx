@@ -43,6 +43,10 @@ export {
   CreditCard as CreditCardIcon,
   Shield as ShieldIcon,
   Bell as BellIcon,
+  Webhook as WebhookIcon,
+  Copy as CopyIcon,
+  Loader2 as LoaderIcon,
+  Trash2 as TrashIcon,
 } from 'lucide-react';
 
 // Brand icons (not available in lucide-react, keeping custom implementations)

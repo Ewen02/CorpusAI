@@ -21,13 +21,17 @@ import { canAskQuestion, type SubscriptionPlanType } from '@corpusai/subscriptio
 import { determineConfidence, buildSystemPrompt } from '@corpusai/ai-rules';
 import type { RAGResponse } from '@corpusai/corpus';
 import { RagService } from '../rag';
+import { WebhooksService } from '../webhooks';
 import { incrementDailyStats } from '../../shared/daily-stats';
 
 @Injectable()
 export class ConversationsService {
   private readonly logger = new Logger(ConversationsService.name);
 
-  constructor(private ragService: RagService) {}
+  constructor(
+    private ragService: RagService,
+    private webhooksService: WebhooksService
+  ) {}
 
   private async checkAIAccess(
     ai: AI,
@@ -296,6 +300,14 @@ export class ConversationsService {
       return newConversation;
     });
 
+    this.webhooksService
+      .emit(ai.userId, 'conversation.started', {
+        conversationId: conversation.id,
+        aiId: ai.id,
+        source,
+      })
+      .catch(() => {});
+
     return conversation;
   }
 
@@ -391,6 +403,16 @@ export class ConversationsService {
       this.logger.log(
         `RAG response for conversation ${conversationId}: ${ragResponse.sources.length} sources, ${latencyMs}ms, ${ragResponse.metrics?.totalTokens ?? '?'} tokens`
       );
+
+      this.webhooksService
+        .emit(conversation.ai.userId, 'conversation.message.created', {
+          messageId: assistantMessage.id,
+          conversationId,
+          aiId: conversation.aiId,
+          role: MessageRole.ASSISTANT,
+          content: ragResponse.answer.slice(0, 500),
+        })
+        .catch(() => {});
     } catch (error) {
       this.logger.error(`RAG query failed: ${error}`);
       isError = true;
@@ -572,6 +594,16 @@ export class ConversationsService {
       this.logger.log(
         `RAG stream for conversation ${conversationId}: ${ragResponse.sources.length} sources, ${latencyMs}ms`
       );
+
+      this.webhooksService
+        .emit(conversation.ai.userId, 'conversation.message.created', {
+          messageId: assistantMessage.id,
+          conversationId,
+          aiId: conversation.aiId,
+          role: MessageRole.ASSISTANT,
+          content: ragResponse.answer.slice(0, 500),
+        })
+        .catch(() => {});
 
       // Yield done event
       yield {

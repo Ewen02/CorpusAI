@@ -135,6 +135,18 @@ export {
   type PortalConversationDetail,
 } from './use-portal';
 
+// Webhook hooks
+export {
+  webhookKeys,
+  useWebhooks,
+  useCreateWebhook,
+  useDeleteWebhook,
+  useTestWebhook,
+  type WebhookInfo,
+  type WebhookDelivery,
+  type NewWebhook,
+} from './use-webhooks';
+
 // AI access hooks
 export {
   aiAccessKeys,

@@ -7,10 +7,12 @@ import {
   createDocumentQueue,
   REDIS_CHANNELS,
   type DocumentFinalFailureEvent,
+  type DocumentProgressEvent,
 } from '@corpusai/queue';
 import { DocumentsController } from './documents.controller';
 import { DocumentsService } from './documents.service';
 import { MailService } from '../mail/mail.service';
+import { WebhooksService } from '../webhooks';
 import { RagModule } from '../rag';
 
 @Module({
@@ -98,7 +100,8 @@ export class DocumentsModule implements OnModuleInit, OnModuleDestroy {
   constructor(
     @Inject('PROGRESS_SUBSCRIBER') private readonly subscriber: Redis,
     @Inject('PROGRESS_EMITTER') private readonly emitter: EventEmitter,
-    private readonly mailService: MailService
+    private readonly mailService: MailService,
+    private readonly webhooksService: WebhooksService
   ) {}
 
   onModuleInit() {
@@ -106,6 +109,14 @@ export class DocumentsModule implements OnModuleInit, OnModuleDestroy {
       this.handleFinalFailure(event).catch((err) => {
         this.logger.error(`Failed to handle final failure event: ${err}`);
       });
+    });
+
+    this.emitter.on('progress', (event: DocumentProgressEvent) => {
+      if (event.status === 'INDEXED') {
+        this.handleDocumentIndexed(event).catch((err) => {
+          this.logger.error(`Failed to handle document indexed event: ${err}`);
+        });
+      }
     });
   }
 
@@ -120,7 +131,7 @@ export class DocumentsModule implements OnModuleInit, OnModuleDestroy {
       select: {
         name: true,
         slug: true,
-        user: { select: { email: true } },
+        user: { select: { id: true, email: true } },
       },
     });
 
@@ -139,5 +150,37 @@ export class DocumentsModule implements OnModuleInit, OnModuleDestroy {
     this.logger.log(
       `Sent failure notification for document ${event.documentId} to ${ai.user.email}`
     );
+
+    this.webhooksService
+      .emit(ai.user.id, 'document.failed', {
+        documentId: event.documentId,
+        aiId: event.aiId,
+        filename: event.filename,
+        errorMessage: event.errorMessage,
+      })
+      .catch(() => {});
+  }
+
+  private async handleDocumentIndexed(event: DocumentProgressEvent): Promise<void> {
+    const document = await prisma.document.findUnique({
+      where: { id: event.documentId },
+      select: {
+        id: true,
+        filename: true,
+        ai: {
+          select: { id: true, userId: true },
+        },
+      },
+    });
+
+    if (!document) return;
+
+    this.webhooksService
+      .emit(document.ai.userId, 'document.indexed', {
+        documentId: document.id,
+        aiId: document.ai.id,
+        filename: document.filename,
+      })
+      .catch(() => {});
   }
 }

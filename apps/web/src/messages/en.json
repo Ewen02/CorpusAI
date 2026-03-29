@@ -241,6 +241,7 @@
     "billing": "Billing",
     "notifications": "Notifications",
     "apiKeys": "API Keys",
+    "webhooks": "Webhooks",
     "name": "Full name",
     "username": "Username",
     "bio": "Bio",
@@ -952,5 +953,29 @@
       "suiteFailed": "{count} failed",
       "suiteFiles": "{count} files"
     }
+  },
+  "webhooks": {
+    "title": "Webhooks",
+    "description": "Receive real-time notifications when events happen in your account.",
+    "createWebhook": "Create a webhook",
+    "urlPlaceholder": "https://your-server.com/webhook",
+    "events": "Events",
+    "selectEvents": "Select events to listen for",
+    "documentIndexed": "Document indexed",
+    "documentFailed": "Document failed",
+    "conversationStarted": "Conversation started",
+    "messageCreated": "Message created",
+    "secret": "Secret (copy now, it won't be shown again)",
+    "copied": "Copied",
+    "copy": "Copy",
+    "test": "Test",
+    "testing": "Testing...",
+    "delete": "Delete",
+    "noWebhooks": "No webhooks",
+    "noWebhooksDescription": "Create a webhook to receive real-time notifications.",
+    "lastDeliveries": "Last deliveries",
+    "failures": "failures",
+    "creating": "Creating...",
+    "created": "Webhook created successfully!"
   }
 }

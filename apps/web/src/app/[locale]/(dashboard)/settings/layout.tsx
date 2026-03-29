@@ -6,10 +6,10 @@ import { useTranslations } from 'next-intl';
 import { cn } from '@corpusai/ui';
 import { useNavigation } from '@/lib/hooks';
 import { ROUTES } from '@/lib/constants';
-import { UserIcon, CreditCardIcon, ShieldIcon, BellIcon, KeyIcon } from '@/lib/icons';
+import { UserIcon, CreditCardIcon, ShieldIcon, BellIcon, KeyIcon, WebhookIcon } from '@/lib/icons';
 
 interface SettingsNavItem {
-  labelKey: 'profile' | 'billing' | 'security' | 'notifications' | 'apiKeys';
+  labelKey: 'profile' | 'billing' | 'security' | 'notifications' | 'apiKeys' | 'webhooks';
   href: string;
   icon: React.ReactNode;
 }
@@ -39,6 +39,11 @@ const settingsNav: SettingsNavItem[] = [
     labelKey: 'apiKeys',
     href: ROUTES.settings.apiKeys,
     icon: <KeyIcon className="h-4 w-4" />,
+  },
+  {
+    labelKey: 'webhooks',
+    href: ROUTES.settings.webhooks,
+    icon: <WebhookIcon className="h-4 w-4" />,
   },
 ];
 

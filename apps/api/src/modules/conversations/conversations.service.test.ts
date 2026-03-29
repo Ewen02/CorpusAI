@@ -81,9 +81,10 @@ describe('ConversationsService', () => {
     query: vi.fn(),
     queryStream: vi.fn(),
   };
+  const mockWebhooksService = { emit: vi.fn().mockResolvedValue(undefined) };
 
   beforeEach(() => {
-    service = new ConversationsService(mockRagService as any);
+    service = new ConversationsService(mockRagService as any, mockWebhooksService as any);
     vi.clearAllMocks();
     (canAskQuestion as ReturnType<typeof vi.fn>).mockReturnValue(true);
   });
