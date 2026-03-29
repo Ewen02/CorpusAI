@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/i18n/routing';
 import { useTranslations, useLocale } from 'next-intl';
 import { ExploreAICard, Avatar, AvatarFallback, AvatarImage, Skeleton } from '@corpusai/ui';
 import { useCreatorProfile } from '@/lib/queries';
