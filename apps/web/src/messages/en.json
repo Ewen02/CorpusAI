@@ -728,6 +728,8 @@
       "french": "Français",
       "english": "English",
       "responseLanguageHint": "Determines the language of the AI system instructions.",
+      "model": "LLM Model",
+      "modelHint": "The AI model used to generate responses. Some models require a separate API key.",
       "maxTokens": "Max tokens",
       "maxTokensHint": "Maximum length of generated responses.",
       "temperature": "Temperature",
@@ -829,8 +831,7 @@
     "toIframeUrl": "to the iframe URL.",
     "floatingWidget": "Floating widget",
     "floatingWidgetDescription": "A floating button on your site that opens the assistant on click",
-    "comingSoon": "Coming soon",
-    "floatingWidgetComingSoonNote": "This option will allow you to automatically add a floating button on your site without an iframe. It is currently under development."
+    "floatingWidgetNote": "Add this script to your website to display a floating chat bubble in the bottom-right corner. Your visitors can open and close the assistant at any time."
   },
   "explore": {
     "signIn": "Sign in",

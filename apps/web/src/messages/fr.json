@@ -728,6 +728,8 @@
       "french": "Français",
       "english": "English",
       "responseLanguageHint": "Détermine la langue des instructions système de l'IA.",
+      "model": "Modèle LLM",
+      "modelHint": "Le modèle d'IA utilisé pour générer les réponses. Certains modèles nécessitent une clé API séparée.",
       "maxTokens": "Tokens maximum",
       "maxTokensHint": "Longueur maximale des réponses générées.",
       "temperature": "Température",
@@ -829,8 +831,7 @@
     "toIframeUrl": "à l'URL de l'iframe.",
     "floatingWidget": "Widget flottant",
     "floatingWidgetDescription": "Un bouton flottant sur votre site qui ouvre l'assistant au clic",
-    "comingSoon": "Bientôt",
-    "floatingWidgetComingSoonNote": "Cette option permettra d'ajouter automatiquement un bouton flottant sur votre site sans iframe. Elle est en cours de développement."
+    "floatingWidgetNote": "Ajoutez ce script à votre site pour afficher une bulle de chat flottante en bas à droite. Vos visiteurs pourront ouvrir et fermer l'assistant à tout moment."
   },
   "explore": {
     "signIn": "Se connecter",

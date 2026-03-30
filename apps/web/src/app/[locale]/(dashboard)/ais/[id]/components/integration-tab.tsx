@@ -53,6 +53,8 @@ export function IntegrationTab({ ai }: IntegrationTabProps) {
 
   const iframeCode = `<iframe\n  src="${embedUrl}"\n  width="100%"\n  height="${height}"\n  frameborder="0"\n  allow="clipboard-write"\n  style="border: none; border-radius: 12px;"\n></iframe>`;
 
+  const embedScriptCode = `<script src="${origin}/embed.js" data-ai="@${sessionUsername}/${ai.slug}"${color !== '#3b82f6' ? ` data-color="${color}"` : ''}></script>`;
+
   const isReady = ai.isPublic && ai.status === 'ACTIVE';
 
   return (
@@ -255,24 +257,25 @@ export function IntegrationTab({ ai }: IntegrationTabProps) {
             </div>
           </AnalyticsCard>
 
-          {/* Section 3: Widget flottant (coming soon) */}
-          <div className="relative overflow-hidden rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface-1))] p-6 opacity-60">
-            <div className="flex items-center gap-3">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-xs font-bold text-muted-foreground">
-                3
+          {/* Section 3: Floating widget (embed.js) */}
+          <AnalyticsCard>
+            <SectionHeader
+              number={3}
+              title={t('floatingWidget')}
+              description={t('floatingWidgetDescription')}
+            />
+            <div className="space-y-4">
+              <p className="text-xs text-tx-muted">{t('floatingWidgetNote')}</p>
+              <div className="relative">
+                <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg bg-[hsl(var(--surface-0))] p-4 font-mono text-xs leading-relaxed text-tx-secondary">
+                  {embedScriptCode}
+                </pre>
+                <div className="absolute right-2 top-2">
+                  <CopyButton value={embedScriptCode} />
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[15px] font-semibold text-tx-primary">{t('floatingWidget')}</p>
-                <p className="text-[12px] text-tx-muted">{t('floatingWidgetDescription')}</p>
-              </div>
-              <Badge variant="secondary" className="shrink-0 text-[10px]">
-                {t('comingSoon')}
-              </Badge>
             </div>
-            <p className="mt-4 text-xs text-muted-foreground">
-              {t('floatingWidgetComingSoonNote')}
-            </p>
-          </div>
+          </AnalyticsCard>
         </>
       )}
     </div>
