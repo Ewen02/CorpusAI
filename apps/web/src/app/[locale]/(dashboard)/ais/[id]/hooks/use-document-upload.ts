@@ -318,7 +318,37 @@ export function useDocumentUpload({ aiId, documents }: UseDocumentUploadOptions)
 
   const uploadFiles = React.useCallback(
     async (files: File[]) => {
-      const newFiles: UploadedFile[] = files.map((file) => ({
+      // Client-side file size validation (max 100 MB hard limit, plan limits enforced by backend)
+      const MAX_FILE_SIZE_MB = 100;
+      const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
+      const validFiles: File[] = [];
+      const oversizedFiles: File[] = [];
+
+      for (const file of files) {
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+          oversizedFiles.push(file);
+        } else {
+          validFiles.push(file);
+        }
+      }
+
+      // Immediately show errors for oversized files
+      const oversizedEntries: UploadedFile[] = oversizedFiles.map((file) => ({
+        id: `file-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+        file,
+        status: 'error' as const,
+        progress: 0,
+        error: `Le fichier dépasse la taille maximale (${Math.round(file.size / 1024 / 1024)} Mo, max ${MAX_FILE_SIZE_MB} Mo). Passez à un plan supérieur pour des fichiers plus volumineux.`,
+      }));
+
+      if (oversizedEntries.length > 0) {
+        setUploadedFiles((prev) => [...prev, ...oversizedEntries]);
+      }
+
+      if (validFiles.length === 0) return;
+
+      const newFiles: UploadedFile[] = validFiles.map((file) => ({
         id: `file-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
         file,
         status: 'pending' as const,

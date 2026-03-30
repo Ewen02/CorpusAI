@@ -9,6 +9,16 @@ import {
   type MessageSource,
 } from '@/lib/queries';
 
+const RATE_LIMIT_MESSAGES: Record<string, string> = {
+  'Daily question limit reached for this AI':
+    'Vous avez atteint la limite de questions quotidienne. Revenez demain ou passez à un plan supérieur pour continuer.',
+};
+
+function extractErrorMessage(error: unknown): string {
+  const msg = error instanceof Error ? error.message : String(error);
+  return RATE_LIMIT_MESSAGES[msg] ?? "Une erreur s'est produite. Veuillez réessayer.";
+}
+
 /**
  * Deduplicate sources by document name, keeping the one with highest score
  */
@@ -169,14 +179,11 @@ export function useChatState({ aiSlug, username }: UseChatStateOptions) {
           },
           onError: (error) => {
             console.error('Streaming error:', error);
+            const errorMessage = extractErrorMessage(error);
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === assistantMessageId
-                  ? {
-                      ...m,
-                      content: "Une erreur s'est produite. Veuillez reessayer.",
-                      isStreaming: false,
-                    }
+                  ? { ...m, content: errorMessage, isStreaming: false }
                   : m
               )
             );
@@ -185,12 +192,13 @@ export function useChatState({ aiSlug, username }: UseChatStateOptions) {
         });
       } catch (error) {
         console.error('Error starting stream:', error);
+        const errorMessage = extractErrorMessage(error);
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantMessageId
               ? {
                   ...m,
-                  content: "Une erreur s'est produite. Veuillez reessayer.",
+                  content: errorMessage,
                   isStreaming: false,
                 }
               : m

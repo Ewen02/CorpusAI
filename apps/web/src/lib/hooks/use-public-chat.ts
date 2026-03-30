@@ -206,12 +206,15 @@ export function usePublicChat({
           setIsStreaming(false);
           setSentMessageCount((c) => c + 1);
         },
-        onError: () => {
+        onError: (error) => {
+          const msg = error instanceof Error ? error.message : '';
+          const isRateLimit = msg.includes('limit');
+          const errorContent = isRateLimit
+            ? 'Vous avez atteint la limite de questions quotidienne. Revenez demain !'
+            : "Désolé, une erreur s'est produite.";
           setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === assistantId
-                ? { ...msg, content: "Désolé, une erreur s'est produite.", isStreaming: false }
-                : msg
+            prev.map((m) =>
+              m.id === assistantId ? { ...m, content: errorContent, isStreaming: false } : m
             )
           );
           setIsStreaming(false);

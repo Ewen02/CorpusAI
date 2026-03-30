@@ -40,6 +40,7 @@ interface DocumentsTabProps {
   documentCount: number;
   isLoading: boolean;
   uploadedFiles: UploadedFile[];
+  subscriptionPlan?: string;
   onFilesSelected: (files: File[]) => void;
   onFileRemove: (fileId: string) => void;
   onDeleteDocument: (documentId: string) => void;
@@ -52,11 +53,19 @@ const PROCESSING_STEP_KEYS = ['PARSING', 'CHUNKING', 'EMBEDDING', 'STORING'] as 
 // Main
 // ============================================
 
+const PLAN_MAX_FILE_SIZE: Record<string, number> = {
+  FREE: 10 * 1024 * 1024,
+  CREATOR: 50 * 1024 * 1024,
+  PRO: 100 * 1024 * 1024,
+  ENTERPRISE: 500 * 1024 * 1024,
+};
+
 export const DocumentsTab = React.memo(function DocumentsTab({
   documents,
   documentCount,
   isLoading,
   uploadedFiles,
+  subscriptionPlan,
   onFilesSelected,
   onFileRemove,
   onDeleteDocument,
@@ -66,6 +75,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({
   const indexedCount = documents?.filter((d) => d.status === 'INDEXED').length ?? 0;
   const processingCount =
     documents?.filter((d) => d.status === 'PROCESSING' || d.status === 'PENDING').length ?? 0;
+  const maxFileSize = PLAN_MAX_FILE_SIZE[subscriptionPlan ?? 'FREE'] ?? PLAN_MAX_FILE_SIZE.FREE;
 
   return (
     <div className="space-y-6">
@@ -73,6 +83,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({
         onFilesSelected={onFilesSelected}
         onFileRemove={onFileRemove}
         uploadedFiles={uploadedFiles}
+        maxFileSize={maxFileSize}
       />
 
       <div>

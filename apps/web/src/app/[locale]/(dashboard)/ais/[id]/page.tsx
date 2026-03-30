@@ -63,8 +63,9 @@ export default function AIDetailPage() {
 
   const aiData = ai as AI | undefined;
   const { data: session } = authClient.useSession();
-  const sessionUsername =
-    ((session?.user as Record<string, unknown> | undefined)?.username as string) ?? '';
+  const sessionUser = session?.user as Record<string, unknown> | undefined;
+  const sessionUsername = (sessionUser?.username as string) ?? '';
+  const subscriptionPlan = (sessionUser?.subscriptionPlan as string) ?? 'FREE';
 
   // Chat state management
   const {
@@ -242,6 +243,7 @@ export default function AIDetailPage() {
               documentCount={aiData.documentCount}
               isLoading={isLoadingDocuments}
               uploadedFiles={uploadedFiles}
+              subscriptionPlan={subscriptionPlan}
               onFilesSelected={uploadFiles}
               onFileRemove={removeFile}
               onDeleteDocument={deleteIndexedDocument}
