@@ -53,11 +53,13 @@ export {
   analyticsKeys,
   useAnalytics,
   useAIAnalytics,
+  useDocumentChunkUsage,
   type AnalyticsData,
   type AIAnalyticsData,
   type AnalyticsPeriod,
   type DailyDataPoint,
   type Trend,
+  type ChunkUsageItem,
 } from './use-analytics';
 
 // Admin hooks

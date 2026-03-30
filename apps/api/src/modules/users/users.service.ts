@@ -6,7 +6,11 @@ import {
   type SubscriptionPlanType,
 } from '@corpusai/subscription';
 import { UpdateProfileDto } from './dto/update-profile.dto';
-import { getStartDateForPeriod, getDaysForPeriod } from '../../shared/date-utils';
+import {
+  getStartDateForPeriod,
+  getDaysForPeriod,
+  type AnalyticsPeriod,
+} from '../../shared/date-utils';
 
 @Injectable()
 export class UsersService {
@@ -120,7 +124,7 @@ export class UsersService {
     return accounts;
   }
 
-  async getAnalytics(userId: string, period: '7d' | '30d' | '90d' = '30d') {
+  async getAnalytics(userId: string, period: AnalyticsPeriod = '30d') {
     const days = getDaysForPeriod(period);
     const startDate = getStartDateForPeriod(period);
 

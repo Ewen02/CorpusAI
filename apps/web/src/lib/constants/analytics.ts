@@ -1,6 +1,7 @@
 import type { AnalyticsPeriod } from '@/lib/queries';
 
 export const PERIOD_OPTIONS: { value: AnalyticsPeriod; label: string }[] = [
+  { value: '24h', label: '24h' },
   { value: '7d', label: '7 jours' },
   { value: '30d', label: '30 jours' },
   { value: '90d', label: '90 jours' },

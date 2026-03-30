@@ -98,6 +98,22 @@ export class AIsController {
     return this.aisService.getAnalytics(user.id, id, period);
   }
 
+  @Get(':id/analytics/documents/:documentId/chunks')
+  @ApiOperation({ summary: 'Get chunk usage for a specific document' })
+  @ApiParam({ name: 'id', description: 'AI ID' })
+  @ApiParam({ name: 'documentId', description: 'Document ID' })
+  @ApiQuery({ name: 'period', enum: ['24h', '7d', '30d', '90d'], required: false })
+  @ApiResponse({ status: 200, description: 'Chunk usage data returned' })
+  @ApiResponse({ status: 404, description: 'AI or document not found' })
+  async getDocumentChunkUsage(
+    @CurrentUser() user: CurrentUserData,
+    @Param('id') id: string,
+    @Param('documentId') documentId: string,
+    @Query('period') period?: '24h' | '7d' | '30d' | '90d'
+  ) {
+    return this.aisService.getDocumentChunkUsage(user.id, id, documentId, period);
+  }
+
   @Post()
   @ApiOperation({ summary: 'Create a new AI' })
   @ApiResponse({ status: 201, description: 'AI created successfully' })

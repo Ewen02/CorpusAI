@@ -3,7 +3,11 @@ import { prisma, AIStatus, AccessStatus } from '@corpusai/database';
 import * as bcrypt from 'bcryptjs';
 import { customAlphabet } from 'nanoid';
 import { assertCanCreateAI, assertCanAddEndUser } from '../../shared/subscription-checks';
-import { getStartDateForPeriod, getDaysForPeriod } from '../../shared/date-utils';
+import {
+  getStartDateForPeriod,
+  getDaysForPeriod,
+  type AnalyticsPeriod,
+} from '../../shared/date-utils';
 import { CreateAIDto } from './dto/create-ai.dto';
 import { UpdateAIDto } from './dto/update-ai.dto';
 import { RagService } from '../rag/rag.service';
@@ -253,7 +257,7 @@ export class AIsService {
     };
   }
 
-  async getAnalytics(userId: string, aiId: string, period: '7d' | '30d' | '90d' = '30d') {
+  async getAnalytics(userId: string, aiId: string, period: AnalyticsPeriod = '30d') {
     const ai = await prisma.aI.findFirst({ where: { id: aiId, userId }, select: { id: true } });
     if (!ai) throw new NotFoundException('AI not found');
 
@@ -359,6 +363,82 @@ export class AIsService {
       _count: true,
     });
 
+    // Top questions — most frequently asked (exact match, normalized)
+    const topQuestions = await prisma.$queryRaw<{ content: string; count: bigint }[]>`
+      SELECT LOWER(TRIM(m.content)) as content, COUNT(*) as count
+      FROM "Message" m
+      JOIN "Conversation" c ON c.id = m."conversationId"
+      WHERE c."aiId" = ${aiId}
+        AND m."createdAt" >= ${startDate}
+        AND m.role = 'USER'
+      GROUP BY LOWER(TRIM(m.content))
+      ORDER BY count DESC
+      LIMIT 10
+    `;
+
+    // Retention — new vs returning end-users per day
+    const retention = await prisma.$queryRaw<
+      { day: Date; newUsers: bigint; returningUsers: bigint }[]
+    >`
+      WITH first_seen AS (
+        SELECT "endUserId", MIN(DATE("createdAt")) as first_date
+        FROM "Conversation"
+        WHERE "aiId" = ${aiId} AND "endUserId" IS NOT NULL
+        GROUP BY "endUserId"
+      ),
+      daily_users AS (
+        SELECT DATE(c."createdAt") as day, c."endUserId"
+        FROM "Conversation" c
+        WHERE c."aiId" = ${aiId} AND c."endUserId" IS NOT NULL AND c."createdAt" >= ${startDate}
+        GROUP BY 1, 2
+      )
+      SELECT du.day,
+        COUNT(*) FILTER (WHERE fs.first_date = du.day) as "newUsers",
+        COUNT(*) FILTER (WHERE fs.first_date < du.day) as "returningUsers"
+      FROM daily_users du
+      JOIN first_seen fs ON fs."endUserId" = du."endUserId"
+      GROUP BY du.day ORDER BY du.day
+    `;
+
+    // Funnel — documents → first question → engaged conversations (5+ messages)
+    const [funnelData] = await prisma.$queryRaw<
+      [{ documents: bigint; firstQuestion: bigint; engaged: bigint }]
+    >`
+      SELECT
+        (SELECT COUNT(*) FROM "Document" WHERE "aiId" = ${aiId} AND status = 'INDEXED') as documents,
+        (SELECT COUNT(*) FROM "Conversation" WHERE "aiId" = ${aiId} AND "createdAt" >= ${startDate} AND "messageCount" >= 1) as "firstQuestion",
+        (SELECT COUNT(*) FROM "Conversation" WHERE "aiId" = ${aiId} AND "createdAt" >= ${startDate} AND "messageCount" >= 5) as engaged
+    `;
+
+    // Document usage — most cited documents from Message.sources JSONB
+    const rawDocUsage = await prisma.$queryRaw<
+      {
+        id: string;
+        filename: string;
+        totalChunks: number;
+        citations: number;
+        uniqueChunks: number;
+      }[]
+    >`
+      SELECT d.id, d.filename,
+             (SELECT COUNT(*) FROM "Chunk" WHERE "documentId" = d.id)::int as "totalChunks",
+             COUNT(*)::int as citations,
+             COUNT(DISTINCT c.id)::int as "uniqueChunks"
+      FROM "Message" m,
+           jsonb_array_elements(m.sources) AS sources
+      JOIN "Chunk" c ON c."qdrantPointId" = (sources->>'chunkId')
+      JOIN "Document" d ON d.id = c."documentId"
+      WHERE m."conversationId" IN (
+        SELECT id FROM "Conversation" WHERE "aiId" = ${aiId}
+      )
+        AND m."createdAt" >= ${startDate}
+        AND m.sources IS NOT NULL
+        AND m.sources != '[]'::jsonb
+      GROUP BY d.id, d.filename
+      ORDER BY citations DESC
+      LIMIT 20
+    `;
+
     return {
       daily,
       totals,
@@ -388,7 +468,64 @@ export class AIsService {
         count: low,
         rate: totalResponses > 0 ? Math.round((low / totalResponses) * 100) : null,
       },
+      topQuestions: topQuestions.map((q) => ({ content: q.content, count: Number(q.count) })),
+      retention: retention.map((r) => ({
+        date: r.day.toISOString().split('T')[0]!,
+        newUsers: Number(r.newUsers),
+        returningUsers: Number(r.returningUsers),
+      })),
+      funnel: {
+        documentsUploaded: Number(funnelData?.documents ?? 0),
+        firstQuestion: Number(funnelData?.firstQuestion ?? 0),
+        engagedConversations: Number(funnelData?.engaged ?? 0),
+      },
+      documentUsage: rawDocUsage.map((row) => ({
+        ...row,
+        coveragePercent:
+          row.totalChunks > 0 ? Math.round((row.uniqueChunks / row.totalChunks) * 100) : 0,
+      })),
     };
+  }
+
+  async getDocumentChunkUsage(
+    userId: string,
+    aiId: string,
+    documentId: string,
+    period: AnalyticsPeriod = '30d'
+  ) {
+    const ai = await prisma.aI.findFirst({ where: { id: aiId, userId }, select: { id: true } });
+    if (!ai) throw new NotFoundException('AI not found');
+
+    const doc = await prisma.document.findFirst({
+      where: { id: documentId, aiId },
+      select: { id: true },
+    });
+    if (!doc) throw new NotFoundException('Document not found');
+
+    const startDate = getStartDateForPeriod(period);
+
+    return prisma.$queryRaw<
+      {
+        id: string;
+        position: number;
+        pageNumber: number | null;
+        excerpt: string;
+        citations: number;
+      }[]
+    >`
+      SELECT c.id, c.position, c."pageNumber", LEFT(c.content, 150) as excerpt,
+             COUNT(*)::int as citations
+      FROM "Message" m,
+           jsonb_array_elements(m.sources) AS sources
+      JOIN "Chunk" c ON c."qdrantPointId" = (sources->>'chunkId')
+      WHERE c."documentId" = ${documentId}
+        AND m."conversationId" IN (SELECT id FROM "Conversation" WHERE "aiId" = ${aiId})
+        AND m."createdAt" >= ${startDate}
+        AND m.sources IS NOT NULL
+        AND m.sources != '[]'::jsonb
+      GROUP BY c.id, c.position, c."pageNumber", c.content
+      ORDER BY citations DESC
+    `;
   }
 
   // ============================================

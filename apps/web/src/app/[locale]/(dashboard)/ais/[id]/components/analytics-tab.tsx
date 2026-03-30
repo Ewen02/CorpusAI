@@ -4,7 +4,7 @@ import * as React from 'react';
 import dynamic from 'next/dynamic';
 import { StatCard, AnalyticsCard, cn } from '@corpusai/ui';
 
-import { useAIAnalytics, type AnalyticsPeriod } from '@/lib/queries';
+import { useAIAnalytics, useDocumentChunkUsage, type AnalyticsPeriod } from '@/lib/queries';
 import { PERIOD_OPTIONS } from '@/lib/constants';
 import { FileIcon, MessageIcon, SparklesIcon, UsersIcon, AlertIcon, BookIcon } from '@/lib/icons';
 import {
@@ -24,6 +24,12 @@ interface AnalyticsTabProps {
 export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: AnalyticsTabProps) {
   const [period, setPeriod] = React.useState<AnalyticsPeriod>('30d');
   const { data, isLoading } = useAIAnalytics(aiId, period);
+  const [expandedDocId, setExpandedDocId] = React.useState<string | null>(null);
+  const { data: chunkUsage, isLoading: isLoadingChunks } = useDocumentChunkUsage(
+    aiId,
+    expandedDocId,
+    period
+  );
 
   if (isLoading || !data) {
     return <AnalyticsTabSkeleton />;
@@ -189,8 +195,174 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
         </AnalyticsCard>
       )}
 
+      {/* Document Usage */}
+      {data.documentUsage && data.documentUsage.length > 0 && (
+        <AnalyticsCard title="Utilisation des documents" icon={FileIcon}>
+          <p className="mt-1 text-[12px] text-tx-muted">Documents les plus cités par l'assistant</p>
+          <div className="mt-3 space-y-2">
+            {data.documentUsage.map((doc) => {
+              const isExpanded = expandedDocId === doc.id;
+              return (
+                <div key={doc.id}>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedDocId(isExpanded ? null : doc.id)}
+                    className="w-full rounded-lg bg-[hsl(var(--surface-0))] px-3 py-2 text-left transition-colors hover:bg-[hsl(var(--surface-2))]"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="min-w-0 truncate text-[13px] text-tx-secondary">
+                        {doc.filename}
+                      </span>
+                      <span className="shrink-0 rounded-full bg-[hsl(var(--accent-500)/0.15)] px-2 py-0.5 text-[11px] font-semibold text-[hsl(var(--accent-400))]">
+                        {doc.citations}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted/30">
+                        <div
+                          className="h-full rounded-full bg-[hsl(var(--accent-500))] transition-all"
+                          style={{ width: `${Math.max(doc.coveragePercent, 2)}%` }}
+                        />
+                      </div>
+                      <span className="shrink-0 text-[10px] text-tx-muted">
+                        {doc.uniqueChunks}/{doc.totalChunks} sections utilisées
+                      </span>
+                    </div>
+                  </button>
+                  {isExpanded && (
+                    <div className="mt-1 space-y-0.5 pl-2">
+                      {isLoadingChunks ? (
+                        <p className="px-2 py-3 text-[11px] text-tx-muted">Chargement...</p>
+                      ) : chunkUsage && chunkUsage.length > 0 ? (
+                        chunkUsage.map((chunk) => (
+                          <div
+                            key={chunk.id}
+                            className={cn(
+                              'flex items-start gap-2 rounded-md px-2 py-1.5 text-[11px]',
+                              chunk.citations > 0
+                                ? 'bg-[hsl(var(--accent-500)/0.08)]'
+                                : 'opacity-40'
+                            )}
+                          >
+                            <span className="shrink-0 pt-0.5 font-mono text-tx-muted">
+                              §{chunk.position + 1}
+                              {chunk.pageNumber != null && ` p.${chunk.pageNumber}`}
+                            </span>
+                            <span className="min-w-0 flex-1 text-tx-secondary">
+                              {chunk.excerpt}
+                            </span>
+                            {chunk.citations > 0 && (
+                              <span className="shrink-0 rounded-full bg-[hsl(var(--accent-500)/0.2)] px-1.5 py-0.5 text-[10px] font-semibold text-[hsl(var(--accent-400))]">
+                                {chunk.citations}×
+                              </span>
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        <p className="px-2 py-3 text-[11px] text-tx-muted">Aucune section</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </AnalyticsCard>
+      )}
+
       {/* Charts */}
       <AIAnalyticsCharts daily={data.daily} />
+
+      {/* Top Questions */}
+      {data.topQuestions && data.topQuestions.length > 0 && (
+        <AnalyticsCard title="Top questions" icon={MessageIcon}>
+          <div className="mt-3 space-y-2">
+            {data.topQuestions.map((q, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between gap-3 rounded-lg bg-[hsl(var(--surface-0))] px-3 py-2"
+              >
+                <span className="min-w-0 truncate text-[13px] text-tx-secondary">{q.content}</span>
+                <span className="shrink-0 rounded-full bg-[hsl(var(--accent-500)/0.15)] px-2 py-0.5 text-[11px] font-semibold text-[hsl(var(--accent-400))]">
+                  {q.count}
+                </span>
+              </div>
+            ))}
+          </div>
+        </AnalyticsCard>
+      )}
+
+      {/* Retention — new vs returning users */}
+      {data.retention && data.retention.length > 0 && (
+        <AnalyticsCard title="Rétention" icon={UsersIcon}>
+          <div className="mt-3 space-y-1.5">
+            {data.retention.map((r) => {
+              const total = r.newUsers + r.returningUsers;
+              if (total === 0) return null;
+              return (
+                <div key={r.date} className="flex items-center gap-2 text-[11px]">
+                  <span className="w-20 shrink-0 text-tx-muted">{r.date.slice(5)}</span>
+                  <div className="flex h-3 flex-1 overflow-hidden rounded-full bg-muted/30">
+                    <div
+                      className="bg-blue-500"
+                      style={{ width: `${(r.newUsers / total) * 100}%` }}
+                      title={`${r.newUsers} nouveaux`}
+                    />
+                    <div
+                      className="bg-green-500"
+                      style={{ width: `${(r.returningUsers / total) * 100}%` }}
+                      title={`${r.returningUsers} récurrents`}
+                    />
+                  </div>
+                  <span className="w-8 shrink-0 text-right text-tx-muted">{total}</span>
+                </div>
+              );
+            })}
+            <div className="flex gap-4 pt-1 text-[10px] text-tx-muted">
+              <span className="flex items-center gap-1">
+                <span className="inline-block h-2 w-2 rounded-full bg-blue-500" /> Nouveaux
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="inline-block h-2 w-2 rounded-full bg-green-500" /> Récurrents
+              </span>
+            </div>
+          </div>
+        </AnalyticsCard>
+      )}
+
+      {/* Funnel */}
+      {data.funnel && data.funnel.documentsUploaded > 0 && (
+        <AnalyticsCard title="Funnel d'engagement" icon={SparklesIcon}>
+          <div className="mt-3 space-y-3">
+            {[
+              { label: 'Documents indexés', value: data.funnel.documentsUploaded },
+              { label: '1ère question posée', value: data.funnel.firstQuestion },
+              { label: 'Conversations engagées (5+ msg)', value: data.funnel.engagedConversations },
+            ].map((step, i) => {
+              const pct =
+                data.funnel.documentsUploaded > 0
+                  ? Math.round((step.value / data.funnel.documentsUploaded) * 100)
+                  : 0;
+              return (
+                <div key={i}>
+                  <div className="mb-1 flex items-center justify-between text-[12px]">
+                    <span className="text-tx-secondary">{step.label}</span>
+                    <span className="font-semibold text-tx-primary">
+                      {step.value} {i > 0 && <span className="text-tx-muted">({pct}%)</span>}
+                    </span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-muted/30">
+                    <div
+                      className="h-full rounded-full bg-[hsl(var(--accent-500))] transition-all"
+                      style={{ width: `${Math.max(pct, 2)}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </AnalyticsCard>
+      )}
     </div>
   );
 });
