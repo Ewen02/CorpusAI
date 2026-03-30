@@ -129,6 +129,7 @@ model AI {
   maxTokens      Int     @default(1024)
   temperature    Float   @default(0.7)
   scoreThreshold Float   @default(0.4)
+  llmModel       String  @default("gpt-4o-mini")
 
   // Access & Monetization
   accessType AccessType @default(FREE)

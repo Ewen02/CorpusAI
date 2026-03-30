@@ -85,3 +85,7 @@ export { BM25, CohereReranker } from './reranking';
 // Cache
 export type { CacheService, CachedEmbeddingConfig, CacheMetrics } from './cache';
 export { CachedEmbeddingService } from './cache';
+
+// Models
+export type { ModelConfig } from './rag/models';
+export { AVAILABLE_MODELS, getModelConfig, resolveModelConfig } from './rag/models';

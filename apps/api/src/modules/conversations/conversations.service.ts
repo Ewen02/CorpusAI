@@ -324,6 +324,7 @@ export class ConversationsService {
             temperature: true,
             maxTokens: true,
             scoreThreshold: true,
+            llmModel: true,
             user: {
               select: { subscriptionPlan: true },
             },
@@ -360,6 +361,7 @@ export class ConversationsService {
         conversation.aiId,
         content,
         {
+          model: conversation.ai.llmModel,
           systemPrompt: buildSystemPrompt({
             customPrompt: conversation.ai.systemPrompt ?? undefined,
             language: conversation.ai.language,
@@ -485,6 +487,7 @@ export class ConversationsService {
             temperature: true,
             maxTokens: true,
             scoreThreshold: true,
+            llmModel: true,
             user: {
               select: { subscriptionPlan: true },
             },
@@ -525,6 +528,7 @@ export class ConversationsService {
         conversation.aiId,
         content,
         {
+          model: conversation.ai.llmModel,
           systemPrompt: buildSystemPrompt({
             customPrompt: conversation.ai.systemPrompt ?? undefined,
             language: conversation.ai.language,

@@ -10,6 +10,7 @@ import {
   RAGPipelineImpl,
   CohereReranker,
   CachedEmbeddingService,
+  resolveModelConfig,
   type LLMConfig,
   type EmbeddingService,
   type CacheService,
@@ -165,6 +166,13 @@ export class RagPipelineFactory implements OnModuleDestroy {
   createForAI(aiId: string, llmConfig?: Partial<LLMConfig>): RAGPipelineImpl {
     this.validateAiId(aiId);
 
+    // Resolve per-model API key and base URL if a specific model is requested
+    const requestedModel = llmConfig?.model || this.llmModel;
+    const resolved = resolveModelConfig(requestedModel, {
+      OPENAI_API_KEY: this.configService.get<string>('OPENAI_API_KEY') || '',
+      MISTRAL_API_KEY: this.configService.get<string>('MISTRAL_API_KEY') || '',
+    });
+
     return new RAGPipelineImpl(
       aiId,
       this.embeddingService,
@@ -172,9 +180,9 @@ export class RagPipelineFactory implements OnModuleDestroy {
       this.sparseGenerator,
       this.chunker,
       {
-        apiKey: this.llmApiKey,
-        baseURL: this.llmBaseURL,
-        model: llmConfig?.model || this.llmModel,
+        apiKey: resolved?.apiKey || this.llmApiKey,
+        baseURL: resolved?.baseURL || this.llmBaseURL,
+        model: resolved?.model || requestedModel,
         temperature: llmConfig?.temperature ?? 0.2,
         maxTokens: llmConfig?.maxTokens ?? 1000,
         systemPrompt: llmConfig?.systemPrompt,

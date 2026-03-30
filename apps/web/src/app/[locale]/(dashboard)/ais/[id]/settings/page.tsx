@@ -486,6 +486,7 @@ export default function AISettingsPage() {
   const [primaryColor, setPrimaryColor] = React.useState('#3b82f6');
   const [isPublic, setIsPublic] = React.useState(true);
   const [category, setCategory] = React.useState<AICategory>('OTHER');
+  const [llmModel, setLlmModel] = React.useState('gpt-4o-mini');
   const [maxTokens, setMaxTokens] = React.useState(1024);
   const [temperature, setTemperature] = React.useState(0.7);
   const [scoreThreshold, setScoreThreshold] = React.useState(0.6);
@@ -510,6 +511,7 @@ export default function AISettingsPage() {
       setPrimaryColor(ai.primaryColor || '#3b82f6');
       setIsPublic(ai.isPublic ?? true);
       setCategory((ai.category as AICategory) || 'OTHER');
+      setLlmModel(((ai as Record<string, unknown>).llmModel as string) || 'gpt-4o-mini');
       setMaxTokens(ai.maxTokens || 1024);
       setTemperature(ai.temperature || 0.7);
       setScoreThreshold(ai.scoreThreshold || 0.6);
@@ -533,6 +535,7 @@ export default function AISettingsPage() {
             primaryColor,
             isPublic,
             category,
+            llmModel,
             maxTokens,
             temperature,
             scoreThreshold,
@@ -558,6 +561,7 @@ export default function AISettingsPage() {
       primaryColor,
       isPublic,
       category,
+      llmModel,
       maxTokens,
       temperature,
       scoreThreshold,
@@ -1089,6 +1093,27 @@ export default function AISettingsPage() {
                 <p className="text-[12px] text-tx-disabled">
                   {t('behaviorTab.responseLanguageHint')}
                 </p>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="llmModel" className="text-[13px] font-medium text-tx-secondary">
+                  {t('behaviorTab.model')}
+                </label>
+                <select
+                  id="llmModel"
+                  value={llmModel}
+                  onChange={(e) => {
+                    setLlmModel(e.target.value);
+                    save();
+                  }}
+                  className="w-full rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-2))] px-3 py-2 text-[13px] text-tx-primary"
+                >
+                  <option value="gpt-4o-mini">GPT-4o Mini</option>
+                  <option value="gpt-4o">GPT-4o</option>
+                  <option value="mistral-large-latest">Mistral Large</option>
+                  <option value="mistral-small-latest">Mistral Small</option>
+                </select>
+                <p className="text-[12px] text-tx-disabled">{t('behaviorTab.modelHint')}</p>
               </div>
 
               <div className="space-y-2">

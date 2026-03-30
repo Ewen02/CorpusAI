@@ -38,6 +38,7 @@ import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middle
         REDIS_URL: Joi.string().optional().allow(''),
         STRIPE_SECRET_KEY: Joi.string().optional().allow(''),
         STRIPE_WEBHOOK_SECRET: Joi.string().optional().allow(''),
+        MISTRAL_API_KEY: Joi.string().optional().allow(''),
         SENTRY_DSN: Joi.string().optional().allow(''),
         RESEND_API_KEY: Joi.string().optional().allow(''),
         RESEND_FROM_EMAIL: Joi.string().optional().allow(''),
