@@ -109,6 +109,7 @@ export interface StreamDoneEvent {
       content: string;
       sources: MessageSource[];
       confidence: string;
+      feedback: 'positive' | 'negative' | null;
       createdAt: string;
     };
   };

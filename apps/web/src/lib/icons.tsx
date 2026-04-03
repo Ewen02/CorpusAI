@@ -30,6 +30,7 @@ export {
   // Quality & Engagement
   Sparkles as SparklesIcon,
   AlertTriangle as AlertIcon,
+  ThumbsUp as ThumbsUpIcon,
 
   // Analytics
   TrendingUp as TrendingUpIcon,

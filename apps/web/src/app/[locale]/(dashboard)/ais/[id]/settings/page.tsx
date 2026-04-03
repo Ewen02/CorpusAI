@@ -511,7 +511,7 @@ export default function AISettingsPage() {
       setPrimaryColor(ai.primaryColor || '#3b82f6');
       setIsPublic(ai.isPublic ?? true);
       setCategory((ai.category as AICategory) || 'OTHER');
-      setLlmModel(((ai as Record<string, unknown>).llmModel as string) || 'gpt-4o-mini');
+      setLlmModel(((ai as unknown as Record<string, unknown>).llmModel as string) || 'gpt-4o-mini');
       setMaxTokens(ai.maxTokens || 1024);
       setTemperature(ai.temperature || 0.7);
       setScoreThreshold(ai.scoreThreshold || 0.6);

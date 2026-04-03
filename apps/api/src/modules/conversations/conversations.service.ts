@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ForbiddenException,
   UnauthorizedException,
+  BadRequestException,
   Logger,
 } from '@nestjs/common';
 import {
@@ -22,6 +23,7 @@ import { determineConfidence, buildSystemPrompt } from '@corpusai/ai-rules';
 import type { RAGResponse } from '@corpusai/corpus';
 import { RagService } from '../rag';
 import { WebhooksService } from '../webhooks';
+import { EndUserMemoryService } from './memory.service';
 import { incrementDailyStats } from '../../shared/daily-stats';
 
 @Injectable()
@@ -30,7 +32,8 @@ export class ConversationsService {
 
   constructor(
     private ragService: RagService,
-    private webhooksService: WebhooksService
+    private webhooksService: WebhooksService,
+    private memoryService: EndUserMemoryService
   ) {}
 
   private async checkAIAccess(
@@ -189,6 +192,7 @@ export class ConversationsService {
             content: true,
             sources: true,
             confidence: true,
+            feedback: true,
             createdAt: true,
           },
         },
@@ -234,6 +238,7 @@ export class ConversationsService {
         content: true,
         sources: true,
         confidence: true,
+        feedback: true,
         createdAt: true,
       },
     });
@@ -325,6 +330,7 @@ export class ConversationsService {
             maxTokens: true,
             scoreThreshold: true,
             llmModel: true,
+            memoryEnabled: true,
             user: {
               select: { subscriptionPlan: true },
             },
@@ -351,6 +357,14 @@ export class ConversationsService {
 
     const conversationHistory = await this.getConversationHistory(conversationId);
 
+    // Fetch memory context if enabled
+    let memoryContext: string | undefined;
+    if (conversation.ai.memoryEnabled && conversation.endUserId) {
+      memoryContext =
+        (await this.memoryService.getMemory(conversation.endUserId, conversation.aiId)) ??
+        undefined;
+    }
+
     // Query RAG pipeline
     const startTime = Date.now();
     let assistantMessage;
@@ -365,6 +379,7 @@ export class ConversationsService {
           systemPrompt: buildSystemPrompt({
             customPrompt: conversation.ai.systemPrompt ?? undefined,
             language: conversation.ai.language,
+            memoryContext,
           }),
           temperature: conversation.ai.temperature,
           maxTokens: conversation.ai.maxTokens,
@@ -447,6 +462,17 @@ export class ConversationsService {
       await incrementDailyStats(tx, conversation.ai.userId, conversation.aiId, 'questionCount');
     });
 
+    // Trigger async memory update (fire-and-forget)
+    if (
+      conversation.ai.memoryEnabled &&
+      conversation.endUserId &&
+      conversation.messageCount + 2 >= 4
+    ) {
+      this.memoryService
+        .updateMemory(conversation.endUserId, conversation.aiId, conversationId)
+        .catch((err) => this.logger.warn(`Memory update failed: ${err}`));
+    }
+
     return {
       userMessage,
       assistantMessage,
@@ -488,6 +514,7 @@ export class ConversationsService {
             maxTokens: true,
             scoreThreshold: true,
             llmModel: true,
+            memoryEnabled: true,
             user: {
               select: { subscriptionPlan: true },
             },
@@ -520,6 +547,14 @@ export class ConversationsService {
 
     const conversationHistory = await this.getConversationHistory(conversationId);
 
+    // Fetch memory context if enabled
+    let memoryContext: string | undefined;
+    if (conversation.ai.memoryEnabled && conversation.endUserId) {
+      memoryContext =
+        (await this.memoryService.getMemory(conversation.endUserId, conversation.aiId)) ??
+        undefined;
+    }
+
     const startTime = Date.now();
 
     try {
@@ -532,6 +567,7 @@ export class ConversationsService {
           systemPrompt: buildSystemPrompt({
             customPrompt: conversation.ai.systemPrompt ?? undefined,
             language: conversation.ai.language,
+            memoryContext,
           }),
           temperature: conversation.ai.temperature,
           maxTokens: conversation.ai.maxTokens,
@@ -609,6 +645,17 @@ export class ConversationsService {
         })
         .catch(() => {});
 
+      // Trigger async memory update (fire-and-forget)
+      if (
+        conversation.ai.memoryEnabled &&
+        conversation.endUserId &&
+        conversation.messageCount + 2 >= 4
+      ) {
+        this.memoryService
+          .updateMemory(conversation.endUserId, conversation.aiId, conversationId)
+          .catch((err) => this.logger.warn(`Memory update failed: ${err}`));
+      }
+
       // Yield done event
       yield {
         type: 'done',
@@ -625,6 +672,7 @@ export class ConversationsService {
             content: assistantMessage.content,
             sources,
             confidence,
+            feedback: null,
             createdAt: assistantMessage.createdAt,
           },
         },
@@ -658,6 +706,32 @@ export class ConversationsService {
         },
       };
     }
+  }
+
+  async updateMessageFeedback(
+    conversationId: string,
+    messageId: string,
+    feedback: 'positive' | 'negative'
+  ) {
+    const message = await prisma.message.findUnique({
+      where: { id: messageId },
+      select: { id: true, conversationId: true, role: true },
+    });
+
+    if (!message || message.conversationId !== conversationId) {
+      throw new NotFoundException('Message not found');
+    }
+
+    if (message.role !== MessageRole.ASSISTANT) {
+      throw new BadRequestException('Feedback can only be given on assistant messages');
+    }
+
+    await prisma.message.update({
+      where: { id: messageId },
+      data: { feedback },
+    });
+
+    return { id: messageId, feedback };
   }
 
   async delete(userId: string, conversationId: string) {

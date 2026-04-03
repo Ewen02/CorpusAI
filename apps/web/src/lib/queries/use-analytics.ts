@@ -75,6 +75,12 @@ export interface AIAnalyticsData extends AnalyticsData {
     count: number;
     rate: number | null;
   };
+  feedbackSatisfaction: {
+    positive: number;
+    negative: number;
+    total: number;
+    rate: number | null;
+  };
   topQuestions: TopQuestion[];
   retention: RetentionPoint[];
   funnel: FunnelData;

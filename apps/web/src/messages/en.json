@@ -921,6 +921,8 @@
     "maxTokensHint": "Maximum length of generated responses.",
     "temperature": "Temperature",
     "temperatureHint": "0 = precise and deterministic, 1 = creative and varied.",
+    "memory": "Multi-session memory",
+    "memoryDescription": "The AI remembers past conversations for each authenticated user.",
     "customization": "Customization",
     "customizationDescription": "Customize the appearance of your assistant.",
     "primaryColor": "Primary color",

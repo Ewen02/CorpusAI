@@ -343,6 +343,22 @@ export class AIsService {
     const low = Number(confidenceStats?.low ?? 0);
     const totalResponses = high + medium + low;
 
+    // User feedback (thumbs up/down)
+    const [feedbackStats] = await prisma.$queryRaw<[{ positive: bigint; negative: bigint }]>`
+      SELECT
+        COUNT(*) FILTER (WHERE m.feedback = 'positive') AS positive,
+        COUNT(*) FILTER (WHERE m.feedback = 'negative') AS negative
+      FROM "Message" m
+      JOIN "Conversation" c ON c.id = m."conversationId"
+      WHERE c."aiId" = ${aiId}
+        AND m."createdAt" >= ${startDate}
+        AND m.role = 'ASSISTANT'
+        AND m.feedback IS NOT NULL
+    `;
+    const feedbackPositive = Number(feedbackStats?.positive ?? 0);
+    const feedbackNegative = Number(feedbackStats?.negative ?? 0);
+    const feedbackTotal = feedbackPositive + feedbackNegative;
+
     // Engagement
     const avgMessages = await prisma.conversation.aggregate({
       where: { aiId, createdAt: { gte: startDate } },
@@ -467,6 +483,12 @@ export class AIsService {
       unanswered: {
         count: low,
         rate: totalResponses > 0 ? Math.round((low / totalResponses) * 100) : null,
+      },
+      feedbackSatisfaction: {
+        positive: feedbackPositive,
+        negative: feedbackNegative,
+        total: feedbackTotal,
+        rate: feedbackTotal > 0 ? Math.round((feedbackPositive / feedbackTotal) * 100) : null,
       },
       topQuestions: topQuestions.map((q) => ({ content: q.content, count: Number(q.count) })),
       retention: retention.map((r) => ({

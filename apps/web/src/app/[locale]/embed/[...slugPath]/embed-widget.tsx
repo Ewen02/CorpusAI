@@ -166,8 +166,24 @@ export default function EmbedPage() {
           );
         },
         onDone: (_data: StreamDoneData) => {
+          // Replace temporary IDs with real ones from the server
+          const realUserMsgId = _data.userMessage?.id;
+          const realAssistantMsgId = _data.assistantMessage?.id;
           setMessages((prev) =>
-            prev.map((msg) => (msg.id === assistantId ? { ...msg, isStreaming: false } : msg))
+            prev.map((msg) => {
+              if (msg.id === userMessage.id && realUserMsgId) {
+                return { ...msg, id: realUserMsgId };
+              }
+              if (msg.id === assistantId) {
+                return {
+                  ...msg,
+                  id: realAssistantMsgId || msg.id,
+                  isStreaming: false,
+                  feedback: _data.assistantMessage?.feedback ?? null,
+                };
+              }
+              return msg;
+            })
           );
           setIsStreaming(false);
         },
@@ -189,6 +205,23 @@ export default function EmbedPage() {
       });
     },
     [conversationId, isStreaming]
+  );
+
+  const handleFeedback = React.useCallback(
+    async (messageId: string, feedback: 'positive' | 'negative') => {
+      if (!conversationId) return;
+      // Optimistic update
+      setMessages((prev) => prev.map((msg) => (msg.id === messageId ? { ...msg, feedback } : msg)));
+      try {
+        await apiClient.patch(
+          `/chat/conversations/${conversationId}/messages/${messageId}/feedback`,
+          { feedback }
+        );
+      } catch (err) {
+        console.error('Failed to submit feedback:', err);
+      }
+    },
+    [conversationId]
   );
 
   // Cleanup on unmount
@@ -258,6 +291,7 @@ export default function EmbedPage() {
         <ChatInterface
           messages={messages}
           onSendMessage={handleSendMessage}
+          onFeedback={handleFeedback}
           isLoading={isStreaming}
           welcomeMessage={ai.welcomeMessage ?? t('welcomeMessage', { name: ai.name })}
           aiName={ai.name}

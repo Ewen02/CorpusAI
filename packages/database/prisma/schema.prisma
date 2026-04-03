@@ -131,6 +131,9 @@ model AI {
   scoreThreshold Float   @default(0.4)
   llmModel       String  @default("gpt-4o-mini")
 
+  // Memory
+  memoryEnabled Boolean @default(false)
+
   // Access & Monetization
   accessType AccessType @default(FREE)
   price      Float?
@@ -155,6 +158,7 @@ model AI {
   conversations Conversation[]
   dailyStats    DailyStats[]
   accessGrants  AIAccessGrant[]
+  memories      EndUserMemory[]
 
   @@unique([userId, slug])
   @@index([userId])
@@ -253,6 +257,7 @@ model EndUser {
   // Relations
   conversations Conversation[]
   accessGrants  AIAccessGrant[]
+  memories      EndUserMemory[]
 
   @@index([email])
   @@index([magicLinkToken])
@@ -301,6 +306,9 @@ model Message {
   tokenUsage Int?
   latencyMs  Int?
 
+  // User feedback
+  feedback String? // 'positive' | 'negative' | null
+
   // Relations
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
@@ -308,6 +316,26 @@ model Message {
   @@index([createdAt])
   // Composite index for rate limiting queries (count messages by AI/date via conversation join)
   @@index([conversationId, role, createdAt])
+}
+
+// ============================================
+// END-USER MEMORY (multi-session context)
+// ============================================
+
+model EndUserMemory {
+  id        String   @id @default(cuid())
+  endUserId String
+  aiId      String
+  summary   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  endUser EndUser @relation(fields: [endUserId], references: [id], onDelete: Cascade)
+  ai      AI      @relation(fields: [aiId], references: [id], onDelete: Cascade)
+
+  @@unique([endUserId, aiId])
+  @@index([endUserId])
+  @@index([aiId])
 }
 
 // ============================================

@@ -19,6 +19,7 @@ interface ChatTabProps {
   aiName: string;
   welcomeMessage?: string;
   onSendMessage: (content: string) => void;
+  onFeedback?: (messageId: string, feedback: 'positive' | 'negative') => void;
   onSelectConversation: (conversation: Conversation) => void;
   onNewConversation: () => void;
 }
@@ -36,6 +37,7 @@ export const ChatTab = React.memo(function ChatTab({
   aiName,
   welcomeMessage,
   onSendMessage,
+  onFeedback,
   onSelectConversation,
   onNewConversation,
 }: ChatTabProps) {
@@ -60,6 +62,7 @@ export const ChatTab = React.memo(function ChatTab({
         <ChatInterface
           messages={messages}
           onSendMessage={onSendMessage}
+          onFeedback={onFeedback}
           isLoading={isStreaming}
           welcomeMessage={welcomeMessage}
           aiName={aiName}

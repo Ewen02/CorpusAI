@@ -1,12 +1,14 @@
-import { Module } from "@nestjs/common";
-import { ConversationsController } from "./conversations.controller";
-import { ConversationsService } from "./conversations.service";
-import { RagModule } from "../rag";
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { ConversationsController } from './conversations.controller';
+import { ConversationsService } from './conversations.service';
+import { EndUserMemoryService } from './memory.service';
+import { RagModule } from '../rag';
 
 @Module({
-  imports: [RagModule],
+  imports: [RagModule, ConfigModule],
   controllers: [ConversationsController],
-  providers: [ConversationsService],
+  providers: [ConversationsService, EndUserMemoryService],
   exports: [ConversationsService],
 })
 export class ConversationsModule {}

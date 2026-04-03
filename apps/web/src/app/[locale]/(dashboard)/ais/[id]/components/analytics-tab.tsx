@@ -6,7 +6,15 @@ import { StatCard, AnalyticsCard, cn } from '@corpusai/ui';
 
 import { useAIAnalytics, useDocumentChunkUsage, type AnalyticsPeriod } from '@/lib/queries';
 import { PERIOD_OPTIONS } from '@/lib/constants';
-import { FileIcon, MessageIcon, SparklesIcon, UsersIcon, AlertIcon, BookIcon } from '@/lib/icons';
+import {
+  FileIcon,
+  MessageIcon,
+  SparklesIcon,
+  UsersIcon,
+  AlertIcon,
+  BookIcon,
+  ThumbsUpIcon,
+} from '@/lib/icons';
 import {
   AnalyticsTabSkeleton,
   ChartsSkeleton,
@@ -84,7 +92,7 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
       </div>
 
       {/* Row 2: Quality & Engagement stats */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <AnalyticsCard title="Qualité des réponses" icon={SparklesIcon}>
           <div className="mt-3">
             <span className="text-[28px] font-bold leading-none tracking-tight text-tx-primary">
@@ -180,6 +188,58 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
               {unansweredRate}% du total
             </p>
           )}
+        </AnalyticsCard>
+
+        {/* User feedback satisfaction */}
+        <AnalyticsCard title="Satisfaction utilisateurs" icon={ThumbsUpIcon}>
+          {(() => {
+            const fb = data.feedbackSatisfaction;
+            if (!fb || fb.total === 0) {
+              return (
+                <>
+                  <div className="mt-3">
+                    <span className="text-[28px] font-bold leading-none tracking-tight text-tx-muted">
+                      —
+                    </span>
+                  </div>
+                  <p className="mt-2 text-[13px] font-medium text-tx-secondary">aucun avis</p>
+                </>
+              );
+            }
+            return (
+              <>
+                <div className="mt-3">
+                  <span
+                    className={cn(
+                      'text-[28px] font-bold leading-none tracking-tight',
+                      fb.rate != null && fb.rate >= 70
+                        ? 'text-green-400'
+                        : fb.rate != null && fb.rate >= 40
+                          ? 'text-yellow-400'
+                          : 'text-red-400'
+                    )}
+                  >
+                    {fb.rate}%
+                  </span>
+                </div>
+                <p className="mt-2 text-[13px] font-medium text-tx-secondary">
+                  {fb.positive} positif{fb.positive > 1 ? 's' : ''} / {fb.total} avis
+                </p>
+                <div className="mt-2 flex h-1.5 overflow-hidden rounded-full bg-muted/30">
+                  <div
+                    className="bg-green-500"
+                    style={{ width: `${(fb.positive / fb.total) * 100}%` }}
+                    title={`${fb.positive} positif${fb.positive > 1 ? 's' : ''}`}
+                  />
+                  <div
+                    className="bg-red-500"
+                    style={{ width: `${(fb.negative / fb.total) * 100}%` }}
+                    title={`${fb.negative} négatif${fb.negative > 1 ? 's' : ''}`}
+                  />
+                </div>
+              </>
+            );
+          })()}
         </AnalyticsCard>
       </div>
 

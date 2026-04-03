@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Delete,
   Body,
   Param,
@@ -25,6 +26,7 @@ import type { Request, Response } from 'express';
 import { ConversationsService } from './conversations.service';
 import { AuthGuard, CurrentUser, type CurrentUserData } from '../auth';
 import { SendMessageDto } from './dto/send-message.dto';
+import { UpdateFeedbackDto } from './dto/update-feedback.dto';
 
 @ApiTags('conversations')
 @Controller()
@@ -130,6 +132,21 @@ export class ConversationsController {
   @ApiResponse({ status: 404, description: 'Conversation not found' })
   async getMessages(@Param('id') id: string) {
     return this.conversationsService.getMessages(id);
+  }
+
+  @Patch('chat/conversations/:id/messages/:messageId/feedback')
+  @ApiOperation({ summary: 'Submit feedback on an assistant message' })
+  @ApiParam({ name: 'id', description: 'Conversation ID' })
+  @ApiParam({ name: 'messageId', description: 'Message ID' })
+  @ApiResponse({ status: 200, description: 'Feedback recorded' })
+  @ApiResponse({ status: 400, description: 'Invalid feedback or not an assistant message' })
+  @ApiResponse({ status: 404, description: 'Message not found' })
+  async updateFeedback(
+    @Param('id') id: string,
+    @Param('messageId') messageId: string,
+    @Body() dto: UpdateFeedbackDto
+  ) {
+    return this.conversationsService.updateMessageFeedback(id, messageId, dto.feedback);
   }
 
   // NOTE: Stream route must be declared BEFORE the non-stream route

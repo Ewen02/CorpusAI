@@ -118,4 +118,12 @@ export class CreateAIDto {
   @IsString()
   @IsIn(['fr', 'en'])
   language?: string;
+
+  @ApiPropertyOptional({
+    description: 'Enable multi-session memory for end-users',
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  memoryEnabled?: boolean;
 }

@@ -26,6 +26,7 @@ export interface AIFormValues {
   maxTokens: number;
   temperature: number;
   language: 'fr' | 'en';
+  memoryEnabled: boolean;
 }
 
 export const DEFAULT_AI_FORM_VALUES: AIFormValues = {
@@ -39,6 +40,7 @@ export const DEFAULT_AI_FORM_VALUES: AIFormValues = {
   maxTokens: 1024,
   temperature: 0.7,
   language: 'fr',
+  memoryEnabled: false,
 };
 
 interface AIFormFieldsProps {
@@ -344,6 +346,21 @@ function BehaviorFields({ values, onChange }: Pick<AIFormFieldsProps, 'values' |
             />
             <p className="text-[12px] text-tx-disabled">{t('temperatureHint')}</p>
           </div>
+        </div>
+      </div>
+
+      {/* Mémoire multi-session */}
+      <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[13px] font-medium text-tx-primary">{t('memory')}</p>
+            <p className="mt-0.5 text-[12px] text-tx-disabled">{t('memoryDescription')}</p>
+          </div>
+          <Switch
+            id="memoryEnabled"
+            checked={values.memoryEnabled}
+            onCheckedChange={(checked) => onChange('memoryEnabled', checked)}
+          />
         </div>
       </div>
     </>

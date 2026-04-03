@@ -35,6 +35,7 @@ export default function ChatPage() {
     showSaveBanner,
     unlockWithCode,
     sendMessage,
+    submitFeedback,
     dismissSaveBanner,
   } = usePublicChat({ username, slug, accessToken });
 
@@ -181,6 +182,7 @@ export default function ChatPage() {
           <ChatInterface
             messages={messages}
             onSendMessage={handleSendMessage}
+            onFeedback={submitFeedback}
             isLoading={isStreaming}
             welcomeMessage={ai.welcomeMessage ?? t('welcomeMessage', { name: ai.name })}
             aiName={ai.name}

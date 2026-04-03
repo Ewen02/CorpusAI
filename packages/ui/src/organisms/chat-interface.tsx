@@ -18,6 +18,7 @@ export interface ChatMessage {
   content: string;
   sources?: ChatSource[];
   confidence?: ConfidenceLevel;
+  feedback?: 'positive' | 'negative' | null;
   createdAt: Date;
   isStreaming?: boolean;
 }
@@ -33,6 +34,7 @@ export interface ChatSource {
 export interface ChatInterfaceProps {
   messages: ChatMessage[];
   onSendMessage: (message: string) => void;
+  onFeedback?: (messageId: string, feedback: 'positive' | 'negative') => void;
   isLoading?: boolean;
   placeholder?: string;
   welcomeMessage?: string;
@@ -51,12 +53,14 @@ interface MessageBubbleProps {
   aiName?: string;
   aiAvatar?: string;
   userAvatar?: string;
+  onFeedback?: (messageId: string, feedback: 'positive' | 'negative') => void;
 }
 
 const MessageBubble = React.memo(function MessageBubble({
   message,
   aiName = 'Assistant',
   aiAvatar,
+  onFeedback,
 }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const formattedTime = message.createdAt.toLocaleTimeString([], {
@@ -101,6 +105,43 @@ const MessageBubble = React.memo(function MessageBubble({
             <MarkdownRenderer content={message.content} />
           )}
         </div>
+
+        {/* Feedback buttons (visible on hover, highlighted when selected) */}
+        {!message.isStreaming && onFeedback && (
+          <div
+            className={cn(
+              'flex items-center gap-1 transition-opacity',
+              message.feedback ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+            )}
+          >
+            <button
+              type="button"
+              onClick={() => onFeedback(message.id, 'positive')}
+              title="Utile"
+              className={cn(
+                'flex h-6 w-6 items-center justify-center rounded-md transition-colors',
+                message.feedback === 'positive'
+                  ? 'bg-emerald-500/15 text-emerald-400'
+                  : 'text-tx-disabled hover:text-tx-muted hover:bg-[hsl(var(--surface-2))]'
+              )}
+            >
+              <ThumbsUpIcon className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onFeedback(message.id, 'negative')}
+              title="Pas utile"
+              className={cn(
+                'flex h-6 w-6 items-center justify-center rounded-md transition-colors',
+                message.feedback === 'negative'
+                  ? 'bg-red-500/15 text-red-400'
+                  : 'text-tx-disabled hover:text-tx-muted hover:bg-[hsl(var(--surface-2))]'
+              )}
+            >
+              <ThumbsDownIcon className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
       </div>
 
       <span className="text-tx-disabled absolute bottom-0 left-9 text-[10px] opacity-0 transition-opacity group-hover:opacity-100">
@@ -159,6 +200,42 @@ const WelcomeMessage = React.memo(function WelcomeMessage({
 // Icons
 // ============================================
 
+function ThumbsUpIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M7 10v12" />
+      <path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z" />
+    </svg>
+  );
+}
+
+function ThumbsDownIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M17 14V2" />
+      <path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z" />
+    </svg>
+  );
+}
+
 function SendIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -184,6 +261,7 @@ function SendIcon({ className }: { className?: string }) {
 export function ChatInterface({
   messages,
   onSendMessage,
+  onFeedback,
   isLoading = false,
   placeholder = 'Posez votre question...',
   welcomeMessage,
@@ -247,6 +325,7 @@ export function ChatInterface({
             aiName={aiName}
             aiAvatar={aiAvatar}
             userAvatar={userAvatar}
+            onFeedback={onFeedback}
           />
         ))}
 

@@ -52,6 +52,8 @@ interface UpdateAIData extends Partial<CreateAIInput> {
   status?: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED';
   category?: 'SUPPORT' | 'EDUCATION' | 'LEGAL' | 'FINANCE' | 'HEALTH' | 'TECH' | 'OTHER';
   scoreThreshold?: number;
+  llmModel?: string;
+  memoryEnabled?: boolean;
 }
 
 export function useCreateAI() {

@@ -160,18 +160,36 @@ interface SystemPromptOptions {
   customPrompt?: string;
   /** Langue des règles de format : 'fr' (défaut) ou 'en' */
   language?: string;
+  /** Résumé des conversations précédentes avec cet utilisateur */
+  memoryContext?: string;
 }
+
+const MEMORY_SECTION_FR = `MÉMOIRE DES CONVERSATIONS PRÉCÉDENTES
+Voici un résumé de tes interactions précédentes avec cet utilisateur. Utilise-le pour personnaliser tes réponses, mais ne mentionne pas cette mémoire sauf si l'utilisateur fait référence à des conversations passées.`;
+
+const MEMORY_SECTION_EN = `PREVIOUS CONVERSATION MEMORY
+Here is a summary of your previous interactions with this user. Use it to personalize your responses, but do not mention this memory unless the user refers to past conversations.`;
 
 /**
  * Construit le system prompt complet.
  * Les règles de format sont TOUJOURS incluses, même avec un prompt custom.
+ * Si memoryContext est fourni, une section mémoire est ajoutée en fin de prompt.
  */
 export function buildSystemPrompt(options: SystemPromptOptions = {}): string {
   const rules = getFormatRules(options.language);
+  let prompt: string;
   if (options.customPrompt) {
-    return `${options.customPrompt}\n\n---\n\n${rules}`;
+    prompt = `${options.customPrompt}\n\n---\n\n${rules}`;
+  } else {
+    prompt = `${getDefaultBasePrompt(options.language)}\n\n${rules}`;
   }
-  return `${getDefaultBasePrompt(options.language)}\n\n${rules}`;
+
+  if (options.memoryContext) {
+    const header = options.language === 'en' ? MEMORY_SECTION_EN : MEMORY_SECTION_FR;
+    prompt += `\n\n---\n\n${header}\n\n${options.memoryContext}`;
+  }
+
+  return prompt;
 }
 
 // ============================================
