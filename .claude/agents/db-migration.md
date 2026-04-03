@@ -1,99 +1,34 @@
 ---
 name: db-migration
-description: Expert Prisma/database agent for CorpusAI. Use this agent when modifying the schema, adding fields, creating migrations, or working with the database in packages/database/. Triggered by: "modify schema", "add a field", "new migration", "Prisma", "database model", "add column", "schema change".
+description: Modifie le schéma Prisma ou crée une migration. Triggers : "schéma", "migration", "nouveau champ", "Prisma", "modèle", "index", "relation".
 ---
 
-You are an expert Prisma and PostgreSQL developer for the CorpusAI project.
+Stack : Prisma 6, PostgreSQL (Neon serverless).
+Schema : packages/database/prisma/schema.prisma
 
-## Project: packages/database/
+## Règles critiques
 
-Stack: Prisma 6, PostgreSQL (Neon serverless), singleton client re-exported from `src/index.ts`.
+- Index sur tous les champs en WHERE/ORDER BY/FK
+- onDelete: Cascade sur les relations enfant
+- Timestamps obligatoires : createdAt @default(now()) + updatedAt @updatedAt
+- Noms : PascalCase singulier pour les modèles, camelCase pour les champs
 
-## Schema location
+## Dev vs Production
 
-`packages/database/prisma/schema.prisma`
+- Dev : `pnpm --filter @corpusai/database db:push` (rapide, no migration file)
+- Prod : `pnpm --filter @corpusai/database exec prisma migrate dev --name <desc>`
 
-## Core models
+## Après chaque changement — dans l'ordre
 
-```
-User          — Auth user, subscription, notificationPreferences
-AI            — User's assistant (slug, status, language, vectors)
-Document      — Uploaded file, processing status
-Chunk         — Vector chunk with metadata
-EndUser       — Anonymous chat user (sessionId)
-Conversation  — Chat thread
-Message       — Individual message (role, content, confidence, feedback)
-DailyStats    — Denormalized daily counters per AI
-```
+1. db:push ou migrate dev
+2. `pnpm --filter @corpusai/database build`
+3. Mettre à jour packages/database/src/index.ts si nouveaux enums
+4. Mettre à jour packages/types/src/ si types API partagés
+5. pnpm typecheck
 
-## Enums
+## Checklist
 
-`SubscriptionPlan`, `SubscriptionStatus`, `AIStatus`, `AccessType`, `DocumentStatus`, `ProcessingStep`, `MessageRole`, `ConfidenceLevel`
-
-## Naming conventions
-
-- Model names: PascalCase singular (`AI`, `Document`, not `AIs`, `Documents`)
-- Field names: camelCase (`createdAt`, `creatorId`, `isPublic`)
-- Relations: explicit `@relation` with named field and `onDelete: Cascade` for child records
-- Timestamps: always `createdAt DateTime @default(now())` + `updatedAt DateTime @updatedAt`
-
-## Adding a field
-
-```prisma
-model User {
-  // ... existing fields
-  newField    String?   // nullable field
-  newRequired String    @default("value")  // required with default
-  counter     Int       @default(0)        // counter for denormalization
-}
-```
-
-## Adding an index
-
-```prisma
-model Document {
-  // ... fields
-  @@index([aiId, status])      // composite index for common query
-  @@index([createdAt(sort: Desc)])
-}
-```
-
-## After schema changes — ALWAYS run in order
-
-1. `pnpm --filter @corpusai/database db:push` — for dev (no migration file)
-   OR
-   `pnpm --filter @corpusai/database db:migrate dev --name <description>` — for production-safe migration
-
-2. `pnpm --filter @corpusai/database build` — rebuild generated types
-
-3. Update `packages/database/src/index.ts` if new enums/types need re-exporting
-
-4. Update `packages/types/src/entities.ts` if the model has shared API types
-
-## Export pattern
-
-```typescript
-// packages/database/src/index.ts
-export { prisma } from './client';
-export type { User, AI, Document } from '@prisma/client';
-export { SubscriptionPlan, AIStatus, DocumentStatus } from '@prisma/client';
-```
-
-## Prisma usage rules
-
-- ALWAYS `select` to limit fields — never fetch full model unless needed
-- Use `$transaction` for multi-step writes
-- Update denormalized counters atomically inside `$transaction`
-- Use `findFirst` for ownership-scoped queries (not `findUnique`)
-- Cascade deletes: child records should have `onDelete: Cascade`
-
-## Quality checklist
-
-Before finishing:
-
-- [ ] Indexes added for fields used in `where` clauses
-- [ ] `onDelete: Cascade` set for child relations
-- [ ] `db:push` or `db:migrate` run and confirmed
-- [ ] `build` run to regenerate types
-- [ ] `src/index.ts` updated if new enums exported
-- [ ] `packages/types/` updated if shared API types needed
+- [ ] Index composites pour les requêtes multi-colonnes
+- [ ] onDelete: Cascade sur les enfants
+- [ ] Build database package après changement
+- [ ] Types partagés dans packages/types/ si besoin

@@ -45,6 +45,11 @@
             "type": "command",
             "command": "jq -r '.tool_input.file_path' | { read -r f; npx prettier --write \"$f\"; } 2>/dev/null || true",
             "statusMessage": "Formatting with Prettier..."
+          },
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path' | { read -r f; echo \"$f\" | grep -qE '\\.(ts|tsx)$' && npx eslint --fix \"$f\" 2>/dev/null; } || true",
+            "statusMessage": "Fixing ESLint issues..."
           }
         ]
       }
@@ -56,6 +61,15 @@
           {
             "type": "command",
             "command": "jq -r '.tool_input.file_path' | grep -qE '(\\.env$|\\.env\\.local$|pnpm-lock\\.yaml$)' && echo '{\"continue\": false, \"stopReason\": \"Blocked: editing .env, .env.local, or pnpm-lock.yaml is not allowed\"}' || exit 0"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.command' | grep -qE '^git push.*(main|master)' && echo '{\"continue\": false, \"stopReason\": \"Blocked: direct push to main/master. Use a feature branch and PR instead.\"}' || exit 0"
           }
         ]
       }

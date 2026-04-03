@@ -65,12 +65,19 @@ apps/api/src/modules/
 ├── ais/             # CRUD AIs, stats par AI
 ├── documents/       # Upload, retry, delete, progress SSE
 ├── conversations/   # Chat public + creator, streaming SSE
-└── rag/             # Indexation, query, debug, metriques cache
+├── rag/             # Indexation, query, debug, metriques cache
+├── end-user-auth/   # Magic link auth (EndUser, cookie eu_session)
+├── portal/          # Portail end-user (conversations, profil)
+├── public-api/      # API publique v1 (API keys cai_, webhooks)
+├── admin/           # Dashboard admin (stats, users, DLQ)
+├── eval/            # Évaluation RAG (rapports JSON, métriques)
+└── mail/            # Emails transactionnels (Resend)
 ```
 
 ### 3.2 Endpoints
 
 **Auth** (Better Auth)
+
 ```
 POST   /auth/sign-up/email
 POST   /auth/sign-in/email
@@ -79,6 +86,7 @@ GET    /auth/session
 ```
 
 **Users** (authentifie)
+
 ```
 GET    /users/me
 PATCH  /users/me
@@ -88,6 +96,7 @@ GET    /users/me/analytics?period=7d|30d|90d
 ```
 
 **AIs** (authentifie)
+
 ```
 GET    /ais
 POST   /ais
@@ -98,6 +107,7 @@ GET    /ais/:id/stats
 ```
 
 **Documents** (authentifie, scope ais/:aiId)
+
 ```
 GET    /ais/:aiId/documents
 POST   /ais/:aiId/documents
@@ -111,12 +121,14 @@ SSE    /ais/:aiId/documents/:id/progress/stream    # ownership check + timeout 6
 ```
 
 **Conversations** — createur (authentifie)
+
 ```
 GET    /ais/:aiId/conversations
 DELETE /conversations/:id
 ```
 
 **Conversations** — public (widget / end users)
+
 ```
 GET    /chat/:aiSlug/info
 POST   /chat/:aiSlug/start
@@ -127,9 +139,39 @@ POST   /chat/conversations/:id/messages/stream     # SSE + abort on disconnect
 ```
 
 **RAG** (authentifie)
+
 ```
 GET    /rag/metrics
 GET    /rag/:aiId/debug-query?q=...&threshold=0.6
+```
+
+**End-user Auth** (public)
+
+```
+POST   /portal/auth/magic-link     # Envoie magic link
+GET    /portal/auth/verify         # Valide token → set cookie eu_session
+POST   /portal/auth/sign-out       # Clear session
+```
+
+**Portal** (EndUserAuthGuard)
+
+```
+GET    /portal/me                  # Profil + IAs accessibles
+GET    /portal/conversations       # Toutes ses conversations
+GET    /portal/conversations/:id   # Messages d'une conversation
+```
+
+**Access Control** (AuthGuard createur)
+
+```
+POST   /ais/:id/access/token       # Genere lien secret
+DELETE /ais/:id/access/token
+POST   /ais/:id/access/code        # Definit code d'acces (bcrypt)
+DELETE /ais/:id/access/code
+PATCH  /ais/:id/access/invite      # { inviteOnly: boolean }
+GET    /ais/:id/members            # Liste end-users invites
+POST   /ais/:id/members            # Invite par email
+DELETE /ais/:id/members/:endUserId # Revoque acces
 ```
 
 ### 3.3 Securite
@@ -140,6 +182,9 @@ GET    /rag/:aiId/debug-query?q=...&threshold=0.6
 - **Abort streaming** quand le client SSE se deconnecte (economie tokens OpenAI)
 - **DTOs + class-validator** pour validation des inputs
 - **CORS** configure
+- **EndUserAuthGuard** : verifie cookie eu_session (distinct de AuthGuard createur)
+- **Access control** : checkAIAccess() verifie accessToken/accessCode/inviteOnly avant toute creation de conversation
+- **HMAC-SHA256** sur les webhooks sortants
 
 ---
 
@@ -164,7 +209,14 @@ apps/web/src/app/
 │   ├── settings/security/               # Securite
 │   └── settings/notifications/          # Notifications (placeholder)
 ├── api/                                 # API routes Next.js
-└── embed/[slug]/                        # Widget embeddable (iframe)
+├── embed/[slug]/                        # Widget embeddable (iframe)
+├── portal/
+│   ├── sign-in/                         # Connexion end-user (magic link)
+│   ├── auth/verify/                     # Handler magic link
+│   ├── conversations/                   # Liste conversations end-user
+│   └── conversations/[id]/              # Detail conversation
+├── u/[username]/                        # Profil public createur (OG tags)
+└── admin/eval/                          # Dashboard evaluation RAG
 ```
 
 ### 4.2 State management
@@ -209,6 +261,7 @@ Query:
 ```
 
 Options cles :
+
 - `debug: boolean` — logging conditionnel (pas de PII en prod)
 - `maxContextChars: number` — garde-fou tokens (default 16000)
 - `scoreThreshold: number` — seuil de pertinence (default 0.6, overridable a 0.4)
@@ -243,6 +296,9 @@ DocumentStatus      : PENDING, PROCESSING, INDEXED, FAILED
 ProcessingStep      : PARSING, CHUNKING, EMBEDDING, STORING
 MessageRole         : USER, ASSISTANT
 ConfidenceLevel     : HIGH, MEDIUM, LOW
+AccessMode          : OPEN, TOKEN, CODE, INVITE
+AccessStatus        : ACTIVE, REVOKED, EXPIRED
+WebhookEvent        : DOCUMENT_INDEXED, CONVERSATION_STARTED, MESSAGE_SENT, AI_UPDATED
 ```
 
 ### Models principaux
@@ -253,17 +309,20 @@ ConfidenceLevel     : HIGH, MEDIUM, LOW
 - **Chunk** : content, position, pageNumber, startChar/endChar, qdrantPointId
 - **Conversation** : aiId, endUserId, title, messageCount
 - **Message** : role, content, sources (JSON), confidence, tokenUsage, latencyMs
-- **EndUser** : email, name, sessionId
+- **EndUser** : email, name, emailVerified, magicLinkToken/Expires, sessionToken/Expires, relations Conversation + AIAccessGrant
 - **DailyStats** : userId, aiId, date, documentCount, conversationCount, questionCount
+- **AIAccessGrant** : aiId, endUserId, status (ACTIVE/REVOKED/EXPIRED), expiresAt — controle d'acces end-user par invitation
+- **Webhook** : url, secret, events[], active — notifications sortantes HMAC-SHA256
+- **WebhookDelivery** : webhookId, event, payload, status, attempts
 
 ---
 
 ## 8. Infra et services externes
 
-| Service | Usage | Config |
-|---------|-------|--------|
-| PostgreSQL (Neon) | Base de donnees principale | DATABASE_URL |
-| Qdrant Cloud | Stockage vecteurs embeddings | QDRANT_URL, QDRANT_API_KEY |
-| Redis | Cache embeddings + BullMQ queue + pub/sub progress | REDIS_URL |
-| OpenAI | Embeddings + LLM (chat) | OPENAI_API_KEY |
-| Better Auth | Auth sessions + OAuth | BETTER_AUTH_SECRET |
+| Service           | Usage                                              | Config                     |
+| ----------------- | -------------------------------------------------- | -------------------------- |
+| PostgreSQL (Neon) | Base de donnees principale                         | DATABASE_URL               |
+| Qdrant Cloud      | Stockage vecteurs embeddings                       | QDRANT_URL, QDRANT_API_KEY |
+| Redis             | Cache embeddings + BullMQ queue + pub/sub progress | REDIS_URL                  |
+| OpenAI            | Embeddings + LLM (chat)                            | OPENAI_API_KEY             |
+| Better Auth       | Auth sessions + OAuth                              | BETTER_AUTH_SECRET         |
