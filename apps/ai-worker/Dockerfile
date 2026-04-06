@@ -19,11 +19,8 @@ RUN pnpm install --frozen-lockfile
 FROM base AS build
 COPY --from=deps /app/ ./
 COPY . .
-RUN pnpm --filter @corpusai/database exec prisma generate
 RUN pnpm --filter @corpusai/ai-worker... build
 RUN pnpm --filter @corpusai/ai-worker deploy --prod /app/deploy
-# Copy generated Prisma client into deployed node_modules
-RUN cp -r $(find /app/node_modules/.pnpm -path '*/node_modules/.prisma' -type d | head -1) /app/deploy/node_modules/.prisma
 
 # ── Runtime ───────────────────────────────────────────────────
 FROM node:20-slim AS runtime
@@ -32,10 +29,13 @@ WORKDIR /app
 
 COPY --from=build /app/deploy/node_modules ./node_modules
 COPY --from=build /app/apps/ai-worker/dist ./dist
+COPY --from=build /app/packages/database/prisma ./prisma
+COPY apps/ai-worker/docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
 
 ENV NODE_ENV=production
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
   CMD node -e "process.exit(0)" || exit 1
 
-CMD ["node", "dist/index.js"]
+ENTRYPOINT ["./docker-entrypoint.sh"]
