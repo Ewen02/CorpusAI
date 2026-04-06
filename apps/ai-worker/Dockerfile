@@ -19,6 +19,7 @@ RUN pnpm install --frozen-lockfile
 FROM base AS build
 COPY --from=deps /app/ ./
 COPY . .
+RUN pnpm --filter @corpusai/database exec prisma generate
 RUN pnpm --filter @corpusai/ai-worker... build
 RUN pnpm --filter @corpusai/ai-worker deploy --prod /app/deploy
 
