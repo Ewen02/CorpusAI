@@ -22,8 +22,9 @@ COPY . .
 RUN pnpm --filter @corpusai/database exec prisma generate
 RUN pnpm --filter @corpusai/ai-worker... build
 RUN pnpm --filter @corpusai/ai-worker deploy --prod /app/deploy
-# Generate Prisma client inside the flat deploy node_modules
-RUN cd /app/deploy && npx prisma generate --schema=/app/packages/database/prisma/schema.prisma
+# Generate Prisma client inside the flat deploy node_modules (use workspace prisma, not npx)
+RUN pnpm --filter @corpusai/database exec prisma generate --no-hints \
+    && cp -r /app/node_modules/.pnpm/@prisma+client@*/node_modules/.prisma /app/deploy/node_modules/.prisma
 
 # ── Runtime ───────────────────────────────────────────────────
 FROM node:20-slim AS runtime
