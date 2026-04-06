@@ -26,6 +26,7 @@ RUN pnpm --filter @corpusai/api deploy --prod /app/deploy
 # ── Runtime ───────────────────────────────────────────────────
 FROM node:20-slim AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends curl openssl && rm -rf /var/lib/apt/lists/*
+RUN npm install -g prisma@6
 WORKDIR /app
 
 COPY --from=build /app/deploy/node_modules ./node_modules
