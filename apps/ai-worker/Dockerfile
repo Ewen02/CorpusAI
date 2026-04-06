@@ -22,6 +22,8 @@ COPY . .
 RUN pnpm --filter @corpusai/database exec prisma generate
 RUN pnpm --filter @corpusai/ai-worker... build
 RUN pnpm --filter @corpusai/ai-worker deploy --prod /app/deploy
+# Copy generated Prisma client into deployed node_modules
+RUN cp -r $(find /app/node_modules/.pnpm -path '*/node_modules/.prisma' -type d | head -1) /app/deploy/node_modules/.prisma
 
 # ── Runtime ───────────────────────────────────────────────────
 FROM node:20-slim AS runtime
@@ -30,8 +32,6 @@ WORKDIR /app
 
 COPY --from=build /app/deploy/node_modules ./node_modules
 COPY --from=build /app/apps/ai-worker/dist ./dist
-# Copy generated Prisma client (query engine + generated types)
-COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 
 ENV NODE_ENV=production
 
