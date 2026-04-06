@@ -7,25 +7,25 @@ function parseRedisUrl(url: string): RedisOptions {
   const parsed = new URL(url);
   const isSecure = parsed.protocol === 'rediss:';
   const isLocal = ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname);
+  const isPrivateNetwork =
+    parsed.hostname.endsWith('.railway.internal') || parsed.hostname.endsWith('.svc.cluster.local');
   const isProd = process.env.NODE_ENV === 'production';
+  const tlsRequired = isProd && !isLocal && !isPrivateNetwork && !isSecure;
 
-  if (isProd && !isLocal && !isSecure) {
+  if (tlsRequired && process.env.REDIS_ALLOW_NO_TLS !== 'true') {
     throw new Error(
-      "Redis must use TLS in production. Use 'rediss://' instead of 'redis://' in REDIS_URL."
+      "Redis must use TLS in production. Use 'rediss://' or set REDIS_ALLOW_NO_TLS=true for private networks."
     );
   }
 
   const password = parsed.password || undefined;
-  if (isProd && !isLocal && !password) {
-    throw new Error('Redis requires a password in production. Add credentials to REDIS_URL.');
-  }
 
   return {
     host: parsed.hostname,
     port: Number(parsed.port) || 6379,
     password,
     maxRetriesPerRequest: null,
-    ...(isSecure || (isProd && !isLocal) ? { tls: { rejectUnauthorized: true } } : {}),
+    ...(isSecure ? { tls: { rejectUnauthorized: true } } : {}),
   };
 }
 
