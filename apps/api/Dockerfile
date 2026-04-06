@@ -21,10 +21,8 @@ COPY --from=deps /app/ ./
 COPY . .
 RUN pnpm --filter @corpusai/database exec prisma generate
 RUN pnpm --filter @corpusai/api... build
-RUN pnpm --filter @corpusai/api deploy --prod /app/deploy
-# Generate Prisma client inside the flat deploy node_modules (use workspace prisma, not npx)
-RUN pnpm --filter @corpusai/database exec prisma generate --no-hints \
-    && cp -r /app/node_modules/.pnpm/@prisma+client@*/node_modules/.prisma /app/deploy/node_modules/.prisma
+# Prune dev dependencies to keep only production deps
+RUN pnpm prune --prod
 
 # ── Runtime ───────────────────────────────────────────────────
 FROM node:20-slim AS runtime
@@ -32,10 +30,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl openssl &&
 RUN npm install -g prisma@6
 WORKDIR /app
 
-COPY --from=build /app/deploy/node_modules ./node_modules
-COPY --from=build /app/deploy/package.json ./package.json
+COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/apps/api/dist ./dist
 COPY --from=build /app/packages/database/prisma ./prisma
+COPY --from=build /app/package.json ./package.json
 COPY apps/api/docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 
