@@ -30,6 +30,7 @@ RUN npm install -g prisma@6
 WORKDIR /app
 
 COPY --from=build /app/deploy/node_modules ./node_modules
+COPY --from=build /app/deploy/package.json ./package.json
 COPY --from=build /app/apps/api/dist ./dist
 COPY --from=build /app/packages/database/prisma ./prisma
 COPY apps/api/docker-entrypoint.sh ./docker-entrypoint.sh
