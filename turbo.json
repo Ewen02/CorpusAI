@@ -1,11 +1,11 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "concurrency": "20",
-  "globalEnv": ["BETTER_AUTH_URL"],
+  "globalEnv": ["BETTER_AUTH_URL", "VERCEL"],
   "tasks": {
     "build": {
       "dependsOn": ["^build", "db:generate"],
-      "env": ["NEXT_PUBLIC_API_URL", "NEXT_PUBLIC_SENTRY_DSN"],
+      "env": ["NEXT_PUBLIC_API_URL", "NEXT_PUBLIC_SENTRY_DSN", "BETTER_AUTH_URL"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
     "db:generate": {
