@@ -22,11 +22,12 @@ COPY . .
 RUN pnpm --filter @corpusai/database exec prisma generate
 RUN pnpm --filter @corpusai/api... build
 RUN pnpm --filter @corpusai/api deploy --prod /app/deploy
+# Generate Prisma client inside the flat deploy node_modules
+RUN cd /app/deploy && npx prisma generate --schema=/app/packages/database/prisma/schema.prisma
 
 # ── Runtime ───────────────────────────────────────────────────
 FROM node:20-slim AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends curl openssl && rm -rf /var/lib/apt/lists/*
-RUN npm install -g prisma@6
 WORKDIR /app
 
 COPY --from=build /app/deploy/node_modules ./node_modules
