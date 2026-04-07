@@ -11,8 +11,18 @@ interface ChatPageProps {
 function parseSlugPath(slugPath: string[]): { username: string; slug: string } | null {
   const rawUsername = slugPath[0];
   const slug = slugPath[1];
-  if (!rawUsername || !slug || !rawUsername.startsWith('@')) return null;
-  return { username: rawUsername.slice(1), slug };
+  if (!rawUsername || !slug) return null;
+  // Next.js may or may not URL-decode catch-all segments depending on runtime,
+  // so handle both '@user' and '%40user'. Also tolerate a missing '@' prefix.
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(rawUsername);
+  } catch {
+    decoded = rawUsername;
+  }
+  const username = decoded.startsWith('@') ? decoded.slice(1) : decoded;
+  if (!username) return null;
+  return { username, slug };
 }
 
 async function fetchAIInfo(username: string, slug: string) {

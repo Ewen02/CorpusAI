@@ -10,8 +10,17 @@ interface EmbedPageProps {
 function parseSlugPath(slugPath: string[]): { username: string; slug: string } | null {
   const rawUsername = slugPath[0];
   const slug = slugPath[1];
-  if (!rawUsername || !slug || !rawUsername.startsWith('@')) return null;
-  return { username: rawUsername.slice(1), slug };
+  if (!rawUsername || !slug) return null;
+  // Tolerate both URL-encoded and decoded segments, with or without '@' prefix.
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(rawUsername);
+  } catch {
+    decoded = rawUsername;
+  }
+  const username = decoded.startsWith('@') ? decoded.slice(1) : decoded;
+  if (!username) return null;
+  return { username, slug };
 }
 
 async function fetchAIInfo(username: string, slug: string) {
