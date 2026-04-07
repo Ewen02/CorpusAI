@@ -266,8 +266,11 @@ export class AdminService {
   }> {
     const start = Date.now();
     const qdrantUrl = this.config.get<string>('QDRANT_URL') || 'http://localhost:6333';
+    const apiKey = this.config.get<string>('QDRANT_API_KEY');
+    const headers: Record<string, string> = apiKey ? { 'api-key': apiKey } : {};
     try {
       const response = await fetch(`${qdrantUrl}/collections`, {
+        headers,
         signal: AbortSignal.timeout(5000),
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -282,6 +285,7 @@ export class AdminService {
       if (corpusCollection) {
         try {
           const infoRes = await fetch(`${qdrantUrl}/collections/corpus_vectors`, {
+            headers,
             signal: AbortSignal.timeout(3000),
           });
           if (infoRes.ok) {
