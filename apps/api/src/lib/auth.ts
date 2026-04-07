@@ -16,7 +16,10 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: process.env.NODE_ENV === 'production',
+    // Email verification requires RESEND_API_KEY + sendVerificationEmail config.
+    // Enable only once email delivery is set up, otherwise sign-up throws 500.
+    requireEmailVerification:
+      process.env.NODE_ENV === 'production' && Boolean(process.env.RESEND_API_KEY),
   },
   socialProviders: {
     google: {
