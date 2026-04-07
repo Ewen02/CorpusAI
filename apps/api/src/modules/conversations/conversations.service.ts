@@ -116,8 +116,10 @@ export class ConversationsService {
    * Get public AI info for widget embed.
    */
   async getAIPublicInfo(username: string, slug: string) {
+    // Tolerate leading '@' in username (e.g. clients that forward the URL prefix as-is)
+    const normalizedUsername = username.startsWith('@') ? username.slice(1) : username;
     const ai = await prisma.aI.findFirst({
-      where: { slug, user: { username }, deletedAt: null },
+      where: { slug, user: { username: normalizedUsername }, deletedAt: null },
       select: {
         id: true,
         slug: true,
@@ -252,8 +254,10 @@ export class ConversationsService {
     accessToken?: string,
     accessCode?: string
   ) {
+    // Tolerate leading '@' in username (clients may pass the URL prefix as-is)
+    const normalizedUsername = username.startsWith('@') ? username.slice(1) : username;
     const ai = await prisma.aI.findFirst({
-      where: { slug: aiSlug, user: { username }, deletedAt: null },
+      where: { slug: aiSlug, user: { username: normalizedUsername }, deletedAt: null },
     });
 
     // Allow ACTIVE and DRAFT (for owner testing)

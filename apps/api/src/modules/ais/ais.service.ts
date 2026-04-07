@@ -91,8 +91,10 @@ export class AIsService {
   }
 
   async findByUserAndSlug(username: string, slug: string) {
+    // Tolerate leading '@' in username (clients may pass the URL prefix as-is)
+    const normalizedUsername = username.startsWith('@') ? username.slice(1) : username;
     const ai = await prisma.aI.findFirst({
-      where: { slug, user: { username }, deletedAt: null },
+      where: { slug, user: { username: normalizedUsername }, deletedAt: null },
       select: {
         id: true,
         slug: true,
