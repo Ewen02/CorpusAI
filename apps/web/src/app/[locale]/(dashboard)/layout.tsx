@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { usePathname, useParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   DashboardLayout,
@@ -28,17 +28,17 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
   const t = useTranslations('nav');
   const router = useRouter();
   const pathname = usePathname();
-  const params = useParams<{ locale: string }>();
   const { data: session, isPending } = authClient.useSession();
 
   // Client-side auth gate: middleware cannot see the session cookie when API
   // and web run on different domains (e.g. Railway + Vercel).
+  // next-intl's router auto-prefixes the current locale, so we pass bare paths.
   React.useEffect(() => {
     if (!isPending && !session) {
-      const locale = params?.locale || 'fr';
-      router.replace(`/${locale}/sign-in?callbackUrl=${encodeURIComponent(pathname)}`);
+      const strippedPath = pathname.replace(/^\/(fr|en)(?=\/|$)/, '') || '/';
+      router.replace(`/sign-in?callbackUrl=${encodeURIComponent(strippedPath)}`);
     }
-  }, [isPending, session, params, pathname, router]);
+  }, [isPending, session, pathname, router]);
 
   const { data: aisData } = useAIs();
 
