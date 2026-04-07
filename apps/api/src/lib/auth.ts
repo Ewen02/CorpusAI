@@ -49,12 +49,19 @@ export const auth = betterAuth({
     },
   },
   advanced: {
+    // Allow cross-site cookie when API and web are on different domains
+    // (e.g. Railway + Vercel). 'none' requires Secure=true.
+    defaultCookieAttributes: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? ('none' as const) : ('lax' as const),
+    },
     cookies: {
       session_token: {
         attributes: {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax' as const,
+          sameSite: process.env.NODE_ENV === 'production' ? ('none' as const) : ('lax' as const),
         },
       },
     },

@@ -5,22 +5,13 @@ import { routing } from '@/i18n/routing';
 
 const intlMiddleware = createIntlMiddleware(routing);
 
-// Routes that require creator authentication (Better Auth)
-const protectedPaths = [
-  '/dashboard',
-  '/ais',
-  '/settings',
-  '/onboarding',
-  '/admin',
-  '/analytics',
-  '/explore',
-];
-
-// Routes that should redirect to dashboard if already authenticated
-const authPaths = ['/sign-in', '/sign-up'];
-
 // Portal routes that are auth pages — must NOT be protected
 const portalAuthPaths = ['/portal/sign-in', '/portal/auth'];
+
+// NOTE: Creator auth (better-auth.session_token) is NOT checked here.
+// When the API runs on a different eTLD+1 than the web app (e.g. Railway + Vercel),
+// the session cookie is scoped to the API domain and is invisible to this middleware.
+// Protection is done client-side in the dashboard layout via authClient.useSession().
 
 /**
  * Strip locale prefix from pathname to get the "logical" path.
@@ -53,24 +44,8 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // ——— Creator auth ———
-  const sessionToken = request.cookies.get('better-auth.session_token')?.value;
-  const isAuthenticated = !!sessionToken;
-
-  const isProtectedRoute = protectedPaths.some((p) => logicalPath.startsWith(p));
-  if (isProtectedRoute && !isAuthenticated) {
-    const locale = pathname.split('/')[1] || 'fr';
-    const signInUrl = new URL(`/${locale}/sign-in`, request.url);
-    signInUrl.searchParams.set('callbackUrl', pathname);
-    return NextResponse.redirect(signInUrl);
-  }
-
-  const isAuthRoute = authPaths.some((p) => logicalPath.startsWith(p));
-  if (isAuthRoute && isAuthenticated) {
-    const locale = pathname.split('/')[1] || 'fr';
-    return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
-  }
-
+  // Creator auth (sign-in / protected routes) is handled client-side —
+  // see apps/web/src/app/[locale]/(dashboard)/layout.tsx
   return response;
 }
 

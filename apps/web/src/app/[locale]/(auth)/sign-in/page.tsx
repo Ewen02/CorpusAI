@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   AuthLayout,
@@ -18,10 +19,27 @@ import { useRouter } from '@/i18n/routing';
 export default function SignInPage() {
   const t = useTranslations('auth.signIn');
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { data: session, isPending } = authClient.useSession();
   const [isLoading, setIsLoading] = React.useState(false);
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState('');
+
+  const rawCallbackUrl = searchParams?.get('callbackUrl') ?? null;
+  const callbackPath = React.useMemo(() => {
+    if (!rawCallbackUrl) return '/dashboard';
+    // Strip /{locale} prefix so next-intl router can handle it
+    const stripped = rawCallbackUrl.replace(/^\/(fr|en)(?=\/|$)/, '') || '/dashboard';
+    return stripped;
+  }, [rawCallbackUrl]);
+
+  // If already signed in, redirect out of /sign-in
+  React.useEffect(() => {
+    if (!isPending && session) {
+      router.replace(callbackPath);
+    }
+  }, [isPending, session, callbackPath, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +56,7 @@ export default function SignInPage() {
         throw new Error(authError.message || t('errorGeneric'));
       }
 
-      router.push('/dashboard');
+      router.push(callbackPath);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('errorGeneric'));
     } finally {
@@ -50,7 +68,7 @@ export default function SignInPage() {
     try {
       await authClient.signIn.social({
         provider,
-        callbackURL: `${window.location.origin}/dashboard`,
+        callbackURL: `${window.location.origin}${callbackPath}`,
       });
     } catch {
       setError(t('errorSocial', { provider }));

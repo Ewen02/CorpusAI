@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   DashboardLayout,
@@ -28,7 +28,17 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
   const t = useTranslations('nav');
   const router = useRouter();
   const pathname = usePathname();
+  const params = useParams<{ locale: string }>();
   const { data: session, isPending } = authClient.useSession();
+
+  // Client-side auth gate: middleware cannot see the session cookie when API
+  // and web run on different domains (e.g. Railway + Vercel).
+  React.useEffect(() => {
+    if (!isPending && !session) {
+      const locale = params?.locale || 'fr';
+      router.replace(`/${locale}/sign-in?callbackUrl=${encodeURIComponent(pathname)}`);
+    }
+  }, [isPending, session, params, pathname, router]);
 
   const { data: aisData } = useAIs();
 
@@ -133,7 +143,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
     router.push('/sign-in');
   }, [router]);
 
-  if (isPending) {
+  if (isPending || !session) {
     return <DashboardLayoutSkeleton />;
   }
 
