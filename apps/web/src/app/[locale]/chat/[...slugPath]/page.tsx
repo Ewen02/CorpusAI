@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import ChatPage from './chat-page';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -57,6 +58,13 @@ export async function generateMetadata({ params }: ChatPageProps): Promise<Metad
   };
 }
 
-export default function Page() {
-  return <ChatPage />;
+export default async function Page({ params }: ChatPageProps) {
+  const { slugPath } = await params;
+  const parsed = parseSlugPath(slugPath);
+
+  if (!parsed) {
+    notFound();
+  }
+
+  return <ChatPage username={parsed.username} slug={parsed.slug} />;
 }

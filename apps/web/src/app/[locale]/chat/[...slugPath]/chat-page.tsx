@@ -3,25 +3,19 @@
 import * as React from 'react';
 import Image from 'next/image';
 import { Link } from '@/i18n/routing';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { ChatInterface, ChatInterfaceSkeleton, Skeleton, Button, Input } from '@corpusai/ui';
 import { usePublicChat } from '@/lib/hooks/use-public-chat';
 
-function parseSlugPath(slugPath: string[]): { username: string; slug: string } {
-  const rawUsername = slugPath[0] ?? '';
-  return {
-    username: rawUsername.replace('@', ''),
-    slug: slugPath[1] ?? '',
-  };
+interface ChatPageProps {
+  username: string;
+  slug: string;
 }
 
-export default function ChatPage() {
+export default function ChatPage({ username, slug }: ChatPageProps) {
   const t = useTranslations('chatPublic');
-  const params = useParams();
   const searchParams = useSearchParams();
-  const slugPath = params.slugPath as string[];
-  const { username, slug } = parseSlugPath(slugPath);
   const accessToken = searchParams.get('t') ?? undefined;
 
   const {
