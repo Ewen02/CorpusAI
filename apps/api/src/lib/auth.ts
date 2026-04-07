@@ -8,13 +8,17 @@ import { Logger } from '@nestjs/common';
 const logger = new Logger('Auth');
 
 // Shared cookie attributes for cross-site flows (Vercel web ↔ Railway API).
-// SameSite=None + Secure + Partitioned (CHIPS) are all required for Safari ITP
-// to store cookies set by the API domain when the top-level site is Vercel.
+// SameSite=None + Secure is the standard for cross-site session cookies.
+// `partitioned` (CHIPS) was tried but actively broke Google OAuth: the cookie
+// is set by the API during the /auth/callback/google top-level navigation
+// (partition key = railway.app) and then read by the dashboard page on Vercel
+// (partition key = vercel.app). CHIPS isolates those two partitions, making
+// the cookie invisible to the dashboard. Without `partitioned`, the cookie
+// lives in the unpartitioned cross-site jar and is visible from either origin.
 const crossSiteCookieAttributes = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: process.env.NODE_ENV === 'production' ? ('none' as const) : ('lax' as const),
-  partitioned: process.env.NODE_ENV === 'production',
 };
 
 export const auth = betterAuth({
