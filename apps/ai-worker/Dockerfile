@@ -21,8 +21,8 @@ COPY --from=deps /app/ ./
 COPY . .
 RUN pnpm --filter @corpusai/database exec prisma generate
 RUN pnpm --filter @corpusai/ai-worker... build
-RUN pnpm --filter @corpusai/ai-worker deploy --prod /app/deploy
-# Regenerate Prisma client inside the deployed node_modules (self-contained)
+RUN pnpm --filter @corpusai/ai-worker deploy --prod --config.node-linker=hoisted /app/deploy
+# Regenerate Prisma client inside the flat deploy node_modules
 RUN cd /app/deploy \
     && /app/packages/database/node_modules/.bin/prisma generate --schema=/app/packages/database/prisma/schema.prisma
 
