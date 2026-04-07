@@ -23,6 +23,8 @@ RUN pnpm --filter @corpusai/database exec prisma generate
 RUN pnpm --filter @corpusai/api... build
 # Prune dev dependencies to keep only production deps
 RUN pnpm prune --prod
+# Merge workspace node_modules into root so dist/ can resolve app-level deps
+RUN cp -rn /app/apps/api/node_modules/. /app/node_modules/ 2>/dev/null || true
 
 # ── Runtime ───────────────────────────────────────────────────
 FROM node:20-slim AS runtime
