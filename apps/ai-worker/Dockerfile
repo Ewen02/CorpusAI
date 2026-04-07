@@ -13,7 +13,7 @@ COPY packages/ai-rules/package.json ./packages/ai-rules/
 COPY packages/subscription/package.json ./packages/subscription/
 COPY packages/queue/package.json ./packages/queue/
 COPY tooling/typescript-config/package.json ./tooling/typescript-config/
-RUN pnpm install --frozen-lockfile --config.node-linker=hoisted
+RUN pnpm install --frozen-lockfile
 
 # ── Build ─────────────────────────────────────────────────────
 FROM base AS build
@@ -21,18 +21,17 @@ COPY --from=deps /app/ ./
 COPY . .
 RUN pnpm --filter @corpusai/database exec prisma generate
 RUN pnpm --filter @corpusai/ai-worker... build
-# Prune dev dependencies to keep only production deps
-RUN pnpm prune --prod
+RUN pnpm --filter @corpusai/ai-worker deploy --prod --legacy /app/deploy
+# Regenerate Prisma client inside the deployed node_modules (self-contained)
+RUN cd /app/deploy \
+    && /app/node_modules/.bin/prisma generate --schema=/app/packages/database/prisma/schema.prisma
 
 # ── Runtime ───────────────────────────────────────────────────
 FROM node:20-slim AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/packages ./packages
-COPY --from=build /app/apps/ai-worker/dist ./dist
-COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/deploy ./
 
 ENV NODE_ENV=production
 

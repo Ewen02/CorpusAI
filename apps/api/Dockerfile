@@ -13,7 +13,7 @@ COPY packages/ai-rules/package.json ./packages/ai-rules/
 COPY packages/subscription/package.json ./packages/subscription/
 COPY packages/queue/package.json ./packages/queue/
 COPY tooling/typescript-config/package.json ./tooling/typescript-config/
-RUN pnpm install --frozen-lockfile --config.node-linker=hoisted
+RUN pnpm install --frozen-lockfile
 
 # ── Build ─────────────────────────────────────────────────────
 FROM base AS build
@@ -21,20 +21,19 @@ COPY --from=deps /app/ ./
 COPY . .
 RUN pnpm --filter @corpusai/database exec prisma generate
 RUN pnpm --filter @corpusai/api... build
-# Prune dev dependencies to keep only production deps
-RUN pnpm prune --prod
+RUN pnpm --filter @corpusai/api deploy --prod --legacy /app/deploy
+# Regenerate Prisma client inside the deployed node_modules (self-contained)
+RUN cd /app/deploy \
+    && /app/node_modules/.bin/prisma generate --schema=/app/packages/database/prisma/schema.prisma
 
 # ── Runtime ───────────────────────────────────────────────────
 FROM node:20-slim AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends curl openssl && rm -rf /var/lib/apt/lists/*
-RUN npm install -g prisma@6
+RUN npm install -g prisma@6.19.1
 WORKDIR /app
 
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/packages ./packages
-COPY --from=build /app/apps/api/dist ./dist
+COPY --from=build /app/deploy ./
 COPY --from=build /app/packages/database/prisma ./prisma
-COPY --from=build /app/package.json ./package.json
 COPY apps/api/docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 
