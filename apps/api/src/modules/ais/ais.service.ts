@@ -155,6 +155,9 @@ export class AIsService {
         isPublic: dto.isPublic ?? false,
         scoreThreshold: dto.scoreThreshold ?? 0.6,
         category: dto.category,
+        language: dto.language,
+        memoryEnabled: dto.memoryEnabled ?? false,
+        llmModel: dto.llmModel,
       },
     });
   }
@@ -185,6 +188,9 @@ export class AIsService {
         isPublic: dto.isPublic,
         scoreThreshold: dto.scoreThreshold,
         category: dto.category,
+        language: dto.language,
+        memoryEnabled: dto.memoryEnabled,
+        llmModel: dto.llmModel,
       },
     });
   }

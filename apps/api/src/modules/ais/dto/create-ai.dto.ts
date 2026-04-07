@@ -126,4 +126,14 @@ export class CreateAIDto {
   @IsOptional()
   @IsBoolean()
   memoryEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'LLM model to use for generation',
+    enum: ['gpt-4o-mini', 'gpt-4o', 'mistral-large-latest', 'mistral-small-latest'],
+    default: 'gpt-4o-mini',
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn(['gpt-4o-mini', 'gpt-4o', 'mistral-large-latest', 'mistral-small-latest'])
+  llmModel?: string;
 }
