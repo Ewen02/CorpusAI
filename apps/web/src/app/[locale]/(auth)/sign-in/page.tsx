@@ -17,6 +17,14 @@ import { authClient } from '@/lib/auth-client';
 import { useRouter } from '@/i18n/routing';
 
 export default function SignInPage() {
+  return (
+    <React.Suspense fallback={null}>
+      <SignInPageInner />
+    </React.Suspense>
+  );
+}
+
+function SignInPageInner() {
   const t = useTranslations('auth.signIn');
   const router = useRouter();
   const searchParams = useSearchParams();
