@@ -19,7 +19,7 @@ import {
 } from '@corpusai/ui';
 import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
-import { useAI, useConversations, useDocuments } from '@/lib/queries';
+import { useAI, useConversations, useDocuments, useUserProfile } from '@/lib/queries';
 import { useNavigation } from '@/lib/hooks';
 import { authClient } from '@/lib/auth-client';
 import { useChatState, useDocumentUpload } from './hooks';
@@ -64,7 +64,10 @@ export default function AIDetailPage() {
   const aiData = ai as AI | undefined;
   const { data: session } = authClient.useSession();
   const sessionUser = session?.user as Record<string, unknown> | undefined;
-  const sessionUsername = (sessionUser?.username as string) ?? '';
+  // Fetch profile from API — back-fills username in DB for legacy accounts
+  const { data: profile } = useUserProfile();
+  const username =
+    profile?.username ?? ((sessionUser?.username as string | undefined) || undefined);
   const subscriptionPlan = (sessionUser?.subscriptionPlan as string) ?? 'FREE';
 
   // Chat state management
@@ -75,7 +78,7 @@ export default function AIDetailPage() {
     sendMessage,
     selectConversation,
     startNewConversation,
-  } = useChatState({ aiSlug: aiData?.slug || '', username: sessionUsername });
+  } = useChatState({ aiSlug: aiData?.slug || '', username: username ?? '' });
 
   // Document upload management
   const { uploadedFiles, uploadFiles, removeFile, deleteIndexedDocument, retryFailedDocument } =

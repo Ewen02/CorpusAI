@@ -43,7 +43,44 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
+    // Back-fill username for legacy accounts that were created without one.
+    // A username is required to construct public AI chat URLs (/chat/@username/slug).
+    if (!user.username) {
+      const generated = await this.generateUniqueUsername(user.email);
+      const updated = await prisma.user.update({
+        where: { id: userId },
+        data: { username: generated },
+        select: { username: true },
+      });
+      user.username = updated.username;
+    }
+
     return user;
+  }
+
+  /**
+   * Build a unique username from an email seed, retrying on collision.
+   * Slug rule: lowercase, alphanumerics + dash, 2-30 chars, strip repeated dashes.
+   */
+  private async generateUniqueUsername(email: string): Promise<string> {
+    const seed =
+      (email.split('@')[0] || 'user')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 24) || 'user';
+
+    // Try base, then base-N suffixes
+    for (let i = 0; i < 10; i++) {
+      const candidate = i === 0 ? seed : `${seed}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const existing = await prisma.user.findUnique({
+        where: { username: candidate },
+        select: { id: true },
+      });
+      if (!existing) return candidate;
+    }
+    // Fallback: very unlikely but safe
+    return `${seed}-${Date.now().toString(36)}`;
   }
 
   async updateProfile(userId: string, data: UpdateProfileDto) {

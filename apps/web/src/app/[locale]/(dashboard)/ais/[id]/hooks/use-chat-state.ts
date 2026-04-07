@@ -89,7 +89,7 @@ export function useChatState({ aiSlug, username }: UseChatStateOptions) {
   // Handle sending a message with streaming
   const sendMessage = React.useCallback(
     async (content: string) => {
-      if (!aiSlug || isStreaming) return;
+      if (!aiSlug || !username || isStreaming) return;
 
       // Add user message optimistically
       const userMessage: ChatMessage = {

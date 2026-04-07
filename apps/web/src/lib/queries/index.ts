@@ -149,6 +149,9 @@ export {
   type NewWebhook,
 } from './use-webhooks';
 
+// User profile hook
+export { userKeys, useUserProfile, type UserProfile } from './use-user';
+
 // AI access hooks
 export {
   aiAccessKeys,
