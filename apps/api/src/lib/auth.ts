@@ -7,6 +7,16 @@ import { Logger } from '@nestjs/common';
 
 const logger = new Logger('Auth');
 
+// Shared cookie attributes for cross-site flows (Vercel web ↔ Railway API).
+// SameSite=None + Secure + Partitioned (CHIPS) are all required for Safari ITP
+// to store cookies set by the API domain when the top-level site is Vercel.
+const crossSiteCookieAttributes = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: process.env.NODE_ENV === 'production' ? ('none' as const) : ('lax' as const),
+  partitioned: process.env.NODE_ENV === 'production',
+};
+
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.BETTER_AUTH_URL || 'http://localhost:3001',
@@ -49,24 +59,20 @@ export const auth = betterAuth({
     },
   },
   advanced: {
-    // Allow cross-site cookie when API and web are on different domains
-    // (e.g. Railway + Vercel). 'none' requires Secure=true. Partitioned (CHIPS)
-    // is required by Safari ITP to actually store cross-site cookies.
-    defaultCookieAttributes: {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? ('none' as const) : ('lax' as const),
-      partitioned: process.env.NODE_ENV === 'production',
-    },
+    // Allow cross-site cookies when API and web are on different domains
+    // (e.g. Railway + Vercel). defaultCookieAttributes is the baseline, but
+    // Better Auth's per-cookie override is the only one guaranteed to win
+    // over the plugin's internal overrideAttributes during the merge — so
+    // every cookie used in the sign-in / OAuth flow has an explicit entry.
+    defaultCookieAttributes: crossSiteCookieAttributes,
     cookies: {
-      session_token: {
-        attributes: {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: process.env.NODE_ENV === 'production' ? ('none' as const) : ('lax' as const),
-          partitioned: process.env.NODE_ENV === 'production',
-        },
-      },
+      session_token: { attributes: crossSiteCookieAttributes },
+      // Short-lived OAuth cookies — must survive the cross-site redirect
+      // chain Vercel web → Google → Railway callback, otherwise Better Auth
+      // throws `state_mismatch` on the callback.
+      state: { attributes: crossSiteCookieAttributes },
+      pkce_code_verifier: { attributes: crossSiteCookieAttributes },
+      nonce: { attributes: crossSiteCookieAttributes },
     },
   },
   user: {
