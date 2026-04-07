@@ -58,21 +58,20 @@ export const auth = betterAuth({
       maxAge: 60 * 5, // 5 minutes
     },
   },
+  account: {
+    // Cross-domain OAuth workaround (Railway API + Vercel web): Better Auth's
+    // secondary state cookie check can't pass when the top-frame origin flips
+    // mid-flow (vercel.app → google.com → railway.app). The primary DB-backed
+    // state check in the `verification` table still runs and provides CSRF
+    // protection together with PKCE and Google's redirect_uri allowlist.
+    skipStateCookieCheck: process.env.NODE_ENV === 'production',
+  },
   advanced: {
-    // Allow cross-site cookies when API and web are on different domains
-    // (e.g. Railway + Vercel). defaultCookieAttributes is the baseline, but
-    // Better Auth's per-cookie override is the only one guaranteed to win
-    // over the plugin's internal overrideAttributes during the merge — so
-    // every cookie used in the sign-in / OAuth flow has an explicit entry.
+    // Cross-site session cookie (Vercel ↔ Railway). SameSite=None + Secure +
+    // Partitioned (CHIPS) are required for Safari ITP to store and send it.
     defaultCookieAttributes: crossSiteCookieAttributes,
     cookies: {
       session_token: { attributes: crossSiteCookieAttributes },
-      // Short-lived OAuth cookies — must survive the cross-site redirect
-      // chain Vercel web → Google → Railway callback, otherwise Better Auth
-      // throws `state_mismatch` on the callback.
-      state: { attributes: crossSiteCookieAttributes },
-      pkce_code_verifier: { attributes: crossSiteCookieAttributes },
-      nonce: { attributes: crossSiteCookieAttributes },
     },
   },
   user: {
