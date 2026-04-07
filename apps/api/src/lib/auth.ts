@@ -50,11 +50,13 @@ export const auth = betterAuth({
   },
   advanced: {
     // Allow cross-site cookie when API and web are on different domains
-    // (e.g. Railway + Vercel). 'none' requires Secure=true.
+    // (e.g. Railway + Vercel). 'none' requires Secure=true. Partitioned (CHIPS)
+    // is required by Safari ITP to actually store cross-site cookies.
     defaultCookieAttributes: {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? ('none' as const) : ('lax' as const),
+      partitioned: process.env.NODE_ENV === 'production',
     },
     cookies: {
       session_token: {
@@ -62,6 +64,7 @@ export const auth = betterAuth({
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: process.env.NODE_ENV === 'production' ? ('none' as const) : ('lax' as const),
+          partitioned: process.env.NODE_ENV === 'production',
         },
       },
     },
