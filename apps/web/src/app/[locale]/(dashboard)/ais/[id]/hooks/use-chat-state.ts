@@ -8,6 +8,20 @@ import {
   useMessages,
   type MessageSource,
 } from '@/lib/queries';
+import { track } from '@/lib/analytics';
+
+const FIRST_CHAT_FLAG_KEY = 'corpusai:first_chat_sent';
+
+function markFirstChatIfNeeded(source: 'dashboard' | 'public' | 'widget') {
+  if (typeof window === 'undefined') return;
+  try {
+    if (window.localStorage.getItem(FIRST_CHAT_FLAG_KEY)) return;
+    window.localStorage.setItem(FIRST_CHAT_FLAG_KEY, '1');
+    track('first_chat_message_sent', { source });
+  } catch {
+    // localStorage disabled — skip silently
+  }
+}
 
 const RATE_LIMIT_MESSAGES: Record<string, string> = {
   'Daily question limit reached for this AI':
@@ -90,6 +104,10 @@ export function useChatState({ aiSlug, username }: UseChatStateOptions) {
   const sendMessage = React.useCallback(
     async (content: string) => {
       if (!aiSlug || !username || isStreaming) return;
+
+      // Analytics: track chat engagement
+      track('chat_message_sent', { source: 'dashboard', aiId: aiSlug });
+      markFirstChatIfNeeded('dashboard');
 
       // Add user message optimistically
       const userMessage: ChatMessage = {

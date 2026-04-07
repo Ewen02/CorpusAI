@@ -13,6 +13,7 @@ import {
   Label,
 } from '@corpusai/ui';
 import { authClient } from '@/lib/auth-client';
+import { track } from '@/lib/analytics';
 import { useRouter } from '@/i18n/routing';
 
 export default function SignUpPage() {
@@ -35,6 +36,8 @@ export default function SignUpPage() {
       return;
     }
 
+    track('signup_started', { method: 'email' });
+
     try {
       const { error: authError } = await authClient.signUp.email({
         email,
@@ -46,6 +49,7 @@ export default function SignUpPage() {
         throw new Error(authError.message || t('errorGeneric'));
       }
 
+      track('signup_completed', { method: 'email' });
       router.push('/onboarding');
     } catch (err) {
       setError(err instanceof Error ? err.message : t('errorGeneric'));
@@ -55,6 +59,7 @@ export default function SignUpPage() {
   };
 
   const handleSocialAuth = async (provider: 'google' | 'github') => {
+    track('signup_started', { method: provider });
     try {
       await authClient.signIn.social({
         provider,

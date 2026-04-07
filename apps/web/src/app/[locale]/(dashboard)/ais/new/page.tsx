@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Button, Tabs, TabsList, TabsTrigger, TabsContent } from '@corpusai/ui';
 import { Headphones, GraduationCap, Scale, TrendingUp, Heart, Code, Sparkles } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
+import { track } from '@/lib/analytics';
 import { useNavigation } from '@/lib/hooks';
 import { AIFormFields, DEFAULT_AI_FORM_VALUES, ErrorAlert, type AIFormValues } from '@/components';
 import { PageWrapper } from '@/components/page-wrapper';
@@ -31,6 +32,11 @@ export default function CreateAIPage() {
 
   const [formValues, setFormValues] = React.useState<AIFormValues>(DEFAULT_AI_FORM_VALUES);
   const [slug, setSlug] = React.useState('');
+
+  // Analytics: track AI creation funnel entry (once per mount)
+  React.useEffect(() => {
+    track('ai_creation_started');
+  }, []);
 
   const handleFieldChange = React.useCallback(
     <K extends keyof AIFormValues>(field: K, value: AIFormValues[K]) => {
@@ -60,6 +66,7 @@ export default function CreateAIPage() {
       }
 
       setSelectedTemplateId(templateId);
+      track('ai_template_selected', { template: templateId });
       const name = tt(`${templateId}.name`);
       const description = tt(`${templateId}.description`);
       const systemPrompt = tt(`${templateId}.systemPrompt`);

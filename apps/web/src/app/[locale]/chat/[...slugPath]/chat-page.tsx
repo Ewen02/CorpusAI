@@ -7,6 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { ChatInterface, ChatInterfaceSkeleton, Skeleton, Button, Input } from '@corpusai/ui';
 import { usePublicChat } from '@/lib/hooks/use-public-chat';
+import { track } from '@/lib/analytics';
 
 interface ChatPageProps {
   username: string;
@@ -17,6 +18,10 @@ export default function ChatPage({ username, slug }: ChatPageProps) {
   const t = useTranslations('chatPublic');
   const searchParams = useSearchParams();
   const accessToken = searchParams.get('t') ?? undefined;
+
+  React.useEffect(() => {
+    track('public_chat_opened', { aiSlug: slug });
+  }, [slug]);
 
   const {
     ai,

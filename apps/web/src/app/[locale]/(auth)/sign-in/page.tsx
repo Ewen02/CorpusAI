@@ -14,6 +14,7 @@ import {
   Label,
 } from '@corpusai/ui';
 import { authClient } from '@/lib/auth-client';
+import { track } from '@/lib/analytics';
 import { useRouter } from '@/i18n/routing';
 
 export default function SignInPage() {
@@ -54,6 +55,8 @@ function SignInPageInner() {
     setIsLoading(true);
     setError('');
 
+    track('signin_started', { method: 'email' });
+
     try {
       const { error: authError } = await authClient.signIn.email({
         email,
@@ -64,6 +67,7 @@ function SignInPageInner() {
         throw new Error(authError.message || t('errorGeneric'));
       }
 
+      track('signin_completed', { method: 'email' });
       router.push(callbackPath);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('errorGeneric'));
@@ -73,6 +77,7 @@ function SignInPageInner() {
   };
 
   const handleSocialAuth = async (provider: 'google' | 'github') => {
+    track('signin_started', { method: provider });
     try {
       await authClient.signIn.social({
         provider,

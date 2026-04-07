@@ -5,6 +5,20 @@ import { apiClient, ApiError, type StreamDoneData } from '@/lib/api-client';
 import type { ChatMessage } from '@corpusai/ui';
 import type { AIPublicInfo, StartConversationResponse } from '@corpusai/types';
 import { mapSourcesToChat } from '@/lib/utils/chat-session';
+import { track } from '@/lib/analytics';
+
+const FIRST_CHAT_FLAG_KEY = 'corpusai:first_chat_sent';
+
+function markFirstChatIfNeeded(source: 'dashboard' | 'public' | 'widget') {
+  if (typeof window === 'undefined') return;
+  try {
+    if (window.localStorage.getItem(FIRST_CHAT_FLAG_KEY)) return;
+    window.localStorage.setItem(FIRST_CHAT_FLAG_KEY, '1');
+    track('first_chat_message_sent', { source });
+  } catch {
+    // localStorage disabled — skip silently
+  }
+}
 
 export { getOrCreateSessionId, mapSourcesToChat } from '@/lib/utils/chat-session';
 
@@ -163,6 +177,14 @@ export function usePublicChat({
       if (!conversationId) return;
       if (isStreaming) return;
 
+      // Analytics: public/widget chat engagement. We can't tell dashboard vs
+      // public vs widget from this hook alone — `usePublicChat` is used by
+      // both `/chat/@user/slug` and the embed widget. Check the URL path.
+      const path = typeof window !== 'undefined' ? window.location.pathname : '';
+      const chatSource = path.includes('/embed/') ? 'widget' : 'public';
+      track('chat_message_sent', { source: chatSource, aiId: slug });
+      markFirstChatIfNeeded(chatSource);
+
       const userMessage: ChatMessage = {
         id: `user_${Date.now()}`,
         role: 'user',
@@ -244,6 +266,7 @@ export function usePublicChat({
     async (messageId: string, feedback: 'positive' | 'negative') => {
       if (!conversationId) return;
       setMessages((prev) => prev.map((msg) => (msg.id === messageId ? { ...msg, feedback } : msg)));
+      track('feedback_submitted', { value: feedback });
       try {
         await apiClient.patch(
           `/chat/conversations/${conversationId}/messages/${messageId}/feedback`,

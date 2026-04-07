@@ -3,6 +3,7 @@ import { Link } from '@/i18n/routing';
 import { getTranslations } from 'next-intl/server';
 import { Button, Badge } from '@corpusai/ui';
 import { AnimatedSection } from '@/components/animated-section';
+import { AnalyticsTracker } from '@/components/analytics-tracker';
 
 export const metadata: Metadata = {
   title: 'CorpusAI — Créez votre IA depuis vos documents',
@@ -116,6 +117,7 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen">
+      <AnalyticsTracker event="landing_viewed" />
       {/* Navigation */}
       <nav className="fixed top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-sm">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">

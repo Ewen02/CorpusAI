@@ -4,6 +4,7 @@ import * as React from 'react';
 import { type QueryClient, useQueryClient } from '@tanstack/react-query';
 import type { UploadedFile } from '@corpusai/ui';
 import { apiClient, ApiError, API_URL } from '@/lib/api-client';
+import { track } from '@/lib/analytics';
 import { documentKeys, useDeleteDocument, useRetryDocument } from '@/lib/queries';
 
 interface UseDocumentUploadOptions {
@@ -128,9 +129,18 @@ function buildFinalizeHandler(
 ): () => void {
   const finalize = () => {
     stepTimersRef.current.delete(fileId);
-    setUploadedFiles((prev) =>
-      prev.map((f) => (f.id === fileId ? { ...f, status: 'success' as const, progress: 100 } : f))
-    );
+    setUploadedFiles((prev) => {
+      const entry = prev.find((f) => f.id === fileId);
+      if (entry && entry.file) {
+        track('document_indexed', {
+          mimeType: entry.file.type || 'unknown',
+          sizeMb: Math.round((entry.file.size / (1024 * 1024)) * 100) / 100,
+        });
+      }
+      return prev.map((f) =>
+        f.id === fileId ? { ...f, status: 'success' as const, progress: 100 } : f
+      );
+    });
     queryClient.invalidateQueries({ queryKey: documentKeys.listByAI(aiId) });
   };
   return () => {
@@ -266,6 +276,7 @@ export function useDocumentUpload({ aiId, documents }: UseDocumentUploadOptions)
               const stepState = stepTimersRef.current.get(fileId);
               if (stepState?.timer) clearTimeout(stepState.timer);
               stepTimersRef.current.delete(fileId);
+              track('document_upload_failed', { reason: 'indexing_failed' });
               setUploadedFiles((prev) =>
                 prev.map((f) =>
                   f.id === fileId
@@ -302,6 +313,7 @@ export function useDocumentUpload({ aiId, documents }: UseDocumentUploadOptions)
           const stepState = stepTimersRef.current.get(fileId);
           if (stepState?.timer) clearTimeout(stepState.timer);
           stepTimersRef.current.delete(fileId);
+          track('document_upload_failed', { reason: 'indexing_failed' });
           setUploadedFiles((prev) =>
             prev.map((f) =>
               f.id === fileId
@@ -347,6 +359,13 @@ export function useDocumentUpload({ aiId, documents }: UseDocumentUploadOptions)
       }
 
       if (validFiles.length === 0) return;
+
+      // Analytics: funnel entry for upload
+      const totalSizeMb = validFiles.reduce((sum, f) => sum + f.size, 0) / (1024 * 1024);
+      track('document_upload_started', {
+        fileCount: validFiles.length,
+        totalSizeMb: Math.round(totalSizeMb * 100) / 100,
+      });
 
       const newFiles: UploadedFile[] = validFiles.map((file) => ({
         id: `file-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,

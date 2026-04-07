@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../api-client';
+import { track } from '../analytics';
 import type { AI } from './types';
 
 export const aiKeys = {
@@ -61,8 +62,12 @@ export function useCreateAI() {
 
   return useMutation({
     mutationFn: (input: CreateAIInput) => apiClient.post<AI>('/ais', input),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: aiKeys.lists() });
+      track('ai_created', {
+        category: (data as AI & { category?: string }).category ?? 'OTHER',
+        hasTemplate: false,
+      });
     },
   });
 }

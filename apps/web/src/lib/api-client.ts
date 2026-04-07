@@ -1,4 +1,5 @@
 import type { MessageSource, StreamEvent, StreamDoneEvent } from '@corpusai/types';
+import { track } from './analytics';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -19,7 +20,32 @@ export class ApiError extends Error {
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
+    const data = (await response.json().catch(() => ({}))) as {
+      message?: string;
+      reason?: string;
+    };
+    // Analytics: surface rate limit friction
+    if (response.status === 429) {
+      try {
+        const url = new URL(response.url);
+        track('rate_limit_hit', { endpoint: url.pathname });
+      } catch {
+        track('rate_limit_hit', { endpoint: 'unknown' });
+      }
+    }
+    // Analytics: surface plan limit friction (403 with a known limit message)
+    if (response.status === 403 && typeof data.message === 'string') {
+      const msg = data.message.toLowerCase();
+      if (msg.includes('maximum number of ais')) {
+        track('plan_limit_reached', { limit: 'ai', plan: 'FREE' });
+      } else if (msg.includes('document') && msg.includes('limit')) {
+        track('plan_limit_reached', { limit: 'document', plan: 'FREE' });
+      } else if (msg.includes('daily question')) {
+        track('plan_limit_reached', { limit: 'questions_per_day', plan: 'FREE' });
+      } else if (msg.includes('end-user') || msg.includes('end users')) {
+        track('plan_limit_reached', { limit: 'end_users', plan: 'FREE' });
+      }
+    }
     throw new ApiError(response.status, data.message || `HTTP ${response.status}`, data);
   }
 

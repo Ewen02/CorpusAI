@@ -9,6 +9,7 @@ import type { ChatMessage } from '@corpusai/ui';
 import { apiClient, type StreamDoneData } from '@/lib/api-client';
 import type { AIPublicInfo, StartConversationResponse } from '@corpusai/types';
 import { getOrCreateSessionId, mapSourcesToChat } from '@/lib/utils/chat-session';
+import { track } from '@/lib/analytics';
 
 // ============================================
 // Types
@@ -76,6 +77,10 @@ export default function EmbedPage() {
 
   const abortControllerRef = React.useRef<AbortController | null>(null);
 
+  React.useEffect(() => {
+    if (slug) track('widget_chat_opened', { aiSlug: slug });
+  }, [slug]);
+
   // Fetch AI info on mount
   React.useEffect(() => {
     async function fetchAI() {
@@ -124,6 +129,9 @@ export default function EmbedPage() {
   const handleSendMessage = React.useCallback(
     async (content: string) => {
       if (!conversationId || isStreaming) return;
+
+      // Analytics
+      track('chat_message_sent', { source: 'widget', aiId: slug });
 
       // Add user message
       const userMessage: ChatMessage = {
@@ -204,7 +212,7 @@ export default function EmbedPage() {
         },
       });
     },
-    [conversationId, isStreaming]
+    [conversationId, isStreaming, slug, t]
   );
 
   const handleFeedback = React.useCallback(
@@ -212,6 +220,7 @@ export default function EmbedPage() {
       if (!conversationId) return;
       // Optimistic update
       setMessages((prev) => prev.map((msg) => (msg.id === messageId ? { ...msg, feedback } : msg)));
+      track('feedback_submitted', { value: feedback });
       try {
         await apiClient.patch(
           `/chat/conversations/${conversationId}/messages/${messageId}/feedback`,

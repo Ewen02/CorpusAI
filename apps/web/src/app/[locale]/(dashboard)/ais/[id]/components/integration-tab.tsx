@@ -23,6 +23,7 @@ import {
 } from '@corpusai/ui';
 import type { AI } from '@corpusai/types';
 import { authClient } from '@/lib/auth-client';
+import { track } from '@/lib/analytics';
 
 interface IntegrationTabProps {
   ai: AI;
@@ -105,7 +106,9 @@ export function IntegrationTab({ ai }: IntegrationTabProps) {
                 <span className="flex-1 truncate font-mono text-sm text-tx-secondary">
                   {chatUrl}
                 </span>
-                <CopyButton value={chatUrl} label={t('copy')} />
+                <span onClickCapture={() => track('ai_shared', { method: 'link' })}>
+                  <CopyButton value={chatUrl} label={t('copy')} />
+                </span>
               </div>
               <a
                 href={chatUrl}
@@ -233,7 +236,9 @@ export function IntegrationTab({ ai }: IntegrationTabProps) {
                   {iframeCode}
                 </pre>
                 <div className="absolute right-2 top-2">
-                  <CopyButton value={iframeCode} />
+                  <span onClickCapture={() => track('ai_shared', { method: 'embed_iframe' })}>
+                    <CopyButton value={iframeCode} />
+                  </span>
                 </div>
               </div>
               {/* Contextual note based on access mode */}
@@ -271,7 +276,9 @@ export function IntegrationTab({ ai }: IntegrationTabProps) {
                   {embedScriptCode}
                 </pre>
                 <div className="absolute right-2 top-2">
-                  <CopyButton value={embedScriptCode} />
+                  <span onClickCapture={() => track('ai_shared', { method: 'embed_script' })}>
+                    <CopyButton value={embedScriptCode} />
+                  </span>
                 </div>
               </div>
             </div>

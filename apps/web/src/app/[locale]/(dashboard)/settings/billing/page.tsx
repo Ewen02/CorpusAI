@@ -29,6 +29,7 @@ import {
 } from '@corpusai/subscription';
 import { PageWrapper } from '@/components/page-wrapper';
 import { FormAlert } from '@/components/form-alert';
+import { track } from '@/lib/analytics';
 
 export default function SettingsBillingPage() {
   const t = useTranslations('billing');
@@ -44,8 +45,20 @@ export default function SettingsBillingPage() {
   const currentPlan = (stats?.subscriptionPlan || 'FREE') as SubscriptionPlanType;
   const plans = React.useMemo(() => buildPlans(t), [t]);
 
+  // Analytics: funnel landing on pricing / checkout success return
+  React.useEffect(() => {
+    track('pricing_viewed');
+  }, []);
+
+  React.useEffect(() => {
+    if (checkoutSuccess && currentPlan !== 'FREE') {
+      track('subscription_upgraded', { plan: currentPlan });
+    }
+  }, [checkoutSuccess, currentPlan]);
+
   const handleUpgrade = (planId: SubscriptionPlanType) => {
     if (planId === 'FREE') return;
+    track('upgrade_clicked', { fromPlan: currentPlan, toPlan: planId });
     createCheckout.mutate({ plan: planId, interval: 'monthly' });
   };
 
