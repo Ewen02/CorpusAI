@@ -30,6 +30,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -
 WORKDIR /app
 
 COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/packages ./packages
 COPY --from=build /app/apps/ai-worker/dist ./dist
 COPY --from=build /app/package.json ./package.json
 

@@ -31,6 +31,7 @@ RUN npm install -g prisma@6
 WORKDIR /app
 
 COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/packages ./packages
 COPY --from=build /app/apps/api/dist ./dist
 COPY --from=build /app/packages/database/prisma ./prisma
 COPY --from=build /app/package.json ./package.json
