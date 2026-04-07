@@ -22,9 +22,9 @@ COPY . .
 RUN pnpm --filter @corpusai/database exec prisma generate
 RUN pnpm --filter @corpusai/api... build
 RUN pnpm --filter @corpusai/api deploy --prod --config.node-linker=hoisted /app/deploy
-# Regenerate Prisma client inside the flat deploy node_modules
-RUN cd /app/deploy \
-    && /app/packages/database/node_modules/.bin/prisma generate --schema=/app/packages/database/prisma/schema.prisma
+# Generate Prisma client inside the deploy dir using the schema shipped with @corpusai/database
+RUN /app/packages/database/node_modules/.bin/prisma generate \
+    --schema=/app/deploy/node_modules/@corpusai/database/prisma/schema.prisma
 
 # ── Runtime ───────────────────────────────────────────────────
 FROM node:20-slim AS runtime
@@ -33,7 +33,6 @@ RUN npm install -g prisma@6.19.1
 WORKDIR /app
 
 COPY --from=build /app/deploy ./
-COPY --from=build /app/packages/database/prisma ./prisma
 COPY apps/api/docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 

@@ -22,9 +22,9 @@ COPY . .
 RUN pnpm --filter @corpusai/database exec prisma generate
 RUN pnpm --filter @corpusai/ai-worker... build
 RUN pnpm --filter @corpusai/ai-worker deploy --prod --config.node-linker=hoisted /app/deploy
-# Regenerate Prisma client inside the flat deploy node_modules
-RUN cd /app/deploy \
-    && /app/packages/database/node_modules/.bin/prisma generate --schema=/app/packages/database/prisma/schema.prisma
+# Generate Prisma client inside the deploy dir using the schema shipped with @corpusai/database
+RUN /app/packages/database/node_modules/.bin/prisma generate \
+    --schema=/app/deploy/node_modules/@corpusai/database/prisma/schema.prisma
 
 # ── Runtime ───────────────────────────────────────────────────
 FROM node:20-slim AS runtime
