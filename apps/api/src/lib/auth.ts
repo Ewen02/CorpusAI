@@ -33,11 +33,11 @@ export const auth = betterAuth({
   },
   rateLimit: {
     window: 60 * 60, // 1 hour
-    max: 5,
+    max: 100,
     customRules: {
-      '/sign-in/email': { window: 60 * 60, max: 5 },
-      '/sign-up/email': { window: 60 * 60, max: 10 },
-      '/forgot-password': { window: 60 * 60, max: 3 },
+      '/sign-in/email': { window: 10 * 60, max: 20 }, // 20 attempts per 10 min
+      '/sign-up/email': { window: 60 * 60, max: 20 },
+      '/forgot-password': { window: 60 * 60, max: 5 },
     },
   },
   session: {
