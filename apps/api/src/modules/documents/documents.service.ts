@@ -3,9 +3,6 @@ import { prisma, DocumentStatus, type TransactionClient } from '@corpusai/databa
 import { assertCanAddDocument, assertCanUploadDocument } from '../../shared/subscription-checks';
 import { canAddDocument, canUploadDocument } from '@corpusai/subscription';
 import { SUPPORTED_DOCUMENT_TYPES, type SupportedDocumentType } from '@corpusai/types';
-import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
-import * as os from 'node:os';
 import type { Queue } from 'bullmq';
 import type { DocumentProcessingJobData } from '@corpusai/queue';
 import { JOB_RETRY_CONFIG } from '@corpusai/queue';
@@ -252,28 +249,19 @@ export class DocumentsService {
       return newDocument;
     });
 
-    // Write file to temp directory to avoid storing large buffers in Redis
-    const tmpDir = path.join(os.tmpdir(), 'corpusai-uploads');
-    await fs.mkdir(tmpDir, { recursive: true });
-    const filePath = path.join(tmpDir, `${document.id}-${file.originalname}`);
-    await fs.writeFile(filePath, file.buffer);
-
-    try {
-      await this.documentQueue.add(
-        'process',
-        {
-          documentId: document.id,
-          aiId,
-          filename: file.originalname,
-          mimeType: file.mimetype,
-          filePath,
-        },
-        JOB_RETRY_CONFIG
-      );
-    } catch (error) {
-      await fs.unlink(filePath).catch(() => {});
-      throw error;
-    }
+    // Pass file content via BullMQ (base64) — API and worker containers
+    // do not share a filesystem on Railway, so filePath-based passing fails.
+    await this.documentQueue.add(
+      'process',
+      {
+        documentId: document.id,
+        aiId,
+        filename: file.originalname,
+        mimeType: file.mimetype,
+        buffer: file.buffer.toString('base64'),
+      },
+      JOB_RETRY_CONFIG
+    );
 
     this.logger.log(`Uploaded document ${document.id} queued for processing`);
     return document;
@@ -352,32 +340,21 @@ export class DocumentsService {
       return created;
     });
 
-    // Write files to disk and enqueue jobs
-    const tmpDir = path.join(os.tmpdir(), 'corpusai-uploads');
-    await fs.mkdir(tmpDir, { recursive: true });
-
+    // Enqueue jobs with inline base64 content — no shared filesystem across containers.
     for (let i = 0; i < documents.length; i++) {
       const doc = documents[i]!;
       const file = files[i]!;
-      const filePath = path.join(tmpDir, `${doc.id}-${file.originalname}`);
-      await fs.writeFile(filePath, file.buffer);
-
-      try {
-        await this.documentQueue.add(
-          'process',
-          {
-            documentId: doc.id,
-            aiId,
-            filename: file.originalname,
-            mimeType: file.mimetype,
-            filePath,
-          },
-          JOB_RETRY_CONFIG
-        );
-      } catch (error) {
-        await fs.unlink(filePath).catch(() => {});
-        throw error;
-      }
+      await this.documentQueue.add(
+        'process',
+        {
+          documentId: doc.id,
+          aiId,
+          filename: file.originalname,
+          mimeType: file.mimetype,
+          buffer: file.buffer.toString('base64'),
+        },
+        JOB_RETRY_CONFIG
+      );
     }
 
     this.logger.log(`Bulk upload: ${documents.length} documents queued for processing`);
