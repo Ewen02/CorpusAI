@@ -13,7 +13,7 @@ COPY packages/ai-rules/package.json ./packages/ai-rules/
 COPY packages/subscription/package.json ./packages/subscription/
 COPY packages/queue/package.json ./packages/queue/
 COPY tooling/typescript-config/package.json ./tooling/typescript-config/
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --config.node-linker=hoisted
 
 # ── Build ─────────────────────────────────────────────────────
 FROM base AS build
@@ -23,8 +23,6 @@ RUN pnpm --filter @corpusai/database exec prisma generate
 RUN pnpm --filter @corpusai/api... build
 # Prune dev dependencies to keep only production deps
 RUN pnpm prune --prod
-# Merge workspace node_modules into root so dist/ can resolve app-level deps
-RUN cp -rn /app/apps/api/node_modules/. /app/node_modules/ 2>/dev/null || true
 
 # ── Runtime ───────────────────────────────────────────────────
 FROM node:20-slim AS runtime
