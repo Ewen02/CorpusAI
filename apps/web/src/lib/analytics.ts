@@ -1,15 +1,15 @@
-import { track as vercelTrack } from '@vercel/analytics';
+import posthog from 'posthog-js';
 
 /**
- * Centralized Vercel Analytics wrapper.
+ * Centralized analytics wrapper.
  *
  * Every custom event in the app MUST go through `track(...)` from this file
- * instead of importing from `@vercel/analytics` directly. This gives us:
+ * instead of importing from `posthog-js` directly. This gives us:
  *
  * 1. Type-safe autocomplete on event names + payloads (one place to look)
  * 2. A single chokepoint to enforce "no PII in events" (no email, no user id,
  *    no message content — only aggregable metadata)
- * 3. Safe no-op in dev / SSR / when the Vercel Analytics script isn't loaded
+ * 3. Safe no-op in dev / SSR / when PostHog isn't loaded
  *
  * Funnel stages covered:
  * - Acquisition: landing, signup, signin
@@ -80,11 +80,12 @@ export function track<N extends EventName>(
     : [data: EventData<N>]
 ): void {
   const [data] = args;
-  // Guard: Vercel Analytics is only loaded in the browser on Vercel-hosted
-  // deployments. On dev / SSR / other hosts it is a no-op.
+  // Guard: posthog-js is only initialized in the browser when the public key
+  // env var is set. On SSR / dev / misconfig it's a safe no-op.
   if (typeof window === 'undefined') return;
+  if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) return;
   try {
-    vercelTrack(name, (data ?? {}) as Record<string, string | number | boolean | null>);
+    posthog.capture(name, (data ?? {}) as Record<string, unknown>);
   } catch {
     // Never let analytics break the app.
   }

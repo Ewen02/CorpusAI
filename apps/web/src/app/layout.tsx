@@ -1,6 +1,8 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/next';
+import { PostHogProvider, PostHogPageView } from '@/components/posthog-provider';
 import './globals.css';
 
 const geist = Geist({
@@ -39,7 +41,12 @@ export default function RootLayout({
       <body
         className={`${geist.variable} ${geistMono.variable} ${instrumentSerif.variable} font-sans antialiased`}
       >
-        {children}
+        <PostHogProvider>
+          <Suspense fallback={null}>
+            <PostHogPageView />
+          </Suspense>
+          {children}
+        </PostHogProvider>
         <Analytics />
       </body>
     </html>
