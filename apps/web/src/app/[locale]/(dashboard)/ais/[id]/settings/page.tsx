@@ -17,6 +17,10 @@ import {
   Skeleton,
   Badge,
   CopyButton,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
   cn,
 } from '@corpusai/ui';
 import { Globe, Link2, Lock, Users, Check, RefreshCw, Trash2 } from 'lucide-react';
@@ -35,9 +39,12 @@ import {
   useSetAccessMode,
   useInviteMember,
   useRevokeMember,
+  useDocuments,
 } from '@/lib/queries';
 import { PageWrapper } from '@/components/page-wrapper';
-import { AICategory } from '@corpusai/types';
+import { FormAlert } from '@/components/form-alert';
+import { ApiError } from '@/lib/api-client';
+import { AICategory, DocumentStatus } from '@corpusai/types';
 
 const CATEGORY_VALUES: AICategory[] = [
   'SUPPORT',
@@ -474,9 +481,19 @@ export default function AISettingsPage() {
   const aiId = params.id as string;
 
   const { data: ai, isLoading } = useAI(aiId);
+  const { data: documents } = useDocuments(aiId);
   const updateAI = useUpdateAI();
   const deleteAI = useDeleteAI();
   const generateSuggestionsMutation = useGenerateSuggestions();
+
+  // AI-suggestions gate: the backend refuses the call with 400 when the AI
+  // has no INDEXED document. The dénormalisé `ai.documentCount` is misleading
+  // because it counts PENDING/PROCESSING/FAILED too — use the real list.
+  const indexedDocumentCount = React.useMemo(
+    () => documents?.filter((d) => d.status === DocumentStatus.INDEXED).length ?? 0,
+    [documents]
+  );
+  const canGenerateSuggestions = indexedDocumentCount > 0;
 
   const [activeTab, setActiveTab] = React.useState('general');
   const [name, setName] = React.useState('');
@@ -575,8 +592,13 @@ export default function AISettingsPage() {
     try {
       const result = await generateSuggestionsMutation.mutateAsync(aiId);
       setSuggestions(result);
-    } catch {
-      setGenerateError(t('generateError'));
+    } catch (err) {
+      // Safety net if the gate is bypassed (e.g. docs query in-flight)
+      if (err instanceof ApiError && err.status === 400) {
+        setGenerateError(t('basicInfo.suggestionsUnavailable'));
+      } else {
+        setGenerateError(t('generateError'));
+      }
     }
   };
 
@@ -689,6 +711,10 @@ export default function AISettingsPage() {
               <p className="mt-0.5 text-[13px] text-tx-muted">{t('basicInfo.description')}</p>
             </div>
 
+            {!canGenerateSuggestions && (
+              <FormAlert variant="info" message={t('basicInfo.suggestionsUnavailable')} />
+            )}
+
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <label htmlFor="name" className="text-[13px] font-medium text-tx-secondary">
@@ -725,39 +751,54 @@ export default function AISettingsPage() {
                   >
                     {t('basicInfo.descriptionLabel')}
                   </label>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleGenerateSuggestions}
-                    disabled={generateSuggestionsMutation.isPending}
-                    className="h-auto gap-1 px-1.5 py-0.5 text-[11px] text-tx-disabled hover:text-tx-primary"
-                  >
-                    {generateSuggestionsMutation.isPending ? (
-                      <svg
-                        className="h-3 w-3 animate-spin"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                      </svg>
-                    ) : (
-                      <svg
-                        className="h-3 w-3"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-                      </svg>
-                    )}
-                    {t('basicInfo.generateWithAI')}
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleGenerateSuggestions}
+                            disabled={
+                              !canGenerateSuggestions || generateSuggestionsMutation.isPending
+                            }
+                            className="h-auto gap-1 px-1.5 py-0.5 text-[11px] text-tx-disabled hover:text-tx-primary disabled:pointer-events-none disabled:opacity-50"
+                          >
+                            {generateSuggestionsMutation.isPending ? (
+                              <svg
+                                className="h-3 w-3 animate-spin"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                              >
+                                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                              </svg>
+                            ) : (
+                              <svg
+                                className="h-3 w-3"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+                              </svg>
+                            )}
+                            {t('basicInfo.generateWithAI')}
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      {!canGenerateSuggestions && (
+                        <TooltipContent>
+                          {t('basicInfo.suggestionsUnavailableShort')}
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
                 <Textarea
                   id="description"
@@ -896,6 +937,10 @@ export default function AISettingsPage() {
 
         {/* Behavior Tab */}
         <TabsContent value="behavior" className="space-y-6">
+          {!canGenerateSuggestions && (
+            <FormAlert variant="info" message={t('basicInfo.suggestionsUnavailable')} />
+          )}
+
           {/* System prompt */}
           <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] p-5">
             <div className="mb-5 flex items-start justify-between gap-3">
@@ -907,39 +952,50 @@ export default function AISettingsPage() {
                   {t('behaviorTab.systemPromptDescription')}
                 </p>
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleGenerateSuggestions}
-                disabled={generateSuggestionsMutation.isPending}
-                className="h-auto shrink-0 gap-1 px-1.5 py-0.5 text-[11px] text-tx-disabled hover:text-tx-primary"
-              >
-                {generateSuggestionsMutation.isPending ? (
-                  <svg
-                    className="h-3 w-3 animate-spin"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                  </svg>
-                ) : (
-                  <svg
-                    className="h-3 w-3"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-                  </svg>
-                )}
-                {t('basicInfo.generateWithAI')}
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex shrink-0">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleGenerateSuggestions}
+                        disabled={!canGenerateSuggestions || generateSuggestionsMutation.isPending}
+                        className="h-auto shrink-0 gap-1 px-1.5 py-0.5 text-[11px] text-tx-disabled hover:text-tx-primary disabled:pointer-events-none disabled:opacity-50"
+                      >
+                        {generateSuggestionsMutation.isPending ? (
+                          <svg
+                            className="h-3 w-3 animate-spin"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
+                            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                          </svg>
+                        ) : (
+                          <svg
+                            className="h-3 w-3"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+                          </svg>
+                        )}
+                        {t('basicInfo.generateWithAI')}
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {!canGenerateSuggestions && (
+                    <TooltipContent>{t('basicInfo.suggestionsUnavailableShort')}</TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
             </div>
 
             <div className="space-y-4">

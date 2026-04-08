@@ -698,6 +698,8 @@
       "slugImmutable": "The slug cannot be changed after creation.",
       "descriptionLabel": "Description",
       "generateWithAI": "Generate with AI",
+      "suggestionsUnavailable": "Upload at least one indexed document to generate suggestions based on your content.",
+      "suggestionsUnavailableShort": "No indexed documents",
       "descriptionPlaceholder": "A short description of your assistant...",
       "tabToAccept": "to accept",
       "escToIgnore": "to ignore",
