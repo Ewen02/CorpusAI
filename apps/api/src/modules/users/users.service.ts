@@ -234,10 +234,16 @@ export class UsersService {
       arr.reduce((sum: number, d: DailyDataPoint) => sum + d[key], 0);
 
     const calcTrend = (key: MetricKey) => {
-      const first = sumMetric(firstHalf, key) || 1;
+      const first = sumMetric(firstHalf, key);
       const second = sumMetric(secondHalf, key);
+      // When the baseline period is 0, a percentage is meaningless.
+      // Cap at ±999% so the UI stays readable.
+      if (first === 0) {
+        return { value: second > 0 ? 100 : 0, isPositive: true };
+      }
       const change = Math.round(((second - first) / first) * 100);
-      return { value: Math.abs(change), isPositive: change >= 0 };
+      const capped = Math.min(Math.abs(change), 999);
+      return { value: capped, isPositive: change >= 0 };
     };
 
     return {
