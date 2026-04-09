@@ -17,6 +17,7 @@
     "@corpusai/ai-rules": "workspace:*",
     "@corpusai/corpus": "workspace:*",
     "@corpusai/database": "workspace:*",
+    "@corpusai/email": "workspace:*",
     "@corpusai/queue": "workspace:*",
     "@corpusai/subscription": "workspace:*",
     "@corpusai/types": "workspace:*",

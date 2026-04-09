@@ -70,7 +70,7 @@ importers:
         version: 5.9.2
       openai:
         specifier: ^4.77.0
-        version: 4.104.0
+        version: 4.104.0(zod@4.2.1)
       pino:
         specifier: ^10.3.1
         version: 10.3.1
@@ -111,6 +111,9 @@ importers:
       '@corpusai/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@corpusai/email':
+        specifier: workspace:*
+        version: link:../../packages/email
       '@corpusai/queue':
         specifier: workspace:*
         version: link:../../packages/queue
@@ -185,7 +188,7 @@ importers:
         version: 4.6.0(@nestjs/common@11.1.10(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(pino-http@11.0.0)(pino@10.3.1)(rxjs@7.8.2)
       openai:
         specifier: ^4.77.0
-        version: 4.104.0
+        version: 4.104.0(zod@4.2.1)
       pino:
         specifier: ^10.3.1
         version: 10.3.1
@@ -383,7 +386,7 @@ importers:
         version: 1.11.0
       openai:
         specifier: ^4.77.0
-        version: 4.104.0
+        version: 4.104.0(zod@4.2.1)
       pdf-parse:
         specifier: ^1.1.1
         version: 1.1.4
@@ -431,6 +434,18 @@ importers:
       tsx:
         specifier: ^4.19.2
         version: 4.21.0
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+
+  packages/email:
+    devDependencies:
+      '@corpusai/typescript-config':
+        specifier: workspace:*
+        version: link:../../tooling/typescript-config
+      tsup:
+        specifier: ^8.3.5
+        version: 8.5.1(@swc/core@1.15.21)(jiti@2.6.1)(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
@@ -13282,7 +13297,7 @@ snapshots:
     dependencies:
       mimic-function: 5.0.1
 
-  openai@4.104.0:
+  openai@4.104.0(zod@4.2.1):
     dependencies:
       '@types/node': 18.19.130
       '@types/node-fetch': 2.6.13
@@ -13291,6 +13306,8 @@ snapshots:
       form-data-encoder: 1.7.2
       formdata-node: 4.4.1
       node-fetch: 2.7.0
+    optionalDependencies:
+      zod: 4.2.1
     transitivePeerDependencies:
       - encoding
 

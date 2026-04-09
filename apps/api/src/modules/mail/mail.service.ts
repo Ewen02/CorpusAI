@@ -7,7 +7,8 @@ import {
   welcomeTemplate,
   documentIndexedTemplate,
   documentFailedTemplate,
-} from './templates';
+  type Locale,
+} from '@corpusai/email';
 
 @Injectable()
 export class MailService {
@@ -15,6 +16,7 @@ export class MailService {
   private readonly resend: Resend | null = null;
   private readonly fromEmail: string;
   private readonly frontendUrl: string;
+  private readonly locale: Locale = 'fr';
 
   constructor(private readonly config: ConfigService) {
     const apiKey = this.config.get<string>('RESEND_API_KEY');
@@ -30,7 +32,7 @@ export class MailService {
 
   async sendMagicLink(email: string, token: string, aiName?: string): Promise<void> {
     const url = `${this.frontendUrl}/portal/auth/verify?token=${token}`;
-    const { subject, html } = magicLinkTemplate(url, aiName);
+    const { subject, html } = magicLinkTemplate(url, aiName, this.locale);
     await this.send(email, subject, html);
   }
 
@@ -40,13 +42,13 @@ export class MailService {
     creatorName: string,
     accessUrl: string
   ): Promise<void> {
-    const { subject, html } = inviteTemplate(aiName, creatorName, accessUrl);
+    const { subject, html } = inviteTemplate(aiName, creatorName, accessUrl, this.locale);
     await this.send(email, subject, html);
   }
 
   async sendWelcome(email: string, name: string): Promise<void> {
     const dashboardUrl = `${this.frontendUrl}/dashboard`;
-    const { subject, html } = welcomeTemplate(name, dashboardUrl);
+    const { subject, html } = welcomeTemplate(name, dashboardUrl, this.locale);
     await this.send(email, subject, html);
   }
 
@@ -61,7 +63,8 @@ export class MailService {
       documentName,
       aiName,
       chunkCount,
-      aiSettingsUrl
+      aiSettingsUrl,
+      this.locale
     );
     await this.send(email, subject, html);
   }
@@ -73,7 +76,13 @@ export class MailService {
     errorMessage: string,
     retryUrl: string
   ): Promise<void> {
-    const { subject, html } = documentFailedTemplate(documentName, aiName, errorMessage, retryUrl);
+    const { subject, html } = documentFailedTemplate(
+      documentName,
+      aiName,
+      errorMessage,
+      retryUrl,
+      this.locale
+    );
     await this.send(email, subject, html);
   }
 

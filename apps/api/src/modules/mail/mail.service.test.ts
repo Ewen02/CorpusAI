@@ -47,7 +47,7 @@ describe('MailService', () => {
       expect(mockSend).toHaveBeenCalledWith(
         expect.objectContaining({
           to: 'user@test.com',
-          subject: 'Votre lien de connexion CorpusAI',
+          subject: 'Votre lien de connexion — CorpusAI',
           from: 'noreply@test.io',
         })
       );
@@ -60,7 +60,8 @@ describe('MailService', () => {
 
       expect(mockSend).toHaveBeenCalledWith(
         expect.objectContaining({
-          subject: "Votre lien d'acc\u00e8s \u00e0 My Assistant",
+          subject: "Votre lien d'acc\u00e8s \u2014 My Assistant",
+          from: 'noreply@test.io',
         })
       );
     });
@@ -80,7 +81,7 @@ describe('MailService', () => {
       expect(mockSend).toHaveBeenCalledWith(
         expect.objectContaining({
           to: 'invited@test.com',
-          subject: 'Alice vous invite \u00e0 acc\u00e9der \u00e0 Sales Bot',
+          subject: 'Alice vous invite \u00e0 utiliser Sales Bot',
           from: 'noreply@test.io',
         })
       );

@@ -5,23 +5,25 @@ import { twoFactor } from 'better-auth/plugins';
 import { prisma } from '@corpusai/database';
 import { Resend } from 'resend';
 import { Logger } from '@nestjs/common';
-import { verifyEmailTemplate } from '../modules/mail/templates';
+import { verifyEmailTemplate, resetPasswordTemplate } from '@corpusai/email';
 
 const logger = new Logger('Auth');
 
 // Shared cookie attributes for cross-site flows (Vercel web ↔ Railway API).
-// SameSite=None + Secure is the standard for cross-site session cookies.
-// `partitioned` (CHIPS) was tried but actively broke Google OAuth: the cookie
-// is set by the API during the /auth/callback/google top-level navigation
-// (partition key = railway.app) and then read by the dashboard page on Vercel
-// (partition key = vercel.app). CHIPS isolates those two partitions, making
-// the cookie invisible to the dashboard. Without `partitioned`, the cookie
-// lives in the unpartitioned cross-site jar and is visible from either origin.
 const crossSiteCookieAttributes = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: process.env.NODE_ENV === 'production' ? ('none' as const) : ('lax' as const),
 };
+
+// Lazy Resend instance — avoids creating one per callback invocation.
+function getResend(): Resend | null {
+  return process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+}
+
+function getFromEmail(): string {
+  return process.env.RESEND_FROM_EMAIL || 'noreply@corpusai.io';
+}
 
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
@@ -35,36 +37,25 @@ export const auth = betterAuth({
     requireEmailVerification:
       process.env.NODE_ENV === 'production' && Boolean(process.env.RESEND_API_KEY),
     sendResetPassword: async ({ user, url }) => {
-      const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+      const resend = getResend();
       if (!resend) {
         logger.warn(`Reset password email not sent to ${user.email} (RESEND_API_KEY not set)`);
         return;
       }
-      const from = process.env.RESEND_FROM_EMAIL || 'noreply@corpusai.io';
-      await resend.emails.send({
-        from,
-        to: user.email,
-        subject: 'Réinitialisez votre mot de passe — CorpusAI',
-        html: verifyEmailTemplate(url, user.name)
-          .html.replace('Vérifiez votre email', 'Réinitialisation du mot de passe')
-          .replace(
-            'vérifier votre adresse email et activer votre compte CorpusAI',
-            'réinitialiser votre mot de passe'
-          )
-          .replace('Vérifier mon email', 'Réinitialiser le mot de passe'),
-      });
+      const { subject, html } = resetPasswordTemplate(url, user.name);
+      await resend.emails.send({ from: getFromEmail(), to: user.email, subject, html });
+      logger.log(`Reset password email sent to ${user.email}`);
     },
   },
   emailVerification: {
     sendVerificationEmail: async ({ user, url }) => {
-      const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+      const resend = getResend();
       if (!resend) {
         logger.warn(`Verification email not sent to ${user.email} (RESEND_API_KEY not set)`);
         return;
       }
-      const from = process.env.RESEND_FROM_EMAIL || 'noreply@corpusai.io';
       const { subject, html } = verifyEmailTemplate(url, user.name);
-      await resend.emails.send({ from, to: user.email, subject, html });
+      await resend.emails.send({ from: getFromEmail(), to: user.email, subject, html });
       logger.log(`Verification email sent to ${user.email}`);
     },
     sendOnSignUp: true,
@@ -81,33 +72,26 @@ export const auth = betterAuth({
     },
   },
   rateLimit: {
-    window: 60 * 60, // 1 hour
+    window: 60 * 60,
     max: 100,
     customRules: {
-      '/sign-in/email': { window: 10 * 60, max: 20 }, // 20 attempts per 10 min
+      '/sign-in/email': { window: 10 * 60, max: 20 },
       '/sign-up/email': { window: 60 * 60, max: 20 },
       '/forgot-password': { window: 60 * 60, max: 5 },
     },
   },
   session: {
-    expiresIn: 60 * 60 * 24 * 7, // 7 days
-    updateAge: 60 * 60 * 24, // Update session every 24 hours
+    expiresIn: 60 * 60 * 24 * 7,
+    updateAge: 60 * 60 * 24,
     cookieCache: {
       enabled: true,
-      maxAge: 60 * 5, // 5 minutes
+      maxAge: 60 * 5,
     },
   },
   account: {
-    // Cross-domain OAuth workaround (Railway API + Vercel web): Better Auth's
-    // secondary state cookie check can't pass when the top-frame origin flips
-    // mid-flow (vercel.app → google.com → railway.app). The primary DB-backed
-    // state check in the `verification` table still runs and provides CSRF
-    // protection together with PKCE and Google's redirect_uri allowlist.
     skipStateCookieCheck: process.env.NODE_ENV === 'production',
   },
   advanced: {
-    // Cross-site session cookie (Vercel ↔ Railway). SameSite=None + Secure +
-    // Partitioned (CHIPS) are required for Safari ITP to store and send it.
     defaultCookieAttributes: crossSiteCookieAttributes,
     cookies: {
       session_token: { attributes: crossSiteCookieAttributes },
@@ -115,35 +99,15 @@ export const auth = betterAuth({
   },
   user: {
     additionalFields: {
-      username: {
-        type: 'string',
-        required: false,
-      },
-      subscriptionPlan: {
-        type: 'string',
-        required: false,
-        defaultValue: 'FREE',
-      },
-      subscriptionStatus: {
-        type: 'string',
-        required: false,
-        defaultValue: 'ACTIVE',
-      },
-      role: {
-        type: 'string',
-        required: false,
-        defaultValue: 'USER',
-      },
+      username: { type: 'string', required: false },
+      subscriptionPlan: { type: 'string', required: false, defaultValue: 'FREE' },
+      subscriptionStatus: { type: 'string', required: false, defaultValue: 'ACTIVE' },
+      role: { type: 'string', required: false, defaultValue: 'USER' },
     },
   },
-  plugins: [
-    twoFactor({
-      issuer: 'CorpusAI',
-    }),
-  ],
+  plugins: [twoFactor({ issuer: 'CorpusAI' })],
   trustedOrigins: [process.env.FRONTEND_URL!],
   hooks: {
-    // Better Auth's MiddlewareInputContext type is opaque — cast required to access request info
     after: async (ctx) => {
       const rawCtx = ctx as unknown as {
         context?: { request?: { url?: string; method?: string } };
