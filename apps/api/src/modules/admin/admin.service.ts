@@ -371,6 +371,20 @@ export class AdminService {
   private static readonly TEST_CACHE_TTL = 60_000; // 1 minute
 
   async getTestStatus() {
+    // Tests cannot run in the production container (no pnpm, no devDependencies).
+    // Use CI (GitHub Actions) for test results.
+    if (process.env.NODE_ENV === 'production') {
+      return {
+        status: 'ci_only',
+        totalTests: 0,
+        totalPassed: 0,
+        totalFailed: 0,
+        suites: [],
+        message: 'Tests are executed in CI (GitHub Actions), not in the production container.',
+        timestamp: new Date().toISOString(),
+      };
+    }
+
     // Cache to avoid running tests on every request
     if (this.testCache && Date.now() < this.testCache.expiresAt) {
       return this.testCache.data;
