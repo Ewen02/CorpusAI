@@ -150,6 +150,24 @@ export function documentIndexedTemplate(
   };
 }
 
+export function verifyEmailTemplate(url: string, name?: string): EmailTemplate {
+  return {
+    subject: 'Vérifiez votre adresse email — CorpusAI',
+    html: layout(
+      [
+        heading('Vérifiez votre email'),
+        paragraph(
+          `Bonjour${name ? ` ${name}` : ''}, cliquez ci-dessous pour vérifier votre adresse email et activer votre compte CorpusAI.`
+        ),
+        button(url, 'Vérifier mon email'),
+        hint(
+          "Ce lien expire dans 24 heures. Si vous n'avez pas créé de compte, ignorez cet email."
+        ),
+      ].join('\n')
+    ),
+  };
+}
+
 export function documentFailedTemplate(
   documentName: string,
   aiName: string,

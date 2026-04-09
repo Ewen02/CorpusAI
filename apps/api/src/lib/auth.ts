@@ -3,7 +3,9 @@ import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { twoFactor } from 'better-auth/plugins';
 import { prisma } from '@corpusai/database';
+import { Resend } from 'resend';
 import { Logger } from '@nestjs/common';
+import { verifyEmailTemplate } from '../modules/mail/templates';
 
 const logger = new Logger('Auth');
 
@@ -30,10 +32,43 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
-    // Email verification requires RESEND_API_KEY + sendVerificationEmail config.
-    // Enable only once email delivery is set up, otherwise sign-up throws 500.
     requireEmailVerification:
       process.env.NODE_ENV === 'production' && Boolean(process.env.RESEND_API_KEY),
+    sendResetPassword: async ({ user, url }) => {
+      const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+      if (!resend) {
+        logger.warn(`Reset password email not sent to ${user.email} (RESEND_API_KEY not set)`);
+        return;
+      }
+      const from = process.env.RESEND_FROM_EMAIL || 'noreply@corpusai.io';
+      await resend.emails.send({
+        from,
+        to: user.email,
+        subject: 'Réinitialisez votre mot de passe — CorpusAI',
+        html: verifyEmailTemplate(url, user.name)
+          .html.replace('Vérifiez votre email', 'Réinitialisation du mot de passe')
+          .replace(
+            'vérifier votre adresse email et activer votre compte CorpusAI',
+            'réinitialiser votre mot de passe'
+          )
+          .replace('Vérifier mon email', 'Réinitialiser le mot de passe'),
+      });
+    },
+  },
+  emailVerification: {
+    sendVerificationEmail: async ({ user, url }) => {
+      const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+      if (!resend) {
+        logger.warn(`Verification email not sent to ${user.email} (RESEND_API_KEY not set)`);
+        return;
+      }
+      const from = process.env.RESEND_FROM_EMAIL || 'noreply@corpusai.io';
+      const { subject, html } = verifyEmailTemplate(url, user.name);
+      await resend.emails.send({ from, to: user.email, subject, html });
+      logger.log(`Verification email sent to ${user.email}`);
+    },
+    sendOnSignUp: true,
+    autoSignInAfterVerification: true,
   },
   socialProviders: {
     google: {
