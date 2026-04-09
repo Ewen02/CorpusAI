@@ -167,13 +167,35 @@ export class DocumentsModule implements OnModuleInit, OnModuleDestroy {
       select: {
         id: true,
         filename: true,
+        chunkCount: true,
         ai: {
-          select: { id: true, userId: true },
+          select: {
+            id: true,
+            name: true,
+            userId: true,
+            user: { select: { email: true } },
+          },
         },
       },
     });
 
     if (!document) return;
+
+    // Send email notification to the AI owner
+    if (document.ai.user.email) {
+      const aiSettingsUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/ais/${document.ai.id}`;
+      this.mailService
+        .sendDocumentIndexed(
+          document.ai.user.email,
+          document.filename,
+          document.ai.name,
+          document.chunkCount ?? 0,
+          aiSettingsUrl
+        )
+        .catch((err) => {
+          this.logger.error(`Failed to send indexed notification: ${err}`);
+        });
+    }
 
     this.webhooksService
       .emit(document.ai.userId, 'document.indexed', {
