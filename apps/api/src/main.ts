@@ -4,6 +4,7 @@ initSentry();
 
 import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { Logger as PinoLogger } from 'nestjs-pino';
 import helmet from 'helmet';
@@ -14,14 +15,19 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
   app.useLogger(app.get(PinoLogger));
 
+  const config = app.get(ConfigService);
+  const isProd = config.get<string>('NODE_ENV') === 'production';
+  const frontendUrl = config.get<string>('FRONTEND_URL')!;
+  const port = config.get<number>('PORT') || 3001;
+
   // Security headers
   app.use(
     helmet({
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'"],
           imgSrc: ["'self'", 'data:', 'https:'],
           connectSrc: ["'self'", 'https://*.sentry.io'],
           frameSrc: ["'none'"],
@@ -51,29 +57,28 @@ async function bootstrap() {
 
   // CORS
   app.enableCors({
-    origin: process.env.FRONTEND_URL!,
+    origin: frontendUrl,
     credentials: true,
   });
 
   // Swagger documentation (dev only)
-  if (process.env.NODE_ENV !== 'production') {
-    const config = new DocumentBuilder()
+  if (!isProd) {
+    const swaggerConfig = new DocumentBuilder()
       .setTitle('CorpusAI API')
       .setDescription('API for CorpusAI - Transform your knowledge into AI')
       .setVersion('0.1.0')
       .addBearerAuth()
       .build();
 
-    const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('docs', app, document);
+    const swaggerDoc = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('docs', app, swaggerDoc);
   }
 
-  const port = process.env.PORT || 3001;
   await app.listen(port);
 
   const logger = new Logger('Bootstrap');
   logger.log(`CorpusAI API running on http://localhost:${port}`);
-  if (process.env.NODE_ENV !== 'production') {
+  if (!isProd) {
     logger.log(`Swagger docs at http://localhost:${port}/docs`);
   }
 }

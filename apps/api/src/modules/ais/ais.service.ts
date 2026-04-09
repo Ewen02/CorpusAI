@@ -3,6 +3,7 @@ import { prisma, AIStatus, AccessStatus } from '@corpusai/database';
 import * as bcrypt from 'bcryptjs';
 import { customAlphabet } from 'nanoid';
 import { assertCanCreateAI, assertCanAddEndUser } from '../../shared/subscription-checks';
+import { verifyAIOwnership } from '../../shared/ownership';
 import {
   getStartDateForPeriod,
   getDaysForPeriod,
@@ -165,14 +166,7 @@ export class AIsService {
   }
 
   async update(userId: string, aiId: string, dto: UpdateAIDto) {
-    const ai = await prisma.aI.findFirst({
-      where: { id: aiId, userId },
-      select: { id: true },
-    });
-
-    if (!ai) {
-      throw new NotFoundException('AI not found');
-    }
+    await verifyAIOwnership(aiId, userId);
 
     return prisma.aI.update({
       where: { id: aiId },
@@ -198,14 +192,7 @@ export class AIsService {
   }
 
   async delete(userId: string, aiId: string) {
-    const ai = await prisma.aI.findFirst({
-      where: { id: aiId, userId },
-      select: { id: true },
-    });
-
-    if (!ai) {
-      throw new NotFoundException('AI not found');
-    }
+    await verifyAIOwnership(aiId, userId);
 
     // Clean up Qdrant vectors before deleting DB records
     try {
@@ -266,8 +253,7 @@ export class AIsService {
   }
 
   async getAnalytics(userId: string, aiId: string, period: AnalyticsPeriod = '30d') {
-    const ai = await prisma.aI.findFirst({ where: { id: aiId, userId }, select: { id: true } });
-    if (!ai) throw new NotFoundException('AI not found');
+    await verifyAIOwnership(aiId, userId);
 
     const days = getDaysForPeriod(period);
     const startDate = getStartDateForPeriod(period);
@@ -523,8 +509,7 @@ export class AIsService {
     documentId: string,
     period: AnalyticsPeriod = '30d'
   ) {
-    const ai = await prisma.aI.findFirst({ where: { id: aiId, userId }, select: { id: true } });
-    if (!ai) throw new NotFoundException('AI not found');
+    await verifyAIOwnership(aiId, userId);
 
     const doc = await prisma.document.findFirst({
       where: { id: documentId, aiId },
