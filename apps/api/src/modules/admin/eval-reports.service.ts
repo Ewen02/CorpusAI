@@ -50,6 +50,10 @@ export interface EvalReportSummary {
 }
 
 export class EvalReportsService {
+  private get isProduction(): boolean {
+    return process.env.NODE_ENV === 'production';
+  }
+
   private get reportsDir(): string {
     return (
       process.env['EVAL_REPORTS_DIR'] ?? path.join(process.cwd(), 'scripts', 'eval', 'reports')
@@ -107,6 +111,7 @@ export class EvalReportsService {
   }
 
   async listDatasets(): Promise<string[]> {
+    if (this.isProduction) return [];
     try {
       const entries = await fs.readdir(this.evalScriptDir);
       return entries.filter((f) => /^dataset\.[a-zA-Z0-9_-]+\.json$/.test(f)).sort();
@@ -116,6 +121,11 @@ export class EvalReportsService {
   }
 
   async runEval(slug: string, dataset: string): Promise<{ runId: string }> {
+    if (this.isProduction) {
+      throw new BadRequestException(
+        'RAG evaluation runs in development only. Use scripts/eval/ locally or CI.'
+      );
+    }
     if (!/^[a-zA-Z0-9_-]+$/.test(slug)) {
       throw new BadRequestException('Invalid slug format');
     }
