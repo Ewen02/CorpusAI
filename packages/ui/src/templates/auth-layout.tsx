@@ -34,10 +34,11 @@ export function AuthLayout({
   className,
 }: AuthLayoutProps) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
-      {/* Background gradient */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl" />
+    <div className="bg-page flex min-h-screen flex-col items-center justify-center p-4">
+      {/* Floating orbs */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute left-1/3 top-1/4 h-[500px] w-[500px] rounded-full bg-[hsl(var(--primary)/0.06)] blur-[120px]" />
+        <div className="absolute bottom-1/4 right-1/3 h-[400px] w-[400px] rounded-full bg-[hsl(var(--secondary)/0.04)] blur-[100px]" />
       </div>
 
       <div className={cn('relative w-full max-w-md', className)}>
@@ -45,7 +46,7 @@ export function AuthLayout({
         {showBackLink && onBack && (
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+            className="mb-6 flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeftIcon className="h-4 w-4" />
             <span>Retour</span>
@@ -53,10 +54,10 @@ export function AuthLayout({
         )}
 
         {/* Logo */}
-        <div className="flex justify-center mb-8">
+        <div className="mb-8 flex justify-center">
           {logo || (
             <div className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold text-lg">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-lg font-bold text-primary-foreground">
                 C
               </div>
               <span className="text-xl font-semibold text-foreground">CorpusAI</span>
@@ -65,24 +66,18 @@ export function AuthLayout({
         </div>
 
         {/* Auth Card */}
-        <Card className="border-border/50 shadow-xl">
+        <Card variant="glass" className="shadow-xl">
           <CardHeader className="space-y-1 text-center">
             <CardTitle className="text-2xl font-bold">{title}</CardTitle>
             {description && (
-              <CardDescription className="text-muted-foreground">
-                {description}
-              </CardDescription>
+              <CardDescription className="text-muted-foreground">{description}</CardDescription>
             )}
           </CardHeader>
           <CardContent>{children}</CardContent>
         </Card>
 
         {/* Footer */}
-        {footer && (
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            {footer}
-          </div>
-        )}
+        {footer && <div className="mt-6 text-center text-sm text-muted-foreground">{footer}</div>}
       </div>
     </div>
   );
@@ -161,7 +156,7 @@ export function AuthLink({ href, children, onClick }: AuthLinkProps) {
           onClick();
         }
       }}
-      className="text-primary hover:text-primary/80 font-medium transition-colors"
+      className="font-medium text-primary transition-colors hover:text-primary/80"
     >
       {children}
     </a>
@@ -197,7 +192,7 @@ export function SocialButton({ provider, onClick, isLoading }: SocialButtonProps
       type="button"
       onClick={onClick}
       disabled={isLoading}
-      className="flex w-full items-center justify-center gap-3 rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground hover:bg-accent transition-colors disabled:opacity-50 disabled:pointer-events-none"
+      className="flex w-full items-center justify-center gap-3 rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
     >
       <Icon className="h-5 w-5" />
       <span>{label}</span>

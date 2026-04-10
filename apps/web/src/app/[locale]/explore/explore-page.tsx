@@ -53,9 +53,9 @@ export default function ExplorePage() {
   const showFeatured = !debouncedSearch && category === 'ALL' && page === 1;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-page min-h-screen">
       {/* Public header */}
-      <header className="sticky top-0 z-40 border-b border-[hsl(var(--border-subtle))] bg-[hsl(var(--background)/0.85)] backdrop-blur-md">
+      <header className="glass sticky top-0 z-40 border-b border-[hsl(var(--border-subtle))]">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 lg:px-8">
           <a href="/" className="flex items-center gap-2.5">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-400 to-indigo-600 shadow-sm">
@@ -82,9 +82,13 @@ export default function ExplorePage() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-7xl px-4 py-12 lg:px-8">
+      <div className="relative mx-auto max-w-7xl px-4 py-12 lg:px-8">
+        {/* Subtle background orbs */}
+        <div className="pointer-events-none absolute -right-40 top-0 h-[400px] w-[400px] rounded-full bg-[hsl(var(--primary)/0.04)] blur-[100px]" />
+        <div className="pointer-events-none absolute -left-20 top-32 h-[300px] w-[300px] rounded-full bg-[hsl(var(--secondary)/0.03)] blur-[80px]" />
+
         {/* Hero */}
-        <div className="mb-12 text-center">
+        <div className="relative mb-12 text-center">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[hsl(var(--accent-500)/0.25)] bg-[hsl(var(--accent-500)/0.07)] px-3 py-1">
             <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
             <span className="text-[12px] font-medium text-indigo-400">{t('badge')}</span>

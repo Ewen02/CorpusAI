@@ -378,7 +378,7 @@ function Sidebar({
       {/* Sidebar */}
       <aside
         className={cn(
-          'bg-surface-1 fixed left-0 top-0 z-50 flex h-full flex-col border-r border-[hsl(var(--border-subtle))]',
+          'fixed left-0 top-0 z-50 flex h-full flex-col border-r border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface-1)/0.8)] backdrop-blur-xl',
           'transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]',
           isCollapsed ? 'w-[60px]' : 'w-[240px]',
           isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
@@ -484,7 +484,7 @@ export function DashboardLayout({
 
   return (
     <SidebarContext.Provider value={{ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }}>
-      <div className="min-h-screen bg-background">
+      <div className="bg-page min-h-screen">
         <Sidebar
           navItems={navItems}
           aiItems={aiItems}

@@ -154,15 +154,11 @@ export default async function Home() {
 
       {/* Hero Section */}
       <section className="relative overflow-hidden pb-24 pt-36 md:pb-32 md:pt-44">
-        {/* Radial gradient background */}
-        <div
-          className="pointer-events-none absolute inset-0 -z-10"
-          aria-hidden
-          style={{
-            background:
-              'radial-gradient(ellipse 80% 50% at 50% -10%, hsl(230 65% 58% / 0.12) 0%, transparent 70%)',
-          }}
-        />
+        {/* Floating orbs */}
+        <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden>
+          <div className="absolute -right-32 top-20 h-[500px] w-[500px] rounded-full bg-[hsl(var(--primary)/0.06)] blur-[120px]" />
+          <div className="absolute -left-20 top-60 h-[400px] w-[400px] rounded-full bg-[hsl(var(--secondary)/0.04)] blur-[100px]" />
+        </div>
 
         <div className="relative mx-auto max-w-5xl px-6 text-center">
           <Badge variant="secondary" className="mb-6 text-xs">
@@ -189,7 +185,7 @@ export default async function Home() {
 
         {/* Hero visual */}
         <div className="relative mx-auto mt-16 max-w-2xl px-6">
-          <div className="shadow-glass overflow-hidden rounded-xl border border-border/60 bg-card">
+          <div className="glass overflow-hidden rounded-xl border border-border/60 bg-card">
             <div className="flex items-center gap-2 border-b border-border/60 bg-muted/30 px-4 py-3">
               <div className="flex gap-1.5">
                 <span className="h-2.5 w-2.5 rounded-full bg-border/80" />
@@ -301,7 +297,7 @@ export default async function Home() {
       {/* CTA Section */}
       <section className="border-t border-border/60 py-20 md:py-28">
         <AnimatedSection>
-          <div className="shadow-glass relative mx-auto max-w-3xl overflow-hidden rounded-2xl border border-border/60 bg-card px-8 py-16 text-center">
+          <div className="glass relative mx-auto max-w-3xl overflow-hidden rounded-2xl border border-border/60 bg-card px-8 py-16 text-center">
             <div
               className="pointer-events-none absolute inset-0 -z-10"
               aria-hidden
