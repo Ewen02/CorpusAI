@@ -15,7 +15,10 @@ import {
   MaxFileSizeValidator,
   BadRequestException,
   MessageEvent,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
+import archiver from 'archiver';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
@@ -54,6 +57,65 @@ export class DocumentsController {
   @ApiResponse({ status: 404, description: 'AI not found' })
   async findAll(@CurrentUser() user: CurrentUserData, @Param('aiId') aiId: string) {
     return this.documentsService.findAllByAI(user.id, aiId);
+  }
+
+  @Get('export')
+  @ApiOperation({ summary: 'Export AI corpus as ZIP archive' })
+  @ApiParam({ name: 'aiId', description: 'AI ID' })
+  @ApiResponse({ status: 200, description: 'ZIP archive streamed' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'AI not found' })
+  async exportCorpus(
+    @CurrentUser() user: CurrentUserData,
+    @Param('aiId') aiId: string,
+    @Res() res: Response
+  ) {
+    const { ai, documents } = await this.documentsService.getExportData(user.id, aiId);
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="corpus-export-${ai.slug}.zip"`);
+
+    const archive = archiver('zip', { zlib: { level: 6 } });
+    archive.pipe(res as unknown as NodeJS.WritableStream);
+
+    // metadata.json
+    archive.append(
+      JSON.stringify(
+        {
+          id: ai.id,
+          name: ai.name,
+          slug: ai.slug,
+          description: ai.description,
+          documentCount: documents.length,
+          exportedAt: new Date().toISOString(),
+        },
+        null,
+        2
+      ),
+      { name: 'metadata.json' }
+    );
+
+    // documents/*.txt — reconstructed text from chunks
+    for (const doc of documents) {
+      const text = doc.chunks.map((c) => c.content).join('\n\n');
+      archive.append(text, { name: `documents/${doc.filename}.txt` });
+    }
+
+    // chunks.jsonl — raw chunks for advanced use
+    const chunksLines = documents.flatMap((doc) =>
+      doc.chunks.map((chunk) =>
+        JSON.stringify({
+          documentId: doc.id,
+          filename: doc.filename,
+          position: chunk.position,
+          pageNumber: chunk.pageNumber,
+          content: chunk.content,
+        })
+      )
+    );
+    archive.append(chunksLines.join('\n'), { name: 'chunks.jsonl' });
+
+    await archive.finalize();
   }
 
   @Get(':id')

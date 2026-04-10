@@ -476,6 +476,7 @@ function AccessTab({
 
 export default function AISettingsPage() {
   const t = useTranslations('aiSettings');
+  const td = useTranslations('docs');
   const params = useParams();
   const router = useRouter();
   const aiId = params.id as string;
@@ -1306,6 +1307,36 @@ export default function AISettingsPage() {
 
         {/* Danger Zone Tab */}
         <TabsContent value="danger" className="space-y-6">
+          {/* Export Corpus */}
+          <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[15px] font-semibold text-tx-primary">{td('exportCorpus')}</p>
+                <p className="mt-0.5 text-[13px] text-tx-muted">{td('exportCorpusDesc')}</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  const res = await fetch(
+                    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/ais/${aiId}/documents/export`,
+                    { credentials: 'include' }
+                  );
+                  if (!res.ok) return;
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `corpus-export-${aiId}.zip`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+              >
+                {td('exportCorpus')}
+              </Button>
+            </div>
+          </div>
+
           <div className="rounded-xl border border-[hsl(var(--danger)/0.2)] bg-[hsl(var(--danger)/0.04)] p-5">
             <div className="mb-5">
               <p className="text-[15px] font-semibold text-[hsl(var(--danger))]">

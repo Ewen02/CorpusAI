@@ -1,6 +1,7 @@
 import { Injectable, Inject, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { prisma, DocumentStatus, type TransactionClient } from '@corpusai/database';
 import { assertCanAddDocument, assertCanUploadDocument } from '../../shared/subscription-checks';
+import { getOwnedAI } from '../../shared/ownership';
 import { canAddDocument, canUploadDocument } from '@corpusai/subscription';
 import { SUPPORTED_DOCUMENT_TYPES, type SupportedDocumentType } from '@corpusai/types';
 import type { Queue } from 'bullmq';
@@ -468,5 +469,41 @@ export class DocumentsService {
 
     this.logger.log(`Document ${documentId} re-queued for processing`);
     return { success: true };
+  }
+
+  /**
+   * Fetch all indexed documents with their chunks for export.
+   */
+  async getExportData(userId: string, aiId: string) {
+    const ai = await getOwnedAI(aiId, userId);
+
+    const documents = await prisma.document.findMany({
+      where: { aiId, status: 'INDEXED' },
+      select: {
+        id: true,
+        filename: true,
+        mimeType: true,
+        size: true,
+        chunkCount: true,
+        pageCount: true,
+        wordCount: true,
+        language: true,
+        title: true,
+        author: true,
+        createdAt: true,
+        chunks: {
+          select: {
+            id: true,
+            content: true,
+            position: true,
+            pageNumber: true,
+          },
+          orderBy: { position: 'asc' },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return { ai, documents };
   }
 }
