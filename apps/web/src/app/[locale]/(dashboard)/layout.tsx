@@ -93,7 +93,7 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
       {
         id: 'docs',
         label: t('documentation'),
-        href: 'https://docs.corpusai.com',
+        href: '/docs/api',
         icon: <BookIcon className="h-4 w-4" />,
       },
     ],
