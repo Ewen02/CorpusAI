@@ -119,8 +119,8 @@ export default async function Home() {
     <div className="min-h-screen">
       <AnalyticsTracker event="landing_viewed" />
       {/* Navigation */}
-      <nav className="fixed top-0 z-50 w-full border-b border-[hsl(var(--border-default)/40)] bg-background/80 backdrop-blur-sm">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+      <nav className="glass fixed top-0 z-50 w-full border-b border-[hsl(var(--border-default)/40)]">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
           <Logo size="lg" />
           <div className="hidden items-center gap-8 md:flex">
             <a
@@ -212,7 +212,7 @@ export default async function Home() {
         id="features"
         className="border-t border-[hsl(var(--border-default)/60)] py-20 md:py-28"
       >
-        <div className="mx-auto max-w-7xl px-6">
+        <div className="mx-auto max-w-6xl px-6">
           <div className="text-center">
             <p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted-foreground/50">
               {t('features')}
@@ -245,7 +245,7 @@ export default async function Home() {
 
       {/* Community Section */}
       <section className="border-t border-[hsl(var(--border-default)/60)] py-20 md:py-28">
-        <div className="mx-auto max-w-7xl px-6">
+        <div className="mx-auto max-w-6xl px-6">
           <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
             <div>
               <p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted-foreground/50">
@@ -322,7 +322,7 @@ export default async function Home() {
 
       {/* Footer */}
       <footer className="border-t border-[hsl(var(--border-default)/60)] py-10">
-        <div className="mx-auto max-w-7xl px-6">
+        <div className="mx-auto max-w-6xl px-6">
           <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
             <Logo size="md" />
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
