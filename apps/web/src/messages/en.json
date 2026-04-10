@@ -984,5 +984,17 @@
     "failures": "failures",
     "creating": "Creating...",
     "created": "Webhook created successfully!"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "rateLimitReached": "You've reached the daily question limit. Come back tomorrow or upgrade your plan.",
+    "llmUnavailable": "The service is temporarily unavailable. Please try again.",
+    "uploadFailed": "Upload failed",
+    "indexingFailed": "Indexing failed",
+    "conversationNotFound": "Conversation not found",
+    "unauthorized": "Unauthorized",
+    "serverError": "Server error",
+    "connectionError": "Unable to connect to the server",
+    "fileTooLarge": "File exceeds the maximum size ({sizeMb} MB, max {maxMb} MB). Upgrade your plan for larger files."
   }
 }

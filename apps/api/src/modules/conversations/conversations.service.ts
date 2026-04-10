@@ -443,7 +443,10 @@ export class ConversationsService {
         data: {
           conversationId,
           role: MessageRole.ASSISTANT,
-          content: "Je suis désolé, je n'ai pas pu traiter votre question. Veuillez réessayer.",
+          content:
+            conversation.ai.language === 'en'
+              ? "I'm sorry, I couldn't process your question. Please try again."
+              : "Je suis désolé, je n'ai pas pu traiter votre question. Veuillez réessayer.",
           confidence: ConfidenceLevel.LOW,
           sources: [],
         },
@@ -689,7 +692,10 @@ export class ConversationsService {
         data: {
           conversationId,
           role: MessageRole.ASSISTANT,
-          content: "Je suis désolé, je n'ai pas pu traiter votre question. Veuillez réessayer.",
+          content:
+            conversation.ai.language === 'en'
+              ? "I'm sorry, I couldn't process your question. Please try again."
+              : "Je suis désolé, je n'ai pas pu traiter votre question. Veuillez réessayer.",
           confidence: ConfidenceLevel.LOW,
           sources: [],
         },

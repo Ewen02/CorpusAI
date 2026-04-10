@@ -984,5 +984,17 @@
     "failures": "échecs",
     "creating": "Création...",
     "created": "Webhook créé avec succès !"
+  },
+  "errors": {
+    "generic": "Une erreur s'est produite. Veuillez réessayer.",
+    "rateLimitReached": "Vous avez atteint la limite de questions quotidienne. Revenez demain ou passez à un plan supérieur.",
+    "llmUnavailable": "Le service est temporairement indisponible. Veuillez réessayer.",
+    "uploadFailed": "Échec de l'upload",
+    "indexingFailed": "Échec de l'indexation",
+    "conversationNotFound": "Conversation introuvable",
+    "unauthorized": "Non autorisé",
+    "serverError": "Erreur du serveur",
+    "connectionError": "Erreur de connexion au serveur",
+    "fileTooLarge": "Le fichier dépasse la taille maximale ({sizeMb} Mo, max {maxMb} Mo). Passez à un plan supérieur pour des fichiers plus volumineux."
   }
 }

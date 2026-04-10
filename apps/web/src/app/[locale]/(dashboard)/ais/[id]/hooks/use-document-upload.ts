@@ -6,6 +6,7 @@ import type { UploadedFile } from '@corpusai/ui';
 import { apiClient, ApiError, API_URL } from '@/lib/api-client';
 import { track } from '@/lib/analytics';
 import { documentKeys, useDeleteDocument, useRetryDocument } from '@/lib/queries';
+import { useTranslations } from 'next-intl';
 
 interface UseDocumentUploadOptions {
   aiId: string;
@@ -168,6 +169,7 @@ export function useDocumentUpload({ aiId, documents }: UseDocumentUploadOptions)
   const queryClient = useQueryClient();
   const deleteDocument = useDeleteDocument();
   const retryDocument = useRetryDocument();
+  const t = useTranslations('errors');
 
   const unsubscribersRef = React.useRef<Set<() => void>>(new Set());
   const stepTimersRef = React.useRef<Map<string, StepTimerState>>(new Map());
@@ -280,7 +282,7 @@ export function useDocumentUpload({ aiId, documents }: UseDocumentUploadOptions)
               setUploadedFiles((prev) =>
                 prev.map((f) =>
                   f.id === fileId
-                    ? { ...f, status: 'error' as const, error: "Echec de l'indexation" }
+                    ? { ...f, status: 'error' as const, error: t('indexingFailed') }
                     : f
                 )
               );
@@ -292,7 +294,7 @@ export function useDocumentUpload({ aiId, documents }: UseDocumentUploadOptions)
           subscribedDocIdsRef.current.delete(doc.id);
         });
     }
-  }, [aiId, documents, scheduleNextStep, queryClient]);
+  }, [aiId, documents, scheduleNextStep, queryClient, t]);
 
   const subscribeDoc = React.useCallback(
     (fileId: string, docId: string) => {
@@ -316,16 +318,14 @@ export function useDocumentUpload({ aiId, documents }: UseDocumentUploadOptions)
           track('document_upload_failed', { reason: 'indexing_failed' });
           setUploadedFiles((prev) =>
             prev.map((f) =>
-              f.id === fileId
-                ? { ...f, status: 'error' as const, error: "Echec de l'indexation" }
-                : f
+              f.id === fileId ? { ...f, status: 'error' as const, error: t('indexingFailed') } : f
             )
           );
         }
       );
       unsubscribersRef.current.add(unsubscribe);
     },
-    [aiId, queryClient, scheduleNextStep]
+    [aiId, queryClient, scheduleNextStep, t]
   );
 
   const uploadFiles = React.useCallback(
@@ -351,7 +351,10 @@ export function useDocumentUpload({ aiId, documents }: UseDocumentUploadOptions)
         file,
         status: 'error' as const,
         progress: 0,
-        error: `Le fichier dépasse la taille maximale (${Math.round(file.size / 1024 / 1024)} Mo, max ${MAX_FILE_SIZE_MB} Mo). Passez à un plan supérieur pour des fichiers plus volumineux.`,
+        error: t('fileTooLarge', {
+          sizeMb: Math.round(file.size / 1024 / 1024),
+          maxMb: MAX_FILE_SIZE_MB,
+        }),
       }));
 
       if (oversizedEntries.length > 0) {
@@ -472,14 +475,14 @@ export function useDocumentUpload({ aiId, documents }: UseDocumentUploadOptions)
           setUploadedFiles((prev) =>
             prev.map((f) =>
               f.id === uploadedFile.id
-                ? { ...f, status: 'error' as const, error: "Echec de l'upload" }
+                ? { ...f, status: 'error' as const, error: t('uploadFailed') }
                 : f
             )
           );
         }
       }
     },
-    [aiId, queryClient, subscribeDoc]
+    [aiId, queryClient, subscribeDoc, t]
   );
 
   const removeFile = React.useCallback((fileId: string) => {

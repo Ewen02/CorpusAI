@@ -9,6 +9,7 @@ import {
   type MessageSource,
 } from '@/lib/queries';
 import { track } from '@/lib/analytics';
+import { useTranslations } from 'next-intl';
 
 const FIRST_CHAT_FLAG_KEY = 'corpusai:first_chat_sent';
 
@@ -23,14 +24,16 @@ function markFirstChatIfNeeded(source: 'dashboard' | 'public' | 'widget') {
   }
 }
 
-const RATE_LIMIT_MESSAGES: Record<string, string> = {
-  'Daily question limit reached for this AI':
-    'Vous avez atteint la limite de questions quotidienne. Revenez demain ou passez à un plan supérieur pour continuer.',
+const ERROR_CODE_MAP: Record<string, string> = {
+  'Daily question limit reached for this AI': 'rateLimitReached',
+  'LLM service is temporarily unavailable': 'llmUnavailable',
+  'Conversation not found': 'conversationNotFound',
 };
 
-function extractErrorMessage(error: unknown): string {
+function extractErrorMessage(error: unknown, t: (key: string) => string): string {
   const msg = error instanceof Error ? error.message : String(error);
-  return RATE_LIMIT_MESSAGES[msg] ?? "Une erreur s'est produite. Veuillez réessayer.";
+  const code = Object.entries(ERROR_CODE_MAP).find(([key]) => msg.includes(key))?.[1];
+  return code ? t(code) : t('generic');
 }
 
 /**
@@ -60,6 +63,7 @@ export function useChatState({ aiSlug, username }: UseChatStateOptions) {
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
   const [currentConversationId, setCurrentConversationId] = React.useState<string | null>(null);
   const [streamingMessageId, setStreamingMessageId] = React.useState<string | null>(null);
+  const t = useTranslations('errors');
 
   const startConversation = useStartConversation();
   const { sendStream, isStreaming, streamingContent } = useSendMessageStream();
@@ -197,7 +201,7 @@ export function useChatState({ aiSlug, username }: UseChatStateOptions) {
           },
           onError: (error) => {
             console.error('Streaming error:', error);
-            const errorMessage = extractErrorMessage(error);
+            const errorMessage = extractErrorMessage(error, t);
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === assistantMessageId
@@ -210,7 +214,7 @@ export function useChatState({ aiSlug, username }: UseChatStateOptions) {
         });
       } catch (error) {
         console.error('Error starting stream:', error);
-        const errorMessage = extractErrorMessage(error);
+        const errorMessage = extractErrorMessage(error, t);
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantMessageId
