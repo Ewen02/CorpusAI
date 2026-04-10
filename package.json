@@ -19,9 +19,12 @@
     "db:migrate": "pnpm --filter @corpusai/database db:migrate",
     "db:migrate:prod": "pnpm --filter @corpusai/database db:migrate:prod",
     "test:e2e": "playwright test",
+    "changeset": "changeset",
+    "changeset:version": "changeset version",
     "prepare": "husky"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.30.0",
     "@corpusai/eslint-config": "workspace:^",
     "@playwright/test": "^1.58.2",
     "eslint": "^9.18.0",
