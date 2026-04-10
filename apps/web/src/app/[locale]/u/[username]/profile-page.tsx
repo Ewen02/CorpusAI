@@ -17,9 +17,9 @@ export default function ProfilePage({ username }: ProfilePageProps) {
   const { data: creator, isLoading, isError } = useCreatorProfile(username);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-page min-h-screen">
       {/* Public header */}
-      <header className="sticky top-0 z-40 border-b border-[hsl(var(--border-default)/60)] bg-background/80 backdrop-blur-sm">
+      <header className="glass sticky top-0 z-40 border-b border-[hsl(var(--border-default)/60)]">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 lg:px-8">
           <a href="/">
             <Logo size="md" />
@@ -27,13 +27,13 @@ export default function ProfilePage({ username }: ProfilePageProps) {
           <div className="flex items-center gap-3">
             <a
               href="/explore"
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+              className="text-sm text-tx-muted transition-colors hover:text-tx-primary"
             >
               {t('explore')}
             </a>
             <a
               href="/sign-up"
-              className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              className="bg-gradient-primary rounded-lg px-3.5 py-1.5 text-sm font-medium text-white shadow-accent transition-all hover:opacity-90"
             >
               {t('createMine')}
             </a>
@@ -46,7 +46,7 @@ export default function ProfilePage({ username }: ProfilePageProps) {
           <ProfileSkeleton />
         ) : isError || !creator ? (
           <div className="py-20 text-center">
-            <p className="text-muted-foreground">{t('notFound')}</p>
+            <p className="text-tx-muted">{t('notFound')}</p>
             <a href="/explore" className="mt-4 inline-block text-sm text-primary underline">
               {t('backToExplore')}
             </a>
@@ -55,23 +55,23 @@ export default function ProfilePage({ username }: ProfilePageProps) {
           <>
             {/* Creator info */}
             <div className="mb-10 flex items-start gap-5">
-              <Avatar className="h-16 w-16 ring-2 ring-border">
+              <Avatar className="h-16 w-16 ring-2 ring-[hsl(var(--border-default))]">
                 <AvatarImage src={creator.image ?? undefined} />
                 <AvatarFallback className="bg-primary/15 text-xl font-semibold text-primary">
                   {(creator.name || creator.username).charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
-                <h1 className="text-2xl font-semibold tracking-tight">
+                <h1 className="text-2xl font-semibold tracking-tight text-tx-primary">
                   {creator.name || creator.username}
                 </h1>
-                <p className="mt-0.5 text-sm text-muted-foreground">@{creator.username}</p>
+                <p className="mt-0.5 text-sm text-tx-muted">@{creator.username}</p>
                 {creator.bio && (
-                  <p className="mt-2 max-w-lg text-sm leading-relaxed text-muted-foreground/80">
+                  <p className="mt-2 max-w-lg text-sm leading-relaxed text-tx-muted/80">
                     {creator.bio}
                   </p>
                 )}
-                <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground/60">
+                <div className="mt-3 flex items-center gap-4 text-xs text-tx-muted/60">
                   <span>{t('publicAIs', { count: creator.ais.length })}</span>
                   <span>
                     {t('memberSince', {
@@ -88,7 +88,7 @@ export default function ProfilePage({ username }: ProfilePageProps) {
             {/* AI grid */}
             {creator.ais.length === 0 ? (
               <div className="py-16 text-center">
-                <p className="text-sm text-muted-foreground">{t('noPublicAIs')}</p>
+                <p className="text-sm text-tx-muted">{t('noPublicAIs')}</p>
               </div>
             ) : (
               <div className="stagger-children grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
