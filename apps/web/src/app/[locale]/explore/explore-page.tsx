@@ -69,7 +69,7 @@ export default function ExplorePage() {
             </a>
             <a
               href="/sign-up"
-              className="rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-600 px-3.5 py-1.5 text-[13px] font-medium text-white shadow-accent transition-all hover:opacity-90"
+              className="bg-gradient-primary rounded-lg px-3.5 py-1.5 text-[13px] font-medium text-white shadow-accent transition-all hover:opacity-90"
             >
               {t('createMine')}
             </a>

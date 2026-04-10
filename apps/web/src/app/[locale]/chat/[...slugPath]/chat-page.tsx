@@ -79,7 +79,7 @@ export default function ChatPage({ username, slug }: ChatPageProps) {
   if (accessDeniedReason === 'invite_only') {
     return (
       <PageContainer>
-        <div className="w-full max-w-sm space-y-6 rounded-xl border border-border bg-card p-8 shadow-2xl">
+        <div className="w-full max-w-sm space-y-6 rounded-xl border border-[hsl(var(--border-default))] bg-card p-8 shadow-2xl">
           <div className="space-y-1 text-center">
             <div className="text-3xl">🔐</div>
             <h1 className="text-lg font-semibold">{ai?.name ?? t('thisAssistant')}</h1>
@@ -135,7 +135,7 @@ export default function ChatPage({ username, slug }: ChatPageProps) {
   if (accessDeniedReason === 'access_code') {
     return (
       <PageContainer>
-        <div className="w-full max-w-sm space-y-6 rounded-xl border border-border bg-card p-8 shadow-2xl">
+        <div className="w-full max-w-sm space-y-6 rounded-xl border border-[hsl(var(--border-default))] bg-card p-8 shadow-2xl">
           <div className="space-y-1 text-center">
             <div className="text-3xl">🔒</div>
             <h1 className="text-lg font-semibold">{ai.name}</h1>
@@ -201,7 +201,7 @@ export default function ChatPage({ username, slug }: ChatPageProps) {
 
 function SaveBanner({ onDismiss, t }: { onDismiss: () => void; t: (key: string) => string }) {
   return (
-    <div className="flex shrink-0 items-center justify-between border-b border-border bg-primary/5 px-4 py-2.5">
+    <div className="flex shrink-0 items-center justify-between border-b border-[hsl(var(--border-default))] bg-primary/5 px-4 py-2.5">
       <p className="text-sm text-foreground">
         {t('saveConversation')}{' '}
         <Link href="/portal/sign-in" className="font-medium text-primary hover:underline">
@@ -228,7 +228,7 @@ function PageContainer({ children }: { children: React.ReactNode }) {
 
 function ChatCard({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
+    <div className="flex h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-[hsl(var(--border-default))] bg-card shadow-2xl">
       {children}
     </div>
   );
@@ -247,7 +247,7 @@ function ChatHeader({
 }) {
   return (
     <div
-      className="flex shrink-0 items-center gap-3 border-b border-border px-5 py-4"
+      className="flex shrink-0 items-center gap-3 border-b border-[hsl(var(--border-default))] px-5 py-4"
       style={primaryColor ? { borderBottomColor: primaryColor } : undefined}
     >
       {avatar ? (
@@ -276,7 +276,7 @@ function ChatHeader({
 
 function PageFooter({ t }: { t: (key: string) => string }) {
   return (
-    <div className="shrink-0 border-t border-border px-4 py-2.5 text-center">
+    <div className="shrink-0 border-t border-[hsl(var(--border-default))] px-4 py-2.5 text-center">
       <a
         href="https://corpusai.io"
         target="_blank"

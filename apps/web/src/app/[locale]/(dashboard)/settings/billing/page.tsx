@@ -99,7 +99,7 @@ export default function SettingsBillingPage() {
           <CardDescription>{t('description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="flex items-center justify-between rounded-lg bg-muted/50 p-4">
+          <div className="flex items-center justify-between rounded-lg bg-[hsl(var(--surface-2))] p-4">
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-semibold">{currentPlanData.name}</h3>
@@ -121,7 +121,7 @@ export default function SettingsBillingPage() {
           <div>
             <h4 className="mb-3 text-sm font-medium">{t('currentUsage')}</h4>
             <div className="grid grid-cols-3 gap-4">
-              <div className="rounded-lg bg-muted/30 p-4">
+              <div className="rounded-lg bg-[hsl(var(--surface-2))] p-4">
                 <p className="text-2xl font-bold">{stats?.aiCount || 0}</p>
                 <p className="text-xs text-muted-foreground">{t('aiAssistants')}</p>
                 <p className="mt-1 text-xs text-muted-foreground/70">
@@ -129,7 +129,7 @@ export default function SettingsBillingPage() {
                   {currentLimits.maxAIs === -1 ? '∞' : currentLimits.maxAIs}
                 </p>
               </div>
-              <div className="rounded-lg bg-muted/30 p-4">
+              <div className="rounded-lg bg-[hsl(var(--surface-2))] p-4">
                 <p className="text-2xl font-bold">{stats?.documentCount || 0}</p>
                 <p className="text-xs text-muted-foreground">{t('documents')}</p>
                 <p className="mt-1 text-xs text-muted-foreground/70">
@@ -137,7 +137,7 @@ export default function SettingsBillingPage() {
                   {currentLimits.maxDocumentsPerAI === -1 ? '∞' : currentLimits.maxDocumentsPerAI}
                 </p>
               </div>
-              <div className="rounded-lg bg-muted/30 p-4">
+              <div className="rounded-lg bg-[hsl(var(--surface-2))] p-4">
                 <p className="text-2xl font-bold">{stats?.questionCount || 0}</p>
                 <p className="text-xs text-muted-foreground">{t('questionsToday')}</p>
                 <p className="mt-1 text-xs text-muted-foreground/70">
@@ -164,7 +164,9 @@ export default function SettingsBillingPage() {
                 <div
                   key={plan.id}
                   className={`relative rounded-lg border p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/5 ${
-                    plan.popular ? 'border-primary bg-primary/5' : 'border-border bg-card'
+                    plan.popular
+                      ? 'border-primary bg-primary/5'
+                      : 'border-[hsl(var(--border-default))] bg-card'
                   } ${isCurrent ? 'ring-2 ring-primary' : ''}`}
                 >
                   {plan.popular && (
@@ -252,7 +254,7 @@ export default function SettingsBillingPage() {
               {invoices.map((invoice) => (
                 <div
                   key={invoice.id}
-                  className="flex items-center justify-between rounded-lg bg-muted/30 p-3"
+                  className="flex items-center justify-between rounded-lg bg-[hsl(var(--surface-2))] p-3"
                 >
                   <div>
                     <p className="text-sm font-medium">

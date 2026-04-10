@@ -75,7 +75,7 @@ export function IntegrationTab({ ai }: IntegrationTabProps) {
           </a>
         </div>
       ) : (
-        <div className="rounded-lg border border-border/60 bg-muted/30 p-6 text-center">
+        <div className="rounded-lg border border-[hsl(var(--border-default)/60)] bg-[hsl(var(--surface-2))] p-6 text-center">
           <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-muted">
             <Lock className="h-5 w-5 text-muted-foreground" />
           </div>

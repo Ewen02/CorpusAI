@@ -82,7 +82,7 @@ export default function AIsPage() {
         </div>
         <Button
           onClick={handleCreateAI}
-          className="shrink-0 bg-gradient-to-r from-indigo-500 to-indigo-600 shadow-accent transition-all hover:opacity-90 hover:shadow-accent"
+          className="bg-gradient-primary shrink-0 shadow-accent transition-all hover:opacity-90 hover:shadow-accent"
         >
           <PlusIcon className="mr-2 h-4 w-4" />
           {t('createAI')}

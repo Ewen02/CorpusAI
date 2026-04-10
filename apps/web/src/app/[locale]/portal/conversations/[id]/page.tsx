@@ -18,7 +18,7 @@ export default function PortalConversationDetailPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <header className="border-b border-border px-6 py-4">
+        <header className="border-b border-[hsl(var(--border-default))] px-6 py-4">
           <div className="mx-auto flex max-w-2xl items-center gap-3">
             <Skeleton className="h-8 w-8 rounded" />
             <Skeleton className="h-5 w-48" />
@@ -54,7 +54,7 @@ export default function PortalConversationDetailPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border px-6 py-4">
+      <header className="border-b border-[hsl(var(--border-default))] px-6 py-4">
         <div className="mx-auto flex max-w-2xl items-center gap-3">
           <Button
             variant="ghost"

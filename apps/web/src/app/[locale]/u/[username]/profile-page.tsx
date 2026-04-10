@@ -19,7 +19,7 @@ export default function ProfilePage({ username }: ProfilePageProps) {
   return (
     <div className="min-h-screen bg-background">
       {/* Public header */}
-      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-sm">
+      <header className="sticky top-0 z-40 border-b border-[hsl(var(--border-default)/60)] bg-background/80 backdrop-blur-sm">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 lg:px-8">
           <a href="/">
             <Logo size="md" />

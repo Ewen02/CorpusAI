@@ -101,7 +101,7 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
           </div>
           <p className="mt-2 text-[13px] font-medium text-tx-secondary">réponses pertinentes</p>
           {data.satisfaction && data.satisfaction.total > 0 && (
-            <div className="mt-2 flex h-1.5 overflow-hidden rounded-full bg-muted/30">
+            <div className="mt-2 flex h-1.5 overflow-hidden rounded-full bg-[hsl(var(--surface-2))]">
               {data.satisfaction.high > 0 && (
                 <div
                   className="bg-green-500"
@@ -225,7 +225,7 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
                 <p className="mt-2 text-[13px] font-medium text-tx-secondary">
                   {fb.positive} positif{fb.positive > 1 ? 's' : ''} / {fb.total} avis
                 </p>
-                <div className="mt-2 flex h-1.5 overflow-hidden rounded-full bg-muted/30">
+                <div className="mt-2 flex h-1.5 overflow-hidden rounded-full bg-[hsl(var(--surface-2))]">
                   <div
                     className="bg-green-500"
                     style={{ width: `${(fb.positive / fb.total) * 100}%` }}
@@ -278,7 +278,7 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
                       </span>
                     </div>
                     <div className="mt-1.5 flex items-center gap-2">
-                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted/30">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[hsl(var(--surface-2))]">
                         <div
                           className="h-full rounded-full bg-[hsl(var(--accent-500))] transition-all"
                           style={{ width: `${Math.max(doc.coveragePercent, 2)}%` }}
@@ -362,7 +362,7 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
               return (
                 <div key={r.date} className="flex items-center gap-2 text-[11px]">
                   <span className="w-20 shrink-0 text-tx-muted">{r.date.slice(5)}</span>
-                  <div className="flex h-3 flex-1 overflow-hidden rounded-full bg-muted/30">
+                  <div className="flex h-3 flex-1 overflow-hidden rounded-full bg-[hsl(var(--surface-2))]">
                     <div
                       className="bg-blue-500"
                       style={{ width: `${(r.newUsers / total) * 100}%` }}
@@ -411,7 +411,7 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
                       {step.value} {i > 0 && <span className="text-tx-muted">({pct}%)</span>}
                     </span>
                   </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-muted/30">
+                  <div className="h-2 overflow-hidden rounded-full bg-[hsl(var(--surface-2))]">
                     <div
                       className="h-full rounded-full bg-[hsl(var(--accent-500))] transition-all"
                       style={{ width: `${Math.max(pct, 2)}%` }}

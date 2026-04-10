@@ -39,7 +39,7 @@ export default function PortalConversationsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border px-6 py-4">
+      <header className="border-b border-[hsl(var(--border-default))] px-6 py-4">
         <div className="mx-auto flex max-w-2xl items-center justify-between">
           <h1 className="text-lg font-semibold">{t('title')}</h1>
           <Button variant="ghost" size="sm" onClick={handleSignOut} disabled={isSigningOut}>

@@ -109,7 +109,7 @@ export default function SettingsApiKeysPage() {
                 {keys.map((key) => (
                   <div
                     key={key.id}
-                    className="flex items-center justify-between rounded-lg bg-muted/30 p-3"
+                    className="flex items-center justify-between rounded-lg bg-[hsl(var(--surface-2))] p-3"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
@@ -160,7 +160,7 @@ export default function SettingsApiKeysPage() {
           <div className="space-y-4">
             <div>
               <h4 className="mb-2 text-sm font-medium">{t('listAIs')}</h4>
-              <pre className="overflow-x-auto rounded-lg bg-muted/50 p-3 font-mono text-xs">
+              <pre className="overflow-x-auto rounded-lg bg-[hsl(var(--surface-2))] p-3 font-mono text-xs">
                 {`curl -H "Authorization: Bearer cai_votre_cle" \\
   ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/v1/ais`}
               </pre>
@@ -168,7 +168,7 @@ export default function SettingsApiKeysPage() {
 
             <div>
               <h4 className="mb-2 text-sm font-medium">{t('askQuestion')}</h4>
-              <pre className="overflow-x-auto rounded-lg bg-muted/50 p-3 font-mono text-xs">
+              <pre className="overflow-x-auto rounded-lg bg-[hsl(var(--surface-2))] p-3 font-mono text-xs">
                 {`curl -X POST \\
   -H "Authorization: Bearer cai_votre_cle" \\
   -H "Content-Type: application/json" \\
@@ -179,7 +179,7 @@ export default function SettingsApiKeysPage() {
 
             <div>
               <h4 className="mb-2 text-sm font-medium">{t('response')}</h4>
-              <pre className="overflow-x-auto rounded-lg bg-muted/50 p-3 font-mono text-xs">
+              <pre className="overflow-x-auto rounded-lg bg-[hsl(var(--surface-2))] p-3 font-mono text-xs">
                 {`{
   "answer": "${t('generatedResponse')}",
   "sources": [

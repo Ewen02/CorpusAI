@@ -224,7 +224,7 @@ export function EvalTab() {
               {slugReports.slice(0, 3).map((report, idx) => (
                 <div
                   key={report.runId}
-                  className={`rounded-md p-2 text-xs ${idx === 0 ? 'border border-primary/20 bg-primary/10' : 'bg-muted/30'}`}
+                  className={`rounded-md p-2 text-xs ${idx === 0 ? 'border border-primary/20 bg-primary/10' : 'bg-[hsl(var(--surface-2))]'}`}
                 >
                   <p className="font-medium text-muted-foreground">
                     {formatRunDate(report.runId)}

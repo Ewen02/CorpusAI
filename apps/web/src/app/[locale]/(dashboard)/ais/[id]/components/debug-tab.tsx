@@ -140,7 +140,7 @@ export const DebugTab = React.memo(function DebugTab({ aiId }: DebugTabProps) {
                 max="20"
                 value={topK}
                 onChange={(e) => setTopK(parseInt(e.target.value) || 5)}
-                className="w-16 rounded border border-border bg-background px-2 py-1 text-center"
+                className="w-16 rounded border border-[hsl(var(--border-default))] bg-background px-2 py-1 text-center"
               />
             </div>
           </div>
@@ -166,19 +166,19 @@ export const DebugTab = React.memo(function DebugTab({ aiId }: DebugTabProps) {
             </CardHeader>
             <CardContent>
               <div className="mb-4 grid grid-cols-2 gap-4 md:grid-cols-4">
-                <div className="rounded-lg bg-muted/50 p-3">
+                <div className="rounded-lg bg-[hsl(var(--surface-2))] p-3">
                   <p className="mb-1 text-xs text-muted-foreground">Chunks</p>
                   <p className="text-2xl font-bold">{result.resultsCount}</p>
                 </div>
-                <div className="rounded-lg bg-muted/50 p-3">
+                <div className="rounded-lg bg-[hsl(var(--surface-2))] p-3">
                   <p className="mb-1 text-xs text-muted-foreground">Score moyen</p>
                   <p className="text-2xl font-bold">{result.analysis.avgScore.toFixed(2)}</p>
                 </div>
-                <div className="rounded-lg bg-muted/50 p-3">
+                <div className="rounded-lg bg-[hsl(var(--surface-2))] p-3">
                   <p className="mb-1 text-xs text-muted-foreground">Score max</p>
                   <p className="text-2xl font-bold">{result.analysis.maxScore.toFixed(2)}</p>
                 </div>
-                <div className="rounded-lg bg-muted/50 p-3">
+                <div className="rounded-lg bg-[hsl(var(--surface-2))] p-3">
                   <p className="mb-1 text-xs text-muted-foreground">Au-dessus seuil</p>
                   <Badge
                     className={
@@ -191,7 +191,7 @@ export const DebugTab = React.memo(function DebugTab({ aiId }: DebugTabProps) {
                   </Badge>
                 </div>
               </div>
-              <div className="rounded-lg border border-border bg-muted/30 p-4">
+              <div className="rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-2))] p-4">
                 <p className="mb-1 text-sm font-medium">Recommandation</p>
                 <p className="text-sm text-muted-foreground">{result.analysis.recommendation}</p>
               </div>
@@ -210,7 +210,7 @@ export const DebugTab = React.memo(function DebugTab({ aiId }: DebugTabProps) {
               {result.results.map((r) => (
                 <div
                   key={`${r.documentId}-${r.rank}`}
-                  className="rounded-lg border border-border p-4 transition-colors hover:border-muted-foreground/30"
+                  className="rounded-lg border border-[hsl(var(--border-default))] p-4 transition-colors hover:border-muted-foreground/30"
                 >
                   <div className="mb-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">

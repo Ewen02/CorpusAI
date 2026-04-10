@@ -457,7 +457,7 @@ function AccessTab({
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-7 px-2 text-[12px] text-tx-muted hover:text-[hsl(var(--danger))]"
+                      className="h-7 px-2 text-[12px] text-tx-muted hover:bg-[hsl(var(--danger)/0.1)] hover:text-[hsl(var(--danger))]"
                       onClick={() => handleRevoke(grant.endUser.id)}
                       disabled={revokeMember.isPending}
                     >

@@ -383,7 +383,7 @@ function FailedJobRow({
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-tx-muted hover:text-[hsl(var(--danger))]"
+          className="h-8 w-8 text-tx-muted hover:bg-[hsl(var(--danger)/0.1)] hover:text-[hsl(var(--danger))]"
           onClick={onDiscard}
           disabled={isDiscarding}
           title={t('discardTitle')}

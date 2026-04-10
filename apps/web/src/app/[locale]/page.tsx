@@ -119,7 +119,7 @@ export default async function Home() {
     <div className="min-h-screen">
       <AnalyticsTracker event="landing_viewed" />
       {/* Navigation */}
-      <nav className="fixed top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-sm">
+      <nav className="fixed top-0 z-50 w-full border-b border-[hsl(var(--border-default)/40)] bg-background/80 backdrop-blur-sm">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
           <Logo size="lg" />
           <div className="hidden items-center gap-8 md:flex">
@@ -180,8 +180,8 @@ export default async function Home() {
 
         {/* Hero visual */}
         <div className="relative mx-auto mt-16 max-w-2xl px-6">
-          <div className="glass overflow-hidden rounded-xl border border-border/60 bg-card">
-            <div className="flex items-center gap-2 border-b border-border/60 bg-muted/30 px-4 py-3">
+          <div className="glass overflow-hidden rounded-xl border border-[hsl(var(--border-default)/60)] bg-card">
+            <div className="flex items-center gap-2 border-b border-[hsl(var(--border-default)/60)] bg-[hsl(var(--surface-2))] px-4 py-3">
               <div className="flex gap-1.5">
                 <span className="h-2.5 w-2.5 rounded-full bg-border/80" />
                 <span className="h-2.5 w-2.5 rounded-full bg-border/80" />
@@ -208,7 +208,10 @@ export default async function Home() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="border-t border-border/60 py-20 md:py-28">
+      <section
+        id="features"
+        className="border-t border-[hsl(var(--border-default)/60)] py-20 md:py-28"
+      >
         <div className="mx-auto max-w-7xl px-6">
           <div className="text-center">
             <p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted-foreground/50">
@@ -225,7 +228,7 @@ export default async function Home() {
           <div className="mt-14 grid gap-4 md:grid-cols-2">
             {features.map((feature, index) => (
               <AnimatedSection key={feature.title} delay={index * 80}>
-                <div className="group rounded-xl border border-border/60 bg-card p-6 transition-all duration-200 hover:border-primary/20 hover:bg-card/80">
+                <div className="group rounded-xl border border-[hsl(var(--border-default)/60)] bg-card p-6 transition-all duration-200 hover:border-primary/20 hover:bg-card/80">
                   <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                     {feature.icon}
                   </div>
@@ -241,7 +244,7 @@ export default async function Home() {
       </section>
 
       {/* Community Section */}
-      <section className="border-t border-border/60 py-20 md:py-28">
+      <section className="border-t border-[hsl(var(--border-default)/60)] py-20 md:py-28">
         <div className="mx-auto max-w-7xl px-6">
           <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
             <div>
@@ -268,14 +271,14 @@ export default async function Home() {
               {showcaseAIs.map((ai) => (
                 <div
                   key={ai.name}
-                  className="rounded-xl border border-border/60 bg-card p-4 transition-all duration-200 hover:border-primary/20"
+                  className="rounded-xl border border-[hsl(var(--border-default)/60)] bg-card p-4 transition-all duration-200 hover:border-primary/20"
                 >
                   <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15 text-xs font-semibold text-primary">
                     {ai.name.charAt(0)}
                   </div>
                   <p className="text-xs font-medium leading-snug">{ai.name}</p>
                   <div className="mt-2 flex items-center justify-between">
-                    <span className="rounded-full bg-muted/60 px-2 py-0.5 text-[10px] text-muted-foreground">
+                    <span className="rounded-full bg-[hsl(var(--surface-2))] px-2 py-0.5 text-[10px] text-muted-foreground">
                       {ai.category}
                     </span>
                     <span className="text-[10px] text-muted-foreground/60">
@@ -290,9 +293,9 @@ export default async function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="border-t border-border/60 py-20 md:py-28">
+      <section className="border-t border-[hsl(var(--border-default)/60)] py-20 md:py-28">
         <AnimatedSection>
-          <div className="glass relative mx-auto max-w-3xl overflow-hidden rounded-2xl border border-border/60 bg-card px-8 py-16 text-center">
+          <div className="glass relative mx-auto max-w-3xl overflow-hidden rounded-2xl border border-[hsl(var(--border-default)/60)] bg-card px-8 py-16 text-center">
             <div
               className="pointer-events-none absolute inset-0 -z-10"
               aria-hidden
@@ -318,7 +321,7 @@ export default async function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border/60 py-10">
+      <footer className="border-t border-[hsl(var(--border-default)/60)] py-10">
         <div className="mx-auto max-w-7xl px-6">
           <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
             <Logo size="md" />

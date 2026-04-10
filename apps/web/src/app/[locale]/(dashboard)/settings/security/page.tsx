@@ -153,7 +153,7 @@ export default function SettingsSecurityPage() {
           )}
 
           {oauthAccounts.length > 0 && !hasPasswordAuth && (
-            <div className="mt-4 rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
+            <div className="mt-4 rounded-lg bg-[hsl(var(--surface-2))] p-3 text-sm text-muted-foreground">
               <p>
                 {t('oauthOnly', {
                   providers: oauthAccounts
@@ -236,7 +236,7 @@ export default function SettingsSecurityPage() {
           <CardDescription>{t('sessionsDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between rounded-lg bg-muted/50 p-4">
+          <div className="flex items-center justify-between rounded-lg bg-[hsl(var(--surface-2))] p-4">
             <div className="flex items-center gap-3">
               <DeviceIcon className="h-8 w-8 text-muted-foreground" />
               <div>
@@ -366,7 +366,7 @@ function TwoFactorSection() {
             {backupCodes && (
               <div>
                 <p className="mb-2 text-sm font-medium">{t('saveBackupCodes')}</p>
-                <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted/50 p-3">
+                <div className="grid grid-cols-2 gap-1 rounded-lg bg-[hsl(var(--surface-2))] p-3">
                   {backupCodes.map((bc, i) => (
                     <code key={i} className="font-mono text-xs">
                       {bc}

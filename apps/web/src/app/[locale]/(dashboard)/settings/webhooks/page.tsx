@@ -123,7 +123,7 @@ export default function SettingsWebhooksPage() {
                     className={`rounded-full border px-3 py-1 text-xs transition-colors ${
                       selectedEvents.includes(event)
                         ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-border text-muted-foreground hover:border-primary/50'
+                        : 'border-[hsl(var(--border-default))] text-muted-foreground hover:border-primary/50'
                     }`}
                   >
                     {t(EVENT_LABEL_KEYS[event])}
@@ -196,7 +196,10 @@ export default function SettingsWebhooksPage() {
             ) : (
               <div className="space-y-4">
                 {webhooks.map((webhook) => (
-                  <div key={webhook.id} className="rounded-lg border border-border bg-muted/30 p-4">
+                  <div
+                    key={webhook.id}
+                    className="rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-2))] p-4"
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <code className="break-all text-sm font-medium">{webhook.url}</code>
@@ -246,7 +249,7 @@ export default function SettingsWebhooksPage() {
 
                     {/* Last Deliveries */}
                     {webhook.deliveries.length > 0 && (
-                      <div className="mt-3 border-t border-border pt-3">
+                      <div className="mt-3 border-t border-[hsl(var(--border-default))] pt-3">
                         <p className="mb-2 text-xs font-medium text-muted-foreground">
                           {t('lastDeliveries')}
                         </p>
