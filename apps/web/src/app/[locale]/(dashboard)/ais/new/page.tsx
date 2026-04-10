@@ -210,7 +210,7 @@ export default function CreateAIPage() {
             type="submit"
             size="sm"
             disabled={isLoading || !formValues.name || !slug}
-            className="bg-gradient-primary shadow-[0_2px_8px_hsl(var(--accent-500)/0.35)] hover:opacity-90 disabled:opacity-50"
+            className="bg-primary shadow-[0_2px_8px_hsl(var(--accent-500)/0.35)] hover:opacity-90 disabled:opacity-50"
           >
             {isLoading ? t('submitting') : t('submit')}
           </Button>

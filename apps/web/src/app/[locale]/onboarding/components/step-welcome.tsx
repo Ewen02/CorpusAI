@@ -59,7 +59,7 @@ export function StepWelcome({ firstName, onNext }: StepWelcomeProps) {
       </div>
 
       <div className="flex flex-col gap-3">
-        <Button size="lg" className="bg-gradient-primary w-full" onClick={onNext}>
+        <Button size="lg" className="w-full bg-primary" onClick={onNext}>
           {t('start')}
         </Button>
         <Button

@@ -160,7 +160,7 @@ export function StepCreateAI({ onCreated, template }: StepCreateAIProps) {
       <Button
         type="submit"
         size="lg"
-        className="bg-gradient-primary w-full"
+        className="w-full bg-primary"
         disabled={!name.trim() || !slug || isLoading}
       >
         {isLoading ? t('creating') : t('continue')}

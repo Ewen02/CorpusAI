@@ -42,7 +42,7 @@ export function StepUpload({
       <div className="flex flex-col gap-3">
         <Button
           size="lg"
-          className="bg-gradient-primary w-full"
+          className="w-full bg-primary"
           onClick={onNext}
           disabled={!hasUploaded || isUploading}
         >

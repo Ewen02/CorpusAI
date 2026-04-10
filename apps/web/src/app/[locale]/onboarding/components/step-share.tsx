@@ -75,7 +75,7 @@ export function StepShare({
         </Card>
       </div>
 
-      <Button size="lg" className="bg-gradient-primary w-full" onClick={onFinish}>
+      <Button size="lg" className="w-full bg-primary" onClick={onFinish}>
         {t('finish')}
       </Button>
     </div>

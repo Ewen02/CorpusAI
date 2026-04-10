@@ -45,7 +45,7 @@ export default function DashboardPage() {
         </div>
         <Button
           onClick={handleCreateAI}
-          className="bg-gradient-primary shrink-0 shadow-accent transition-all hover:opacity-90 hover:shadow-accent"
+          className="shrink-0 bg-primary shadow-accent transition-all hover:opacity-90 hover:shadow-accent"
         >
           <PlusIcon className="mr-2 h-4 w-4" />
           {t('createAI')}
@@ -61,7 +61,7 @@ export default function DashboardPage() {
               <h2 className="text-lg font-semibold text-tx-primary">{t('onboardingTitle')}</h2>
               <p className="mt-1 max-w-lg text-sm text-tx-muted">{t('onboardingDescription')}</p>
             </div>
-            <Button onClick={handleCreateAI} className="bg-gradient-primary shrink-0 shadow-accent">
+            <Button onClick={handleCreateAI} className="shrink-0 bg-primary shadow-accent">
               <PlusIcon className="mr-2 h-4 w-4" />
               {t('createMyFirstAI')}
             </Button>

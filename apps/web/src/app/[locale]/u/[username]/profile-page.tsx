@@ -33,7 +33,7 @@ export default function ProfilePage({ username }: ProfilePageProps) {
             </a>
             <a
               href="/sign-up"
-              className="bg-gradient-primary rounded-lg px-3.5 py-1.5 text-sm font-medium text-white shadow-accent transition-all hover:opacity-90"
+              className="rounded-lg bg-primary px-3.5 py-1.5 text-sm font-medium text-primary-foreground transition-all hover:bg-primary/90"
             >
               {t('createMine')}
             </a>

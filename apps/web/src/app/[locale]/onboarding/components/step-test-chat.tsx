@@ -86,7 +86,7 @@ export function StepTestChat({
         />
       </Card>
 
-      <Button size="lg" className="bg-gradient-primary w-full" onClick={onNext}>
+      <Button size="lg" className="w-full bg-primary" onClick={onNext}>
         {t('continue')}
       </Button>
     </div>

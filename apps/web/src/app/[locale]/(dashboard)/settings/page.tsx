@@ -237,7 +237,7 @@ export default function SettingsProfilePage() {
               <Button
                 type="submit"
                 disabled={isSaving}
-                className="bg-gradient-primary shadow-[0_2px_8px_hsl(var(--accent-500)/0.35)] hover:opacity-90"
+                className="bg-primary shadow-[0_2px_8px_hsl(var(--accent-500)/0.35)] hover:opacity-90"
               >
                 {isSaving ? t('saving') : t('save')}
               </Button>
