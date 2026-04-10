@@ -54,7 +54,7 @@ export type {
   Source,
   LLMConfig,
 } from './rag';
-export { RAGPipelineImpl } from './rag';
+export { RAGPipelineImpl, LLMUnavailableError } from './rag';
 
 // Parsers
 export type {

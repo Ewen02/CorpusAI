@@ -13,4 +13,4 @@ export type {
   Source,
   LLMConfig,
 } from './types';
-export { RAGPipelineImpl } from './pipeline';
+export { RAGPipelineImpl, LLMUnavailableError } from './pipeline';

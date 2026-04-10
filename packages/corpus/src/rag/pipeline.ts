@@ -1,4 +1,4 @@
-import OpenAI from 'openai';
+import OpenAI, { APIConnectionError, RateLimitError, InternalServerError } from 'openai';
 import { buildSystemPrompt, buildContextSection } from '@corpusai/ai-rules';
 import type { EmbeddingService } from '../embeddings/types';
 import type { SparseVectorGenerator } from '../embeddings/sparse';
@@ -81,6 +81,28 @@ async function withConcurrency<T>(tasks: (() => Promise<T>)[], limit: number): P
   });
   await Promise.all(workers);
   return results;
+}
+
+/**
+ * Error thrown when the LLM API is unavailable after retry attempts.
+ */
+export class LLMUnavailableError extends Error {
+  constructor(cause?: Error) {
+    super('LLM service is temporarily unavailable. Please try again later.');
+    this.name = 'LLMUnavailableError';
+    this.cause = cause;
+  }
+}
+
+/**
+ * Check if an OpenAI error is retryable (transient).
+ */
+function isRetryableLLMError(error: unknown): boolean {
+  return (
+    error instanceof APIConnectionError ||
+    error instanceof RateLimitError ||
+    error instanceof InternalServerError
+  );
 }
 
 /**
@@ -413,16 +435,20 @@ export class RAGPipelineImpl implements RAGPipeline {
       content: m.content,
     }));
 
-    const response = await this.openai.chat.completions.create({
-      model: this.model,
-      temperature: this.temperature,
-      max_tokens: this.maxTokens,
-      messages: [
-        { role: 'system', content: systemContent },
-        ...historyMessages,
-        { role: 'user', content: question },
-      ],
-    });
+    const llmMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+      { role: 'system', content: systemContent },
+      ...historyMessages,
+      { role: 'user', content: question },
+    ];
+
+    const response = await this.callLLMWithRetry(() =>
+      this.openai.chat.completions.create({
+        model: this.model,
+        temperature: this.temperature,
+        max_tokens: this.maxTokens,
+        messages: llmMessages,
+      })
+    );
     metrics.llmMs = Date.now() - llmStart;
     metrics.totalMs = Date.now() - totalStart;
     metrics.promptTokens = response.usage?.prompt_tokens;
@@ -548,18 +574,22 @@ export class RAGPipelineImpl implements RAGPipeline {
       content: m.content,
     }));
 
-    const stream = await this.openai.chat.completions.create({
-      model: this.model,
-      temperature: this.temperature,
-      max_tokens: this.maxTokens,
-      stream: true,
-      stream_options: { include_usage: true },
-      messages: [
-        { role: 'system', content: systemContent },
-        ...historyMessages,
-        { role: 'user', content: question },
-      ],
-    });
+    const llmMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+      { role: 'system', content: systemContent },
+      ...historyMessages,
+      { role: 'user', content: question },
+    ];
+
+    const stream = await this.callLLMWithRetry(() =>
+      this.openai.chat.completions.create({
+        model: this.model,
+        temperature: this.temperature,
+        max_tokens: this.maxTokens,
+        stream: true as const,
+        stream_options: { include_usage: true },
+        messages: llmMessages,
+      })
+    );
 
     this.log('[RAG-STREAM] Calling LLM with streaming...');
 
@@ -818,6 +848,37 @@ export class RAGPipelineImpl implements RAGPipeline {
     onProgress?.('enriching', 30, `${chunks.length} chunks enriched`);
 
     return results;
+  }
+
+  /**
+   * Call an LLM function with retry on transient errors (rate limit, connection, 500).
+   * Throws LLMUnavailableError after all attempts are exhausted.
+   */
+  private async callLLMWithRetry<T>(fn: () => Promise<T>): Promise<T> {
+    const maxAttempts = 2;
+    let lastError: Error | undefined;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+
+        if (!isRetryableLLMError(error)) {
+          throw new LLMUnavailableError(lastError);
+        }
+
+        if (attempt < maxAttempts - 1) {
+          const delay = RAGPipelineImpl.RETRY_BASE_DELAY * Math.pow(2, attempt);
+          this.log(
+            `[RAG] LLM call failed (attempt ${attempt + 1}/${maxAttempts}), retrying in ${delay}ms...`
+          );
+          await this.delay(delay);
+        }
+      }
+    }
+
+    throw new LLMUnavailableError(lastError);
   }
 
   /**
