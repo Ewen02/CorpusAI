@@ -85,7 +85,9 @@ async function getEmbedding(text: string): Promise<number[]> {
     model: EMBEDDING_MODEL,
     input: text,
   });
-  return response.data[0].embedding;
+  const item = response.data[0];
+  if (!item) throw new Error('No embedding returned');
+  return item.embedding;
 }
 
 async function getEmbeddings(texts: string[]): Promise<number[][]> {
@@ -104,7 +106,7 @@ function chunkDocument(text: string, maxSize = 500): string[] {
       return [txt.trim()].filter((c) => c.length > 0);
     }
 
-    const separator = separators[sepIndex];
+    const separator = separators[sepIndex]!;
     const parts = txt.split(separator);
     const chunks: string[] = [];
     let current = '';
@@ -175,10 +177,7 @@ async function searchContext(
 /**
  * Génère une réponse à partir du contexte
  */
-async function generateAnswer(
-  question: string,
-  context: string
-): Promise<string> {
+async function generateAnswer(question: string, context: string): Promise<string> {
   const systemPrompt = `Tu es un assistant expert en programmation.
 Réponds UNIQUEMENT en utilisant les informations du contexte fourni.
 Si l'information n'est pas présente dans le contexte, réponds exactement : "Je ne dispose pas de cette information dans ma base de connaissances."
@@ -199,7 +198,7 @@ ${context}
     ],
   });
 
-  return response.choices[0].message.content || '';
+  return response.choices[0]?.message.content || '';
 }
 
 /**
@@ -244,15 +243,16 @@ async function askRAG(question: string): Promise<void> {
 
   if (!context) {
     console.log('❌ Aucun contexte pertinent trouvé.');
-    console.log('💬 Réponse: Je ne dispose pas d\'information sur ce sujet.\n');
+    console.log("💬 Réponse: Je ne dispose pas d'information sur ce sujet.\n");
     return;
   }
 
   // 2. Afficher les sources trouvées
   console.log('📚 Sources trouvées:');
   sources.forEach((source, i) => {
-    const bar = '█'.repeat(Math.round(scores[i] * 20));
-    console.log(`   ${source}: [${scores[i].toFixed(3)}] ${bar}`);
+    const score = scores[i] ?? 0;
+    const bar = '█'.repeat(Math.round(score * 20));
+    console.log(`   ${source}: [${score.toFixed(3)}] ${bar}`);
   });
   console.log();
 
@@ -307,7 +307,7 @@ async function runExperiments() {
   // Insertion dans Qdrant
   const points = chunks.map((text, i) => ({
     id: crypto.randomUUID(),
-    vector: embeddings[i],
+    vector: embeddings[i]!,
     payload: { text, chunk_index: i, source: 'typescript-guide.md' },
   }));
 
@@ -321,7 +321,7 @@ async function runExperiments() {
   console.log('\n📊 ÉTAPE 2: Questions avec RAG\n');
 
   // Question 1: Information présente
-  await askRAG('Qu\'est-ce que TypeScript ?');
+  await askRAG("Qu'est-ce que TypeScript ?");
 
   // Question 2: Information précise
   await askRAG('Qui a créé TypeScript et quand ?');
@@ -356,7 +356,7 @@ async function runExperiments() {
   console.log('2. Le prompt doit dire "utilise UNIQUEMENT le contexte"');
   console.log('3. Temperature basse (0.2) pour des réponses factuelles');
   console.log('4. Le LLM peut dire "Je ne sais pas" si le contexte ne contient pas l\'info');
-  console.log('5. Le streaming améliore l\'expérience utilisateur');
+  console.log("5. Le streaming améliore l'expérience utilisateur");
   console.log('\n➡️  Prochaine étape: Services production');
   console.log('   Transformer ces expériences en vrais services pour CorpusAI');
 }
