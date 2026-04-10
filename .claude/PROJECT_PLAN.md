@@ -91,6 +91,9 @@ EndUser (1) ──── (N) Conversation
 | CI/CD                           | 100%   | GitHub Actions: lint, typecheck, test, build, docker matrix                                          |
 | Changesets                      | 100%   | @changesets/cli configure, semantic versioning                                                       |
 | PostHog analytics               | 100%   | 20+ events types, production-only, typed track() helper                                              |
+| Documentation API               | 100%   | Page /docs/api publique, i18n FR/EN, quickstart, endpoints, SDK, webhooks                            |
+| Export corpus                   | 100%   | GET /ais/:aiId/documents/export (ZIP: metadata.json, documents/\*.txt, chunks.jsonl)                 |
+| Design system unifie            | 100%   | Logo atom, AICard unifie (dashboard/explore), glass effects, design tokens standardises              |
 
 ---
 
@@ -124,12 +127,11 @@ EndUser (1) ──── (N) Conversation
 
 ## Roadmap V5 — Prochaines etapes
 
-### P0 — Distribution & Documentation
+### P0 — Distribution & Documentation — DONE
 
-| Tache                          | Description                                             | Complexite |
-| ------------------------------ | ------------------------------------------------------- | ---------- |
-| **Documentation API publique** | Pages docs pour le SDK + API, exemples, guide demarrage | Moyen      |
-| **Export corpus**              | ZIP documents + chunks pour backup/migration            | Petit      |
+- [x] Documentation API publique (page /docs/api, i18n, quickstart, SDK, webhooks)
+- [x] Export corpus ZIP (GET /ais/:aiId/documents/export, archiver, bouton settings)
+- [x] Design system polish (Logo atom, AICard unifie, glass effects, design tokens standardises)
 
 ### P1 — Robustesse
 

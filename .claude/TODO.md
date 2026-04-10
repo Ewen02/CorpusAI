@@ -7,10 +7,11 @@ Voir section "Fait" en bas.
 
 ## Reste a faire — Roadmap V5
 
-### P0 — Distribution & Documentation
+### P0 — Distribution & Documentation — DONE
 
-- [ ] **Documentation API publique** — Pages docs pour le SDK + API, exemples, guide demarrage rapide
-- [ ] **Export corpus** — ZIP documents + chunks pour backup/migration
+- [x] **Documentation API publique** — Page /docs/api, i18n FR/EN, quickstart, endpoints, SDK, webhooks
+- [x] **Export corpus** — GET /ais/:aiId/documents/export (ZIP: metadata.json, documents/\*.txt, chunks.jsonl)
+- [x] **Design system polish** — Logo atom unifie, AICard unifie (dashboard/explore), glass effects, design tokens standardises, landing alignment
 
 ### P1 — Robustesse
 
@@ -128,3 +129,14 @@ Voir section "Fait" en bas.
 - [x] Typecheck 100% — Experiments exclus du typecheck ai-worker
 - [x] Helmet CSP strict — No unsafe-inline, HSTS preload
 - [x] Backend audit refactoring — ConfigService injection, ownership centralise
+
+### V5 P0 — Distribution & Documentation (2026-04-10)
+
+- [x] Documentation API publique — Page /docs/api, i18n FR/EN, quickstart, endpoints reference, SDK usage, webhooks verification
+- [x] Export corpus ZIP — GET /ais/:aiId/documents/export (archiver), bouton dans settings AI
+- [x] Logo atom — Composant @corpusai/ui/Logo unifie (sm/md/lg/xl), remplace 6 implementations dupliquees
+- [x] AICard unifie — Fusion AICard + ExploreAICard en un composant avec variants (dashboard/explore)
+- [x] Glass effects — bg-page, glass header, orbes flottants sur auth, dashboard, landing, explore, profile
+- [x] Design tokens standardises — border-border → border-[hsl(var(--border-default))], bg-muted/\* → bg-[hsl(var(--surface-2))], 21 fichiers
+- [x] Landing page alignment — max-w-6xl uniforme header + sections, glass nav
+- [x] Boutons CTA sobres — bg-gradient-primary remplace par bg-primary (couleur unie)
