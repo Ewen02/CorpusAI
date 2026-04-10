@@ -83,7 +83,7 @@ export function track<N extends EventName>(
   // Guard: posthog-js is only initialized in the browser when the public key
   // env var is set. On SSR / dev / misconfig it's a safe no-op.
   if (typeof window === 'undefined') return;
-  if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) return;
+  if (!process.env.NEXT_PUBLIC_POSTHOG_KEY || process.env.NODE_ENV !== 'production') return;
   try {
     posthog.capture(name, (data ?? {}) as Record<string, unknown>);
   } catch {

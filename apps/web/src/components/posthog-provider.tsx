@@ -19,7 +19,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
-    if (!key || typeof window === 'undefined') return;
+    if (!key || typeof window === 'undefined' || process.env.NODE_ENV !== 'production') return;
 
     posthog.init(key, {
       api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://eu.i.posthog.com',
@@ -47,7 +47,7 @@ export function PostHogPageView() {
 
   React.useEffect(() => {
     if (!pathname) return;
-    if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) return;
+    if (!process.env.NEXT_PUBLIC_POSTHOG_KEY || process.env.NODE_ENV !== 'production') return;
     let url = window.origin + pathname;
     const query = searchParams?.toString();
     if (query) url += `?${query}`;
