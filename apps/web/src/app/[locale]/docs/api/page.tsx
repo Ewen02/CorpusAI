@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
-import { Badge } from '@corpusai/ui';
+import { Badge, Logo } from '@corpusai/ui';
 import { Link } from '@/i18n/routing';
 import { ApiDocsContent } from './api-docs-content';
 
@@ -28,8 +28,8 @@ export default async function ApiDocsPage() {
       <header className="glass sticky top-0 z-50 border-b border-[hsl(var(--border))]">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-3">
-            <Link href="/" className="text-gradient text-lg font-bold">
-              CorpusAI
+            <Link href="/">
+              <Logo size="md" />
             </Link>
             <Badge variant="secondary">{t('title')}</Badge>
           </div>

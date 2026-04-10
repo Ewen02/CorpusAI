@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useRouter } from '@/i18n/routing';
 import { useTranslations, useLocale } from 'next-intl';
-import { ExploreAICard, Avatar, AvatarFallback, AvatarImage, Skeleton } from '@corpusai/ui';
+import { ExploreAICard, Avatar, AvatarFallback, AvatarImage, Skeleton, Logo } from '@corpusai/ui';
 import { useCreatorProfile } from '@/lib/queries';
 
 interface ProfilePageProps {
@@ -21,11 +21,8 @@ export default function ProfilePage({ username }: ProfilePageProps) {
       {/* Public header */}
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-sm">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 lg:px-8">
-          <a href="/" className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">
-              C
-            </div>
-            <span className="text-sm font-semibold tracking-tight">CorpusAI</span>
+          <a href="/">
+            <Logo size="md" />
           </a>
           <div className="flex items-center gap-3">
             <a

@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { cn } from '../lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../molecules/card';
+import { Logo } from '../atoms/logo';
 
 // ============================================
 // Types
@@ -54,16 +55,7 @@ export function AuthLayout({
         )}
 
         {/* Logo */}
-        <div className="mb-8 flex justify-center">
-          {logo || (
-            <div className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-lg font-bold text-primary-foreground">
-                C
-              </div>
-              <span className="text-xl font-semibold text-foreground">CorpusAI</span>
-            </div>
-          )}
-        </div>
+        <div className="mb-8 flex justify-center">{logo || <Logo size="xl" />}</div>
 
         {/* Auth Card */}
         <Card variant="glass" className="shadow-xl">

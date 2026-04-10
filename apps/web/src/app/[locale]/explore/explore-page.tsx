@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useRouter } from '@/i18n/routing';
 import { useTranslations } from 'next-intl';
-import { ExploreAICard, Skeleton, cn } from '@corpusai/ui';
+import { ExploreAICard, Skeleton, Logo, cn } from '@corpusai/ui';
 import { useExploreAIs, useFeaturedAIs } from '@/lib/queries';
 import { SearchIcon } from '@/lib/icons';
 import type { AICategory } from '@corpusai/types';
@@ -57,13 +57,8 @@ export default function ExplorePage() {
       {/* Public header */}
       <header className="glass sticky top-0 z-40 border-b border-[hsl(var(--border-subtle))]">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 lg:px-8">
-          <a href="/" className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-400 to-indigo-600 shadow-sm">
-              <span className="text-[11px] font-bold text-white">C</span>
-            </div>
-            <span className="text-[14px] font-semibold tracking-tight text-tx-primary">
-              CorpusAI
-            </span>
+          <a href="/">
+            <Logo size="md" />
           </a>
           <div className="flex items-center gap-3">
             <a

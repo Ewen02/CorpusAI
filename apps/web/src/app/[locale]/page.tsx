@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Link } from '@/i18n/routing';
 import { getTranslations } from 'next-intl/server';
-import { Button, Badge } from '@corpusai/ui';
+import { Button, Badge, Logo } from '@corpusai/ui';
 import { AnimatedSection } from '@/components/animated-section';
 import { AnalyticsTracker } from '@/components/analytics-tracker';
 
@@ -121,12 +121,7 @@ export default async function Home() {
       {/* Navigation */}
       <nav className="fixed top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-sm">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <span className="text-sm font-bold text-primary-foreground">C</span>
-            </div>
-            <span className="text-base font-semibold tracking-tight">CorpusAI</span>
-          </div>
+          <Logo size="lg" />
           <div className="hidden items-center gap-8 md:flex">
             <a
               href="#features"
@@ -326,12 +321,7 @@ export default async function Home() {
       <footer className="border-t border-border/60 py-10">
         <div className="mx-auto max-w-7xl px-6">
           <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary">
-                <span className="text-xs font-bold text-primary-foreground">C</span>
-              </div>
-              <span className="text-sm font-semibold tracking-tight">CorpusAI</span>
-            </div>
+            <Logo size="md" />
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
               <Link href="/explore" className="transition-colors hover:text-foreground">
                 {t('explore')}

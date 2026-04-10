@@ -4,6 +4,7 @@ import * as React from 'react';
 import { cn } from '../lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '../atoms/avatar';
 import { Skeleton } from '../atoms/skeleton';
+import { Logo } from '../atoms/logo';
 
 // ============================================
 // Types
@@ -103,15 +104,10 @@ function SidebarHeader({
   return (
     <div className="flex h-[60px] shrink-0 items-center px-3">
       <div className={cn('flex min-w-0 items-center gap-3', isCollapsed && 'justify-center')}>
-        {logo || (
-          <div className="shadow-accent-sm relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-400 to-indigo-600 ring-1 ring-[hsl(var(--accent-500)/0.3)]">
-            <span className="relative z-10 text-sm font-bold tracking-tight text-white">C</span>
-            <div className="absolute inset-0 rounded-lg bg-gradient-to-b from-white/15 to-transparent" />
-          </div>
-        )}
+        {logo || <Logo size="lg" showText={false} />}
         {!isCollapsed && (
           <div className="flex min-w-0 flex-col">
-            <span className="text-[15px] font-semibold leading-none tracking-tight text-foreground">
+            <span className="text-tx-primary text-[15px] font-semibold leading-none tracking-tight">
               CorpusAI
             </span>
             <span className="text-tx-muted mt-[3px] text-[11px] leading-none">

@@ -16,6 +16,9 @@ export { Label } from './atoms/label';
 export { Badge, badgeVariants } from './atoms/badge';
 export type { BadgeProps } from './atoms/badge';
 
+export { Logo } from './atoms/logo';
+export type { LogoProps } from './atoms/logo';
+
 export { Skeleton } from './atoms/skeleton';
 
 export { Avatar, AvatarImage, AvatarFallback } from './atoms/avatar';
