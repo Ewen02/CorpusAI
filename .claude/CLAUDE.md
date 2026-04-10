@@ -34,7 +34,9 @@ corpusai/
 │   ├── corpus/           # Pipeline RAG complet (parsers → vectors → LLM)
 │   ├── ai-rules/         # Prompts systeme, confidence, context formatting
 │   ├── subscription/     # Logique abonnements & limites par plan
-│   └── queue/            # BullMQ queue client, job types, retry config
+│   ├── queue/            # BullMQ queue client, job types, retry config
+│   ├── email/            # Templates email transactionnels (Resend)
+│   └── sdk/              # SDK TypeScript public (@corpusai/sdk)
 └── tooling/
     └── typescript-config/ # Configs TS partagees
 ```
@@ -60,7 +62,7 @@ Mandatory format: `<type>(<scope>): <description>`
 
 ### Scopes
 
-`web`, `api`, `ai-worker`, `ui`, `types`, `database`, `corpus`, `ai-rules`, `subscription`, `queue`
+`web`, `api`, `ai-worker`, `ui`, `types`, `database`, `corpus`, `ai-rules`, `subscription`, `queue`, `email`, `sdk`
 
 ### Strict Rules
 
@@ -166,7 +168,7 @@ pnpm build                                    # Build all packages
 pnpm lint                                     # Lint everything
 pnpm typecheck                                # TypeScript check
 pnpm --filter @corpusai/database db:push      # Push Prisma schema
-pnpm --filter @corpusai/corpus test           # Run corpus tests (127 tests)
+pnpm --filter @corpusai/corpus test           # Run corpus tests (167 tests)
 ```
 
 ---

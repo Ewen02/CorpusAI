@@ -2,31 +2,32 @@
 
 ## Tout ce qui est fait
 
-Sprints 0-4 + V1 Production + V2 Ops + V3 Features livres. Voir section "Fait" en bas.
+Sprints 0-4 + V1 Production + V2 Ops + V3 Features + V4 complet (P0-P3) livres.
+Voir section "Fait" en bas.
 
-## Reste a faire — Roadmap V4
+## Reste a faire — Roadmap V5
 
-### P0 — Monetisation & Deploy (priorite absolue)
+### P0 — Distribution & Documentation
 
-- [ ] **Stripe billing fonctionnel** — Checkout, portail client, webhooks, upgrade/downgrade. CRITIQUE : plan FREE = -1 (illimite) sur tout. Risque abus OpenAI/Qdrant avant ouverture publique.
-- [ ] **CI/CD pipeline** — GitHub Actions (build, test, lint, deploy) avec cache Turborepo
-
-### P1 — Robustesse & Securite
-
-- [ ] **Rate limiting API publique** — Throttle par API key, headers X-RateLimit
-- [ ] **Monitoring APM** — Metriques latence, throughput, error rate
+- [ ] **Documentation API publique** — Pages docs pour le SDK + API, exemples, guide demarrage rapide
 - [ ] **Export corpus** — ZIP documents + chunks pour backup/migration
+
+### P1 — Robustesse
+
+- [ ] **APM metriques** — Latency/throughput/error rate temps reel (au-dela du error tracking Sentry)
+- [ ] **Unit tests frontend** — Tests Vitest pour hooks et composants web (actuellement E2E uniquement)
+- [ ] **Remote caching Turbo** — TURBO_TOKEN + TURBO_TEAM dans CI pour accelerer builds
 
 ### P2 — Features Produit
 
-- [ ] **Dashboard analytics ameliore** — Graphiques temporels, retention, top questions, funnel
-- [ ] **Widget JS embeddable** — embed.js script (plus simple que iframe)
-- [ ] **Multi-model support** — Choix du LLM par AI (Claude, Mistral, GPT-4o)
+- [ ] **Multi-provider LLM** — Ajouter Claude et Mistral comme providers (pas juste models OpenAI)
+- [ ] **Import/export AIs** — Migration config AIs entre comptes, backup
 
-### P3 — IA Avancee (apres utilisateurs actifs)
+### P3 — Enterprise
 
-- [ ] **AI conversation memory** — Multi-session, memoire des conversations passees
-- [ ] **Fine-tuning / feedback loop** — Thumbs up/down, ameliorer les reponses
+- [ ] **SSO Enterprise** — SAML/OIDC pour le plan Enterprise
+- [ ] **SDK multi-langage** — Python, Go (en plus de TypeScript)
+- [ ] **White-label** — Multi-tenant, custom branding complet
 
 ---
 
@@ -59,7 +60,7 @@ Sprints 0-4 + V1 Production + V2 Ops + V3 Features livres. Voir section "Fait" e
 
 - [x] ESLint config partagee — tooling/eslint-config (base, next, nestjs, library)
 - [x] Tests frontend — Vitest + Testing Library (web + ui)
-- [x] Tests E2E — Playwright installe, specs auth + widget (stubs)
+- [x] Tests E2E — Playwright installe, specs auth + widget
 - [x] CI/CD — Jobs paralleles, cache Turborepo, coverage
 
 ### Sprint 4 — P3 Features
@@ -84,13 +85,46 @@ Sprints 0-4 + V1 Production + V2 Ops + V3 Features livres. Voir section "Fait" e
 - [x] Tests E2E Playwright — 24 scenarios reels, fixtures auth, 5 fichiers spec
 - [x] Tests frontend Vitest — ChatInterface, DocumentUploader, Table, StatCard, usePublicChat (50 tests)
 
-### V3 Fonctionnel P3 (2026-03-28/29)
+### V3 Fonctionnel (2026-03-28/29)
 
 - [x] Qdrant/RAG refonte — Collection globale, hybrid search (dense 512d + sparse BM25), scalar quantization
 - [x] i18n complet — next-intl, FR/EN, ~400 cles, 30+ pages, language switcher
-- [x] Onboarding wizard — 7 templates AI pre-configures (Support, Education, Legal, Finance, Health, Tech, Custom)
+- [x] Onboarding wizard — 7 templates AI pre-configures
 - [x] Templates dans /ais/new — Selecteur de templates dans la page de creation
 - [x] Slug per-user — @@unique([userId, slug]), URLs /chat/@username/slug
 - [x] Multi-langue prompts — EN/FR base prompt + format rules dans ai-rules
 - [x] Webhooks API publique — CRUD, HMAC-SHA256 delivery, 4 events, settings UI
 - [x] SDK JavaScript — @corpusai/sdk, zero deps, TypeScript, ESM+CJS, query + listAIs
+
+### V4 P0 — Monetisation & Deploy (2026-03-29)
+
+- [x] Stripe billing — Checkout, portail client, webhooks, upgrade/downgrade, 4 plans
+- [x] FREE plan limits — 1 AI, 5 docs/AI, 10MB, 20 questions/jour, 10 end-users
+- [x] CI/CD pipeline — GitHub Actions: lint, typecheck, test, build, docker matrix
+
+### V4 P1 — Robustesse & Securite (2026-03-29 → 2026-04-10)
+
+- [x] Rate limiting API publique — Redis counters, 60/min, X-RateLimit headers, 429
+- [x] Circuit breaker LLM — LLMUnavailableError, callLLMWithRetry, retry transient errors
+- [x] i18n error messages — Fallback bilingue, cles next-intl, hooks migres
+- [x] PostHog analytics — Production-only, 20+ events types, typed track() helper
+- [x] Email package — @corpusai/email, 8 templates production (Resend)
+
+### V4 P2 — Features Produit (2026-03-29/30)
+
+- [x] Analytics ameliore — Top questions, retention, funnel, document chunk usage, periode 24h
+- [x] Widget embed.js — Bulle flottante bottom-right, iframe au clic, responsive mobile
+- [x] Multi-model LLM — Selecteur GPT-4o-mini/GPT-4o/Mistral par AI, resolveModelConfig()
+
+### V4 P3 — IA Avancee (2026-04-04)
+
+- [x] AI conversation memory — EndUserMemory, LLM summarization, multi-session, memoryEnabled toggle
+- [x] Feedback loop — Thumbs up/down, PATCH endpoint, analytics, optimistic UI
+
+### Post-V4 — Hardening (2026-04-10)
+
+- [x] Audit qualite complet — 97/97 checks (frontend, backend, DB, RAG, TS, security, devops, Redis)
+- [x] Changesets — @changesets/cli configure, semantic versioning pret
+- [x] Typecheck 100% — Experiments exclus du typecheck ai-worker
+- [x] Helmet CSP strict — No unsafe-inline, HSTS preload
+- [x] Backend audit refactoring — ConfigService injection, ownership centralise
