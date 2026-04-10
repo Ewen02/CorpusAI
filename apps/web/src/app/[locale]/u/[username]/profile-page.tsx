@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useRouter } from '@/i18n/routing';
 import { useTranslations, useLocale } from 'next-intl';
-import { ExploreAICard, Avatar, AvatarFallback, AvatarImage, Skeleton, Logo } from '@corpusai/ui';
+import { AICard, Avatar, AvatarFallback, AvatarImage, Skeleton, Logo } from '@corpusai/ui';
 import { useCreatorProfile } from '@/lib/queries';
 
 interface ProfilePageProps {
@@ -93,14 +93,15 @@ export default function ProfilePage({ username }: ProfilePageProps) {
             ) : (
               <div className="stagger-children grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {creator.ais.map((ai) => (
-                  <ExploreAICard
+                  <AICard
                     key={ai.id}
+                    variant="explore"
                     slug={ai.slug}
                     name={ai.name}
                     description={ai.description}
                     category={ai.category}
                     conversationCount={ai.conversationCount}
-                    onTry={() => router.push(`/chat/@${username}/${ai.slug}`)}
+                    onClick={() => router.push(`/chat/@${username}/${ai.slug}`)}
                   />
                 ))}
               </div>

@@ -2,10 +2,10 @@
 
 import * as React from 'react';
 import { useTranslations } from 'next-intl';
-import { Button, StatCard, cn } from '@corpusai/ui';
+import { Button, StatCard, AICard, cn } from '@corpusai/ui';
 import { useDashboardStats, useAIs, useUsage, type UsageLimitItem } from '@/lib/queries';
 import { DashboardSkeleton } from '@/components/skeletons';
-import { AICard, EmptyAIState } from '@/components';
+import { EmptyAIState } from '@/components';
 import { BotIcon, FileIcon, MessageIcon, UsersIcon, PlusIcon } from '@/lib/icons';
 import { PageWrapper } from '@/components/page-wrapper';
 import { useRouter } from '@/i18n/routing';
@@ -149,7 +149,18 @@ export default function DashboardPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {ais.map((ai) => (
-              <AICard key={ai.id} ai={ai} onClick={() => handleNavigateToAI(ai.id)} />
+              <AICard
+                key={ai.id}
+                name={ai.name}
+                slug={ai.slug}
+                description={ai.description}
+                status={ai.status}
+                documentCount={ai.documentCount}
+                questionCount={ai.questionCount}
+                conversationCount={ai.conversationCount}
+                updatedAt={ai.updatedAt}
+                onClick={() => handleNavigateToAI(ai.id)}
+              />
             ))}
             <button
               onClick={handleCreateAI}

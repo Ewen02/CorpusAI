@@ -13,7 +13,8 @@ import {
 } from '@corpusai/ui';
 import { useAIs } from '@/lib/queries';
 import { AIsPageSkeleton } from '@/components/skeletons';
-import { AICard, EmptyAIStateFull } from '@/components';
+import { EmptyAIStateFull } from '@/components';
+import { AICard } from '@corpusai/ui';
 import { SearchIcon, PlusIcon } from '@/lib/icons';
 import { PageWrapper } from '@/components/page-wrapper';
 import { useRouter } from '@/i18n/routing';
@@ -142,7 +143,18 @@ export default function AIsPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredAIs.map((ai) => (
-            <AICard key={ai.id} ai={ai} onClick={() => handleNavigateToAI(ai.id)} />
+            <AICard
+              key={ai.id}
+              name={ai.name}
+              slug={ai.slug}
+              description={ai.description}
+              status={ai.status}
+              documentCount={ai.documentCount}
+              questionCount={ai.questionCount}
+              conversationCount={ai.conversationCount}
+              updatedAt={ai.updatedAt}
+              onClick={() => handleNavigateToAI(ai.id)}
+            />
           ))}
         </div>
       )}

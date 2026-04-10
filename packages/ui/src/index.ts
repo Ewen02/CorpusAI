@@ -102,8 +102,8 @@ export type { ChartTooltipProps } from './molecules/chart-tooltip';
 
 export { MarkdownRenderer } from './molecules/markdown-renderer';
 
-export { ExploreAICard } from './molecules/explore-ai-card';
-export type { ExploreAICardProps } from './molecules/explore-ai-card';
+export { AICard } from './molecules/ai-card';
+export type { AICardProps, AICardDashboardProps, AICardExploreProps } from './molecules/ai-card';
 
 export { SectionHeader } from './molecules/section-header';
 export type { SectionHeaderProps } from './molecules/section-header';

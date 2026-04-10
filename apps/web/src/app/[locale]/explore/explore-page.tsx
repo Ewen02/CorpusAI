@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useRouter } from '@/i18n/routing';
 import { useTranslations } from 'next-intl';
-import { ExploreAICard, Skeleton, Logo, cn } from '@corpusai/ui';
+import { AICard, Skeleton, Logo, cn } from '@corpusai/ui';
 import { useExploreAIs, useFeaturedAIs } from '@/lib/queries';
 import { SearchIcon } from '@/lib/icons';
 import type { AICategory } from '@corpusai/types';
@@ -115,8 +115,9 @@ export default function ExplorePage() {
             ) : featured && featured.length > 0 ? (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {featured.slice(0, 3).map((ai) => (
-                  <ExploreAICard
+                  <AICard
                     key={ai.id}
+                    variant="explore"
                     slug={ai.slug}
                     name={ai.name}
                     description={ai.description}
@@ -124,7 +125,7 @@ export default function ExplorePage() {
                     creatorUsername={ai.user.username ?? undefined}
                     category={ai.category}
                     conversationCount={ai.conversationCount}
-                    onTry={() => router.push(`/chat/@${ai.user.username}/${ai.slug}`)}
+                    onClick={() => router.push(`/chat/@${ai.user.username}/${ai.slug}`)}
                   />
                 ))}
               </div>
@@ -215,8 +216,9 @@ export default function ExplorePage() {
             )}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {results?.data.map((ai) => (
-                <ExploreAICard
+                <AICard
                   key={ai.id}
+                  variant="explore"
                   slug={ai.slug}
                   name={ai.name}
                   description={ai.description}
@@ -224,7 +226,7 @@ export default function ExplorePage() {
                   creatorUsername={ai.user.username ?? undefined}
                   category={ai.category}
                   conversationCount={ai.conversationCount}
-                  onTry={() => router.push(`/chat/@${ai.user.username}/${ai.slug}`)}
+                  onClick={() => router.push(`/chat/@${ai.user.username}/${ai.slug}`)}
                 />
               ))}
             </div>

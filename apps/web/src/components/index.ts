@@ -1,5 +1,3 @@
-export { AICard, AIPreviewCard } from './ai-card';
-export type { AICardProps } from './ai-card';
 export { EmptyAIState, EmptyAIStateFull } from './empty-states';
 export { FormAlert, ErrorAlert, SuccessAlert } from './form-alert';
 export type { FormAlertVariant } from './form-alert';
