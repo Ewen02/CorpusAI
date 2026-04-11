@@ -12,6 +12,7 @@ COPY packages/corpus/package.json ./packages/corpus/
 COPY packages/ai-rules/package.json ./packages/ai-rules/
 COPY packages/subscription/package.json ./packages/subscription/
 COPY packages/queue/package.json ./packages/queue/
+COPY packages/email/package.json ./packages/email/
 COPY tooling/typescript-config/package.json ./tooling/typescript-config/
 RUN pnpm install --frozen-lockfile
 
