@@ -12,7 +12,7 @@ import {
   DefaultValuePipe,
   NotFoundException,
 } from '@nestjs/common';
-import { AdminGuard } from '../auth/admin.guard';
+import { AdminGuard } from '../auth';
 import { AdminService } from './admin.service';
 import { EvalReportsService } from './eval-reports.service';
 

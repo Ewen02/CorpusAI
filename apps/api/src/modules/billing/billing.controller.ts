@@ -13,8 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
-import { AuthGuard, type AuthenticatedRequest } from '../auth/auth.guard';
-import { CurrentUser } from '../auth/current-user.decorator';
+import { AuthGuard, type AuthenticatedRequest, CurrentUser } from '../auth';
 import { BillingService } from './billing.service';
 import { StripeService } from './stripe.service';
 import { CreateCheckoutDto } from './dto/create-checkout.dto';

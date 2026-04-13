@@ -11,7 +11,7 @@ import {
 } from '@corpusai/queue';
 import { DocumentsController } from './documents.controller';
 import { DocumentsService } from './documents.service';
-import { MailService } from '../mail/mail.service';
+import { MailService } from '../mail';
 import { WebhooksService } from '../webhooks';
 import { RagModule } from '../rag';
 

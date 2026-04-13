@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { prisma } from '@corpusai/database';
-import { MailService } from '../mail/mail.service';
+import { MailService } from '../mail';
 
 @Injectable()
 export class EndUserAuthService {

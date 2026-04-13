@@ -3,8 +3,8 @@ import { ConfigModule } from '@nestjs/config';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { EvalReportsService } from './eval-reports.service';
-import { AuthGuard } from '../auth/auth.guard';
-import { DocumentsModule } from '../documents/documents.module';
+import { AuthGuard } from '../auth';
+import { DocumentsModule } from '../documents';
 
 @Module({
   imports: [ConfigModule, DocumentsModule],

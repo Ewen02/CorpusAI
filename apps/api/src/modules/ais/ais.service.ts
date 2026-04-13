@@ -11,8 +11,7 @@ import {
 } from '../../shared/date-utils';
 import { CreateAIDto } from './dto/create-ai.dto';
 import { UpdateAIDto } from './dto/update-ai.dto';
-import { RagService } from '../rag/rag.service';
-import { TextGenerationService } from '../rag/text-generation.service';
+import { RagService, TextGenerationService } from '../rag';
 
 export interface PaginationOptions {
   skip?: number;

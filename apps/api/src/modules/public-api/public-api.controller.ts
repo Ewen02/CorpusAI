@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiSecurity } from '@nestjs/swagger';
 import { AuthGuard, CurrentUser, type CurrentUserData } from '../auth';
-import { ApiKeyGuard, type ApiKeyRequest } from '../auth/api-key.guard';
+import { ApiKeyGuard, type ApiKeyRequest } from '../auth';
 import { PublicApiService } from './public-api.service';
 import { QueryPublicApiDto } from './dto/query.dto';
 import { ApiKeyRateLimitInterceptor } from './api-key-rate-limit.interceptor';

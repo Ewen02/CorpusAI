@@ -1,7 +1,7 @@
 import { Controller, Get, Param, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { EndUser } from '@corpusai/database';
-import { EndUserAuthGuard, CurrentEndUser } from '../end-user-auth/end-user-auth.module';
+import { EndUserAuthGuard, CurrentEndUser } from '../end-user-auth';
 import { PortalService } from './portal.service';
 
 @ApiTags('portal')

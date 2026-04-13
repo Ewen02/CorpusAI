@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PortalController } from './portal.controller';
 import { PortalService } from './portal.service';
-import { EndUserAuthModule } from '../end-user-auth/end-user-auth.module';
+import { EndUserAuthModule } from '../end-user-auth';
 
 @Module({
   imports: [EndUserAuthModule],

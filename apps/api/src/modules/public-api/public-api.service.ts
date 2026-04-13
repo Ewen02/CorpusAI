@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { createHash, randomBytes } from 'crypto';
 import { prisma } from '@corpusai/database';
-import { RagService } from '../rag/rag.service';
+import { RagService } from '../rag';
 
 function hashKey(key: string): string {
   return createHash('sha256').update(key).digest('hex');

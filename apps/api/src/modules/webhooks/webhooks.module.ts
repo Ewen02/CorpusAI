@@ -1,7 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { WebhooksController } from './webhooks.controller';
 import { WebhooksService } from './webhooks.service';
-import { AuthGuard } from '../auth/auth.guard';
+import { AuthGuard } from '../auth';
 
 @Global()
 @Module({

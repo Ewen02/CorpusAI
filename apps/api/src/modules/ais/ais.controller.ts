@@ -22,7 +22,7 @@ import {
 import { SkipThrottle } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
 import { AIsService } from './ais.service';
-import { MailService } from '../mail/mail.service';
+import { MailService } from '../mail';
 import { AuthGuard, CurrentUser, type CurrentUserData } from '../auth';
 import { CreateAIDto } from './dto/create-ai.dto';
 import { UpdateAIDto } from './dto/update-ai.dto';

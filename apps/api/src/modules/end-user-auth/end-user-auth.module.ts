@@ -9,6 +9,3 @@ import { EndUserAuthGuard } from './end-user-auth.guard';
   exports: [EndUserAuthService, EndUserAuthGuard],
 })
 export class EndUserAuthModule {}
-
-export { EndUserAuthGuard } from './end-user-auth.guard';
-export { CurrentEndUser } from './current-end-user.decorator';

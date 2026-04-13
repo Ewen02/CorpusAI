@@ -13,7 +13,7 @@ import type { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import type { Response } from 'express';
 import type Redis from 'ioredis';
-import type { ApiKeyRequest } from '../auth/api-key.guard';
+import type { ApiKeyRequest } from '../auth';
 
 @Injectable()
 export class ApiKeyRateLimitInterceptor implements NestInterceptor {

@@ -5,7 +5,7 @@ import { ApiKeysController, PublicApiController } from './public-api.controller'
 import { PublicApiService } from './public-api.service';
 import { ApiKeyRateLimitInterceptor } from './api-key-rate-limit.interceptor';
 import { RagModule } from '../rag';
-import { AuthGuard } from '../auth/auth.guard';
+import { AuthGuard } from '../auth';
 
 @Module({
   imports: [RagModule],
