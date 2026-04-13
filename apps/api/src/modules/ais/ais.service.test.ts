@@ -41,9 +41,19 @@ describe('AIsService', () => {
   let service: AIsService;
   const mockRagService = { deleteAIVectors: vi.fn() };
   const mockTextGenerationService = { generateAISuggestions: vi.fn() };
+  const mockOwnershipService = {
+    verifyAIOwnership: vi.fn().mockResolvedValue(undefined),
+    getOwnedAI: vi.fn(),
+    verifyDocumentOwnership: vi.fn(),
+    verifyConversationOwnership: vi.fn(),
+  };
 
   beforeEach(() => {
-    service = new AIsService(mockRagService as any, mockTextGenerationService as any);
+    service = new AIsService(
+      mockRagService as any,
+      mockTextGenerationService as any,
+      mockOwnershipService as any
+    );
     vi.clearAllMocks();
     (canCreateAI as ReturnType<typeof vi.fn>).mockReturnValue(true);
   });
@@ -167,7 +177,9 @@ describe('AIsService', () => {
     });
 
     it('should throw NotFoundException when AI not owned', async () => {
-      mockAI.findFirst.mockResolvedValue(null);
+      mockOwnershipService.verifyAIOwnership.mockRejectedValueOnce(
+        new NotFoundException('AI not found')
+      );
       await expect(service.update('user-1', 'ai-1', { name: 'X' })).rejects.toThrow(
         NotFoundException
       );
@@ -194,7 +206,9 @@ describe('AIsService', () => {
     });
 
     it('should throw NotFoundException when AI not found', async () => {
-      mockAI.findFirst.mockResolvedValue(null);
+      mockOwnershipService.verifyAIOwnership.mockRejectedValueOnce(
+        new NotFoundException('AI not found')
+      );
       await expect(service.delete('user-1', 'ai-1')).rejects.toThrow(NotFoundException);
     });
   });

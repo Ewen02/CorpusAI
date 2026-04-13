@@ -1,7 +1,7 @@
 import { Injectable, Inject, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { prisma, DocumentStatus, type TransactionClient } from '@corpusai/database';
 import { assertCanAddDocument, assertCanUploadDocument } from '../../shared/subscription-checks';
-import { getOwnedAI } from '../../shared/ownership';
+import { OwnershipService } from '../../shared/ownership.service';
 import { canAddDocument, canUploadDocument } from '@corpusai/subscription';
 import { SUPPORTED_DOCUMENT_TYPES, type SupportedDocumentType } from '@corpusai/types';
 import type { Queue } from 'bullmq';
@@ -23,7 +23,8 @@ export class DocumentsService {
 
   constructor(
     private ragService: RagService,
-    @Inject('DOCUMENT_QUEUE') private documentQueue: Queue<DocumentProcessingJobData>
+    @Inject('DOCUMENT_QUEUE') private documentQueue: Queue<DocumentProcessingJobData>,
+    private readonly ownership: OwnershipService
   ) {}
 
   async findAllByAI(userId: string, aiId: string, options?: PaginationOptions) {
@@ -475,7 +476,7 @@ export class DocumentsService {
    * Fetch all indexed documents with their chunks for export.
    */
   async getExportData(userId: string, aiId: string) {
-    const ai = await getOwnedAI(aiId, userId);
+    const ai = await this.ownership.getOwnedAI(aiId, userId);
 
     const documents = await prisma.document.findMany({
       where: { aiId, status: 'INDEXED' },

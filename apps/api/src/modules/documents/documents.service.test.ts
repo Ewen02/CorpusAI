@@ -75,9 +75,19 @@ describe('DocumentsService', () => {
   let service: DocumentsService;
   const mockQueue = { add: vi.fn() };
   const mockRagService = { deleteDocumentVectors: vi.fn() };
+  const mockOwnershipService = {
+    verifyAIOwnership: vi.fn().mockResolvedValue(undefined),
+    getOwnedAI: vi.fn(),
+    verifyDocumentOwnership: vi.fn(),
+    verifyConversationOwnership: vi.fn(),
+  };
 
   beforeEach(() => {
-    service = new DocumentsService(mockRagService as any, mockQueue as any);
+    service = new DocumentsService(
+      mockRagService as any,
+      mockQueue as any,
+      mockOwnershipService as any
+    );
     vi.clearAllMocks();
     (canAddDocument as ReturnType<typeof vi.fn>).mockReturnValue(true);
     (canUploadDocument as ReturnType<typeof vi.fn>).mockReturnValue(true);

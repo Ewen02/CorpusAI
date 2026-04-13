@@ -21,6 +21,8 @@ import { MailModule } from './modules/mail';
 import { EndUserAuthModule } from './modules/end-user-auth';
 import { PortalModule } from './modules/portal';
 import { WebhooksModule } from './modules/webhooks';
+import { DatabaseModule } from './infrastructure/database';
+import { SharedModule } from './shared/shared.module';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middleware';
 
@@ -79,6 +81,8 @@ import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middle
         limit: 100,
       },
     ]),
+    DatabaseModule,
+    SharedModule,
     AuthModule,
     UsersModule,
     AIsModule,
