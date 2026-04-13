@@ -2,89 +2,61 @@
 
 ## Stack
 
-- BullMQ worker consommant depuis Redis
-- `@corpusai/corpus` pour le pipeline RAG complet
-- `@corpusai/database` pour Prisma
-- `@corpusai/queue` pour les constantes et types de queue
+BullMQ worker consuming from Redis. Uses `@corpusai/corpus` (RAG pipeline), `@corpusai/database` (Prisma), `@corpusai/queue` (constants/types).
 
 ## Architecture
 
 ```
-API enqueue job -> Redis (BullMQ) -> Worker picks up -> processDocument()
-Worker publishes progress -> Redis pub/sub -> API SSE endpoint -> Frontend
+API enqueue job → Redis (BullMQ) → Worker picks up → processDocument()
+Worker publishes progress → Redis pub/sub → API SSE endpoint → Frontend
 ```
 
 ## Structure
 
 ```
 src/
-├── index.ts                  # Entry point : cree worker, connecte Redis, graceful shutdown
+├── index.ts                  # Entry: create worker, Redis connect, graceful shutdown
 ├── worker.ts                 # BullMQ Worker setup, concurrency=3
 ├── processors/
-│   └── document-processor.ts # Pipeline de traitement complet
+│   └── document-processor.ts # Full processing pipeline
 ├── services/
-│   ├── progress.service.ts   # Redis pub/sub pour progress events
-│   └── rag-factory.ts        # Singleton RAGPipelineImpl par AI
-└── experiments/              # Scripts standalone (pas du code production)
-    ├── embeddings.ts
-    ├── qdrant.ts
-    ├── chunking.ts
-    ├── rag-pipeline.ts
-    └── corpus-test.ts
+│   ├── progress.service.ts   # Redis pub/sub progress publisher
+│   └── rag-factory.ts        # Singleton RAGPipelineImpl per AI
+└── experiments/              # Standalone scripts (not production)
 ```
 
 ## Document Processing Flow
 
-1. Recevoir `DocumentProcessingJobData` (documentId, aiId, filename, mimeType, content/buffer/url)
-2. Marquer le document `PROCESSING` en DB
-3. Publier progress SSE a 2%
-4. Parser le contenu : texte direct → bypass, buffer/URL → `DocumentParserService` (PDF/DOCX/TXT/MD)
-5. Indexer via `pipeline.index()` avec callback de progress (chunking → embedding → storing)
-6. Mettre a jour le document : `INDEXED`, chunkCount, wordCount, pageCount, title, author, language
-7. En cas d'erreur : marquer `FAILED` avec errorMessage, re-throw pour retry BullMQ
+1. Receive `DocumentProcessingJobData` (documentId, aiId, filename, mimeType, content/buffer/url)
+2. Mark document `PROCESSING`, publish progress 2%
+3. Parse: text → bypass, buffer/URL → `DocumentParserService` (PDF/DOCX/TXT/MD)
+4. Index via `pipeline.index()` with progress callback (chunking → embedding → storing)
+5. Update document: `INDEXED`, chunkCount, wordCount, pageCount, title, author, language
+6. On error: mark `FAILED` with errorMessage, re-throw for BullMQ retry
 
 ## Progress Stages
 
-| Stage     | Range   | Description               |
-| --------- | ------- | ------------------------- |
-| PARSING   | 0-10%   | Parse du contenu document |
-| CHUNKING  | ~10%    | Decoupage en chunks       |
-| EMBEDDING | 10-80%  | Batch embed avec OpenAI   |
-| STORING   | 80-100% | Upsert dans Qdrant        |
+| Stage     | Range   | Description       |
+| --------- | ------- | ----------------- |
+| PARSING   | 0-10%   | Parse content     |
+| CHUNKING  | ~10%    | Split into chunks |
+| EMBEDDING | 10-80%  | Batch embed       |
+| STORING   | 80-100% | Upsert in Qdrant  |
 
-## Queue Config (via @corpusai/queue)
+Queue config: see `@corpusai/queue` (queue name, retry policy, channels). Worker concurrency: 3.
 
-- Queue name : `DOCUMENT_PROCESSING`
-- Retry : 3 tentatives, backoff exponentiel depuis 5s
-- Redis channel progress : `doc-progress`
-- Concurrency worker : 3
-
-## Commandes
+## Commands
 
 ```bash
-pnpm --filter @corpusai/ai-worker dev              # Dev (tsx watch)
-pnpm --filter ai-worker experiment:embeddings       # Tester les embeddings OpenAI (dimensions, coût, latence)
-pnpm --filter ai-worker experiment:qdrant           # Tester Qdrant (indexation, recherche)
-pnpm --filter ai-worker experiment:chunking         # Tester les stratégies de chunking (token counts, overlap)
-pnpm --filter ai-worker experiment:rag              # Pipeline RAG bout-en-bout
-pnpm --filter ai-worker experiment:corpus           # Test complet parsing + indexation corpus
+pnpm --filter @corpusai/ai-worker dev    # Dev (tsx watch)
 ```
 
-Tous ces scripts lisent depuis `.env` — variables requises : `OPENAI_API_KEY`, `QDRANT_URL`.
+Experiment scripts in `src/experiments/` — read `.env` for `OPENAI_API_KEY`, `QDRANT_URL`.
 
-## Fichiers cles
+## Checklist
 
-| Fichier                                | Role                                     |
-| -------------------------------------- | ---------------------------------------- |
-| `src/worker.ts`                        | Creation BullMQ worker et error handling |
-| `src/processors/document-processor.ts` | Pipeline complet de traitement           |
-| `src/services/rag-factory.ts`          | Cree les instances pipeline par AI       |
-| `src/services/progress.service.ts`     | Redis pub/sub progress publisher         |
-
-## Checklist qualite
-
-- [ ] Error handling avec re-throw pour retry BullMQ
-- [ ] Progress publie a chaque stage
-- [ ] DB mise a jour en succes ET en echec
-- [ ] Pas de PII dans les logs
+- [ ] Error handling with re-throw for BullMQ retry
+- [ ] Progress published at each stage
+- [ ] DB updated on success AND failure
+- [ ] No PII in logs
 - [ ] Graceful shutdown (SIGTERM/SIGINT)

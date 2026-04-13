@@ -97,120 +97,48 @@ import { MyService } from './my.service';
 
 ## Design System
 
-### Color Palette (Dark Theme — Violet/Cobalt)
+- Dark glassmorphism : fond deep obsidian + orbes de couleur flottants
+- Primary violet `#7C3AED` + accent cobalt `#3B82F6`
+- Panels glass : `backdrop-filter: blur(16px)`, `bg white/6%`, `border white/12%`
+- Solid `bg-primary` on buttons (no gradients)
+- Typography : DM Sans (sans), Fira Code (mono)
+- Glass classes : `.glass`, `.glass-strong`, `.glass-hover`, `.orb-primary`, `.orb-cobalt`, `.text-gradient`, `.glow-primary`
+- Color values in `apps/web/src/app/globals.css`
 
-```css
-:root {
-  /* Backgrounds */
-  --background: 224 35% 8%; /* #0D0A1A */
-  --card: 236 30% 12%;
-  --popover: 236 30% 14%;
+---
 
-  /* Primary (Violet) */
-  --primary: 263 74% 57%; /* #7C3AED */
-  --primary-300: 263 80% 80%;
-  --primary-400: 263 80% 70%;
-  --primary-500: 263 80% 62%;
-  --primary-600: 263 74% 57%;
-  --primary-700: 263 74% 49%;
+## Module Pattern (all apps/packages)
 
-  /* Secondary (Cobalt) */
-  --secondary: 217 91% 60%; /* #3B82F6 */
-  --cobalt-300: 213 97% 80%;
-  --cobalt-400: 213 94% 68%;
-  --cobalt-500: 217 91% 60%;
-  --cobalt-600: 221 83% 53%;
-
-  /* Text */
-  --foreground: 240 20% 96%;
-  --muted: 240 20% 16%;
-  --muted-foreground: 240 12% 55%;
-
-  /* Semantic */
-  --destructive: 350 89% 60%;
-  --success: 160 84% 39%;
-  --warning: 38 92% 50%;
-  --border: 240 18% 22%;
-  --ring: 263 74% 57%;
-
-  /* Glass utilities */
-  --glass-bg: rgba(255, 255, 255, 0.06);
-  --glass-border: rgba(255, 255, 255, 0.12);
-  --blur-glass: blur(16px);
-  --shadow-primary: 0 4px 24px rgba(124, 58, 237, 0.45);
-}
+```
+modules/example/
+├── example.module.ts
+├── example.controller.ts
+├── example.service.ts
+├── example.repository.ts   # Data access (Prisma via PrismaService)
+├── dto/
+└── index.ts                 # Barrel export — all cross-module imports go through this
 ```
 
-### Typography
-
-- Sans: DM Sans, Inter, system-ui, sans-serif
-- Mono: Fira Code, JetBrains Mono, monospace
-
-### Visual Principles
-
-- Dark glassmorphism : fond deep obsidian + orbes de couleur flottants
-- Primary violet #7C3AED + accent cobalt #3B82F6
-- Panels glass : backdrop-filter blur(16px), bg white/6%, border white/12%
-- Gradient text et glow sur les éléments primaires
-
-### Glass utilities (globals.css)
-
-Classes disponibles : .glass, .glass-strong, .glass-hover,
-.orb-primary, .orb-cobalt, .text-gradient, .glow-primary, .glow-cobalt,
-.bg-gradient-primary, .bg-page
+**Rule** : never import from another module's internal files — always via barrel `index.ts`.
 
 ---
 
 ## Monorepo Commands
 
 ```bash
-pnpm build                                    # Build all packages
-pnpm lint                                     # Lint everything
-pnpm typecheck                                # TypeScript check
-pnpm --filter @corpusai/database db:push      # Push Prisma schema
-pnpm --filter @corpusai/corpus test           # Run corpus tests (167 tests)
+pnpm build          # Build all
+pnpm typecheck      # TS check all
+pnpm lint           # Lint all
 ```
 
 ---
 
 ## Domain-Specific Instructions
 
-Each app/package has its own `CLAUDE.md` with detailed domain instructions.
-They are loaded automatically when working on files in that directory.
-
-| Directory            | CLAUDE.md Content                                              |
-| -------------------- | -------------------------------------------------------------- |
-| `apps/web/`          | Next.js routes, React Query hooks, apiClient, auth, components |
-| `apps/api/`          | NestJS modules, guards, DTOs, Swagger, ownership, Prisma       |
-| `apps/ai-worker/`    | BullMQ worker, document processor, progress pub/sub            |
-| `packages/ui/`       | Atomic Design rules, cva() pattern, component inventory        |
-| `packages/corpus/`   | RAG pipeline, chunking, embeddings, reranking, tests           |
-| `packages/database/` | Prisma schema, models, enums, commands                         |
+Each app/package has its own `CLAUDE.md` loaded automatically when working in that directory.
 
 ---
 
-## Claude Code Workflow
+## Slash Commands
 
-### Slash Commands disponibles
-
-| Commande                 | Usage                                                                |
-| ------------------------ | -------------------------------------------------------------------- |
-| `/commit`                | Commit atomique avec typecheck + lint pre-vérification               |
-| `/push`                  | Push les commits locaux après confirmation                           |
-| `/build`                 | Build et rapport d'erreurs TypeScript                                |
-| `/test [package]`        | Lancer les tests (corpus / api / web / all)                          |
-| `/audit [domain]`        | Audit qualité code (frontend / backend / database / rag / security…) |
-| `/optimize`              | Audit refactoring et perf avec propositions concrètes                |
-| `/product-review`        | Audit produit complet (maturité, roadmap, gaps)                      |
-| `/db-schema <changes>`   | Modifier le schéma Prisma + db:push                                  |
-| `/new-module <name>`     | Nouveau module NestJS complet (controller + service + DTOs)          |
-| `/new-component <name>`  | Nouveau composant UI (Atomic Design + cva)                           |
-| `/new-page <route>`      | Nouvelle page dashboard Next.js                                      |
-| `/add-query-hook <desc>` | Nouveau hook React Query (useQuery ou useMutation)                   |
-| `/migration <name>`      | Migration Prisma versionnée (prod-safe)                              |
-| `/new-endpoint`          | Ajout endpoint à un module NestJS existant                           |
-| `/review`                | Review qualité des changements avant commit                          |
-| `/deploy`                | Checklist pré-deploy (build, tests, lint, migrations)                |
-| `/changelog [depuis]`    | Changelog depuis les conventional commits                            |
-| `/deps`                  | Audit dépendances (vulnérabilités, outdated, inutilisées)            |
-| `/i18n-check`            | Vérification cohérence traductions FR/EN                             |
+Run `/help` to see all available commands. Key ones: `/commit`, `/build`, `/test`, `/review`, `/deploy`, `/audit`.

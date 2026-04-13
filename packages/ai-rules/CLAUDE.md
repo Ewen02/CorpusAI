@@ -2,32 +2,27 @@
 
 ## Rôle
 
-Source de vérité unique pour les system prompts, les règles de format et le scoring de confiance des réponses LLM. Utilisé par `@corpusai/corpus` (RAGPipelineImpl) et `apps/api`.
+Source de vérité unique pour les system prompts, règles de format et scoring de confiance. Utilisé par `@corpusai/corpus` et `apps/api`.
 
-## Exports principaux
+## Exports
 
-| Export                                  | Description                                                           |
-| --------------------------------------- | --------------------------------------------------------------------- |
-| `buildSystemPrompt(options)`            | Construit le system prompt complet (custom prompt + règles de format) |
-| `buildContextSection(chunks, maxChars)` | Formate les chunks RAG en section CONTEXTE                            |
-| `determineConfidence(sources, rules)`   | Détermine HIGH/MEDIUM/LOW selon les scores des sources                |
-| `getFormatRules(language)`              | Retourne les règles de format FR ou EN                                |
-| `DEFAULT_BEHAVIOR_RULES`                | Config de citation et scope boundaries par défaut                     |
-| `FORMAT_RULES_FR` / `FORMAT_RULES_EN`   | Règles de format par langue                                           |
+| Export                                  | Description                                          |
+| --------------------------------------- | ---------------------------------------------------- |
+| `buildSystemPrompt(options)`            | System prompt complet (custom prompt + format rules) |
+| `buildContextSection(chunks, maxChars)` | Formate chunks RAG en section CONTEXTE               |
+| `determineConfidence(sources, rules)`   | HIGH/MEDIUM/LOW selon scores des sources             |
+| `getFormatRules(language)`              | Règles de format FR ou EN                            |
+| `DEFAULT_BEHAVIOR_RULES`                | Config citation et scope boundaries par défaut       |
 
 ## Conventions
 
-- Les règles de format sont TOUJOURS incluses dans le system prompt, même avec un `customPrompt`
-- `language: 'en'` → règles EN, tout autre valeur → règles FR
-- `FORMAT_RULES` (sans suffixe) est deprecated — utiliser `getFormatRules()`
-- Pas d'instructions LLM-model-spécifiques ici (déléguer à la config pipeline)
+- Format rules ALWAYS included in system prompt, even with `customPrompt`
+- `language: 'en'` → EN rules, anything else → FR rules
+- Use `getFormatRules()` (not deprecated `FORMAT_RULES`)
+- No LLM-model-specific instructions here
 
-## Modifier les prompts
+## Checklist
 
-Toute modification des règles de format (`FORMAT_RULES_FR`, `FORMAT_RULES_EN`) ou de `buildSystemPrompt` doit être validée manuellement en testant une conversation réelle avant de merger.
-
-## Checklist qualité
-
-- [ ] Tests ajoutés pour toute modification de `buildSystemPrompt` ou `determineConfidence`
-- [ ] Valider le comportement FR et EN après modification des règles
-- [ ] Ne pas hardcoder de noms de modèles LLM
+- [ ] Tests for any change to `buildSystemPrompt` or `determineConfidence`
+- [ ] Validate FR and EN behavior after rule changes
+- [ ] No hardcoded LLM model names
