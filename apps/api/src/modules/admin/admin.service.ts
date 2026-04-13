@@ -1,8 +1,8 @@
 import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { prisma } from '@corpusai/database';
 import type { Queue } from 'bullmq';
 import type { DocumentProcessingJobData } from '@corpusai/queue';
+import { AdminRepository } from './admin.repository';
 
 const DASHBOARD_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
@@ -13,7 +13,8 @@ export class AdminService {
 
   constructor(
     private readonly config: ConfigService,
-    @Inject('DOCUMENT_QUEUE') private readonly documentQueue: Queue<DocumentProcessingJobData>
+    @Inject('DOCUMENT_QUEUE') private readonly documentQueue: Queue<DocumentProcessingJobData>,
+    private readonly repo: AdminRepository
   ) {}
 
   async getDashboard() {
@@ -21,52 +22,19 @@ export class AdminService {
       return this.dashboardCache.data;
     }
 
-    const [userCount, aiCount, documentCount, conversationCount, messageCount] = await Promise.all([
-      prisma.user.count(),
-      prisma.aI.count(),
-      prisma.document.count(),
-      prisma.conversation.count(),
-      prisma.message.count(),
-    ]);
+    const [userCount, aiCount, documentCount, conversationCount, messageCount] =
+      await this.repo.getCounts();
 
-    // Users by plan
-    const usersByPlan = await prisma.user.groupBy({
-      by: ['subscriptionPlan'],
-      _count: true,
-    });
+    const usersByPlan = await this.repo.getUsersByPlan();
+    const documentsByStatus = await this.repo.getDocumentsByStatus();
 
-    // Documents by status
-    const documentsByStatus = await prisma.document.groupBy({
-      by: ['status'],
-      _count: true,
-    });
-
-    // Recent signups (last 7 days)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const recentSignups = await this.repo.countRecentSignups(sevenDaysAgo);
 
-    const recentSignups = await prisma.user.count({
-      where: { createdAt: { gte: sevenDaysAgo } },
-    });
+    const topAIs = await this.repo.getTopAIs(5);
 
-    // Top AIs by conversations
-    const topAIs = await prisma.aI.findMany({
-      orderBy: { conversationCount: 'desc' },
-      take: 5,
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        conversationCount: true,
-        questionCount: true,
-        documentCount: true,
-        user: { select: { email: true, name: true } },
-      },
-    });
-
-    // Failed docs rate
-    const failedDocs =
-      documentCount > 0 ? await prisma.document.count({ where: { status: 'FAILED' } }) : 0;
+    const failedDocs = documentCount > 0 ? await this.repo.countFailedDocs() : 0;
 
     const result = {
       totals: {
@@ -105,43 +73,11 @@ export class AdminService {
         }
       : {};
 
-    const [users, total] = await Promise.all([
-      prisma.user.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          image: true,
-          username: true,
-          role: true,
-          subscriptionPlan: true,
-          subscriptionStatus: true,
-          createdAt: true,
-          _count: {
-            select: { ais: true, dailyStats: true },
-          },
-          sessions: {
-            orderBy: { updatedAt: 'desc' as const },
-            take: 1,
-            select: { updatedAt: true },
-          },
-        },
-      }),
-      prisma.user.count({ where }),
-    ]);
+    const [users, total] = await this.repo.getUsers(skip, limit, where);
 
     return {
       users,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   }
 
@@ -157,75 +93,25 @@ export class AdminService {
         }
       : {};
 
-    const [ais, total] = await Promise.all([
-      prisma.aI.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          status: true,
-          isPublic: true,
-          accessType: true,
-          documentCount: true,
-          conversationCount: true,
-          questionCount: true,
-          createdAt: true,
-          updatedAt: true,
-          user: {
-            select: { id: true, email: true, name: true },
-          },
-        },
-      }),
-      prisma.aI.count({ where }),
-    ]);
+    const [ais, total] = await this.repo.getAIs(skip, limit, where);
 
     return {
       ais,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   }
 
   async updateUserRole(userId: string, role: 'USER' | 'ADMIN') {
-    return prisma.user.update({
-      where: { id: userId },
-      data: { role },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-      },
-    });
+    return this.repo.updateUserRole(userId, role);
   }
 
   async updateUserPlan(userId: string, plan: 'FREE' | 'CREATOR' | 'PRO' | 'ENTERPRISE') {
-    return prisma.user.update({
-      where: { id: userId },
-      data: {
-        subscriptionPlan: plan,
-        subscriptionStatus: plan === 'FREE' ? 'ACTIVE' : undefined,
-      },
-      select: {
-        id: true,
-        email: true,
-        subscriptionPlan: true,
-        subscriptionStatus: true,
-      },
-    });
+    return this.repo.updateUserPlan(userId, plan, plan === 'FREE' ? 'ACTIVE' : undefined);
   }
 
   async getSystemHealth() {
     const startTime = Date.now();
 
-    // Ping all dependencies in parallel
     const [postgres, qdrant, redis, openai, documentQueue] = await Promise.all([
       this.checkPostgres(),
       this.checkQdrant(),
@@ -250,7 +136,7 @@ export class AdminService {
   private async checkPostgres(): Promise<{ status: string; latencyMs: number; error?: string }> {
     const start = Date.now();
     try {
-      await prisma.$queryRaw`SELECT 1`;
+      await this.repo.pingPostgres();
       return { status: 'connected', latencyMs: Date.now() - start };
     } catch (error) {
       return { status: 'disconnected', latencyMs: Date.now() - start, error: String(error) };
@@ -279,9 +165,8 @@ export class AdminService {
       };
       const collections = data.result.collections;
 
-      // Get total points from corpus_vectors if it exists
-      const corpusCollection = collections.find((c) => c.name === 'corpus_vectors');
       let totalPoints = 0;
+      const corpusCollection = collections.find((c) => c.name === 'corpus_vectors');
       if (corpusCollection) {
         try {
           const infoRes = await fetch(`${qdrantUrl}/collections/corpus_vectors`, {
@@ -289,13 +174,11 @@ export class AdminService {
             signal: AbortSignal.timeout(3000),
           });
           if (infoRes.ok) {
-            const info = (await infoRes.json()) as {
-              result: { points_count: number };
-            };
+            const info = (await infoRes.json()) as { result: { points_count: number } };
             totalPoints = info.result.points_count;
           }
         } catch {
-          // Ignore — we already know Qdrant is up
+          // Ignore
         }
       }
 
@@ -355,24 +238,18 @@ export class AdminService {
   }
 
   private async checkDocumentQueue() {
-    const [failed, pending, processing] = await Promise.all([
-      prisma.document.count({ where: { status: 'FAILED' } }),
-      prisma.document.count({ where: { status: 'PENDING' } }),
-      prisma.document.count({ where: { status: 'PROCESSING' } }),
-    ]);
+    const [failed, pending, processing] = await this.repo.getDocumentQueueCounts();
     return { failed, pending, processing };
   }
 
   // ---------------------------------------------------------------------------
-  // Test status — runs test suites and parses results
+  // Test status
   // ---------------------------------------------------------------------------
 
   private testCache: { data: unknown; expiresAt: number } | null = null;
-  private static readonly TEST_CACHE_TTL = 60_000; // 1 minute
+  private static readonly TEST_CACHE_TTL = 60_000;
 
   async getTestStatus() {
-    // Tests cannot run in the production container (no pnpm, no devDependencies).
-    // Use CI (GitHub Actions) for test results.
     if (process.env.NODE_ENV === 'production') {
       return {
         status: 'ci_only',
@@ -385,7 +262,6 @@ export class AdminService {
       };
     }
 
-    // Cache to avoid running tests on every request
     if (this.testCache && Date.now() < this.testCache.expiresAt) {
       return this.testCache.data;
     }
@@ -420,7 +296,6 @@ export class AdminService {
             durationMs: json.durationMs,
           };
         } catch (error) {
-          // Tests failed — parse output from stderr/stdout
           const errOutput =
             error instanceof Error ? (error as { stdout?: string }).stdout || '' : '';
           const json = this.parseVitestJson(errOutput);
@@ -514,7 +389,6 @@ export class AdminService {
     durationMs: number;
   } {
     try {
-      // Vitest JSON reporter outputs a JSON object
       const jsonMatch = output.match(/\{[\s\S]*"testResults"[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]) as {
@@ -534,10 +408,9 @@ export class AdminService {
         };
       }
     } catch {
-      // Fall through to regex parsing
+      // Fall through
     }
 
-    // Fallback: parse from vitest summary output
     const testsMatch = /(\d+) passed.*?(\d+) failed|(\d+) passed/m.exec(output);
     const filesMatch = /Test Files\s+(?:\d+ failed \| )?(\d+) passed/m.exec(output);
     const totalMatch = /Tests\s+(?:(\d+) failed \| )?(\d+) passed/m.exec(output);

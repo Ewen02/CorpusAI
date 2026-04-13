@@ -1,29 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { prisma, AIStatus } from '@corpusai/database';
+import { AIStatus } from '@corpusai/database';
 import { ExploreQueryDto, ExploreSort } from './dto/explore-query.dto';
-
-const AI_PUBLIC_SELECT = {
-  id: true,
-  slug: true,
-  name: true,
-  description: true,
-  primaryColor: true,
-  logo: true,
-  category: true,
-  conversationCount: true,
-  createdAt: true,
-  user: {
-    select: {
-      id: true,
-      name: true,
-      username: true,
-      image: true,
-    },
-  },
-} as const;
+import { ExploreRepository } from './explore.repository';
 
 @Injectable()
 export class ExploreService {
+  constructor(private readonly repo: ExploreRepository) {}
+
   async findPublicAIs(query: ExploreQueryDto) {
     const { search, category, sort = ExploreSort.POPULAR, page = 1, limit = 24 } = query;
 
@@ -42,65 +25,25 @@ export class ExploreService {
         : {}),
     };
 
-    const [ais, total] = await Promise.all([
-      prisma.aI.findMany({
-        where,
-        orderBy:
-          sort === ExploreSort.POPULAR ? { conversationCount: 'desc' } : { createdAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
-        select: AI_PUBLIC_SELECT,
-      }),
-      prisma.aI.count({ where }),
-    ]);
+    const orderBy =
+      sort === ExploreSort.POPULAR
+        ? { conversationCount: 'desc' as const }
+        : { createdAt: 'desc' as const };
+
+    const [ais, total] = await this.repo.findPublicAIs(where, orderBy, (page - 1) * limit, limit);
 
     return {
       data: ais,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
     };
   }
 
   async findFeaturedAIs() {
-    const ais = await prisma.aI.findMany({
-      where: {
-        isPublic: true,
-        status: AIStatus.ACTIVE,
-        deletedAt: null,
-      },
-      orderBy: { conversationCount: 'desc' },
-      take: 6,
-      select: AI_PUBLIC_SELECT,
-    });
-
-    return ais;
+    return this.repo.findFeaturedAIs();
   }
 
   async findCreatorProfile(username: string) {
-    const user = await prisma.user.findUnique({
-      where: { username },
-      select: {
-        id: true,
-        name: true,
-        username: true,
-        bio: true,
-        image: true,
-        createdAt: true,
-        ais: {
-          where: {
-            isPublic: true,
-            status: AIStatus.ACTIVE,
-            deletedAt: null,
-          },
-          orderBy: { conversationCount: 'desc' },
-          select: AI_PUBLIC_SELECT,
-        },
-      },
-    });
+    const user = await this.repo.findCreatorProfile(username);
 
     if (!user) {
       throw new NotFoundException('Creator not found');

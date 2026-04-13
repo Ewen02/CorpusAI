@@ -1,11 +1,13 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { auth } from '../../lib/auth';
 import { fromNodeHeaders } from 'better-auth/node';
-import { prisma } from '@corpusai/database';
+import { AuthRepository } from './auth.repository';
 import type { Request } from 'express';
 
 @Injectable()
 export class AuthService {
+  constructor(private readonly repo: AuthRepository) {}
+
   async validateSession(request: Request) {
     const session = await auth.api.getSession({
       headers: fromNodeHeaders(request.headers),
@@ -23,35 +25,10 @@ export class AuthService {
   }
 
   async getUserById(userId: string) {
-    return prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        image: true,
-        subscriptionPlan: true,
-        subscriptionStatus: true,
-        createdAt: true,
-      },
-    });
+    return this.repo.findUserById(userId);
   }
 
   async getUserWithAIs(userId: string) {
-    return prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        ais: {
-          select: {
-            id: true,
-            slug: true,
-            name: true,
-            status: true,
-            documentCount: true,
-            conversationCount: true,
-          },
-        },
-      },
-    });
+    return this.repo.findUserWithAIs(userId);
   }
 }

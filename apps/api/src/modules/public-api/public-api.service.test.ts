@@ -43,9 +43,47 @@ describe('PublicApiService', () => {
   let service: PublicApiService;
   const mockRagService = { query: vi.fn() };
 
+  const mockRepo = {
+    createApiKey: vi.fn((...args: unknown[]) =>
+      mockApiKey.create({
+        data: { userId: args[0], name: args[1], keyHash: args[2], prefix: args[3] },
+      })
+    ),
+    listApiKeys: vi.fn((...args: unknown[]) => mockApiKey.findMany({ where: { userId: args[0] } })),
+    findApiKey: vi.fn((...args: unknown[]) =>
+      mockApiKey.findFirst({ where: { id: args[0], userId: args[1] } })
+    ),
+    deleteApiKey: vi.fn((...args: unknown[]) => mockApiKey.delete({ where: { id: args[0] } })),
+    findAIBySlugAndUser: vi.fn((...args: unknown[]) =>
+      mockAI.findFirst({ where: { slug: args[0], userId: args[1] } })
+    ),
+    listUserAIs: vi.fn((...args: unknown[]) => mockAI.findMany({ where: { userId: args[0] } })),
+  };
+
   beforeEach(() => {
-    service = new PublicApiService(mockRagService as any);
+    service = new PublicApiService(mockRagService as any, mockRepo as any);
     vi.clearAllMocks();
+
+    mockRepo.createApiKey.mockImplementation((...args: unknown[]) =>
+      mockApiKey.create({
+        data: { userId: args[0], name: args[1], keyHash: args[2], prefix: args[3] },
+      })
+    );
+    mockRepo.listApiKeys.mockImplementation((...args: unknown[]) =>
+      mockApiKey.findMany({ where: { userId: args[0] } })
+    );
+    mockRepo.findApiKey.mockImplementation((...args: unknown[]) =>
+      mockApiKey.findFirst({ where: { id: args[0], userId: args[1] } })
+    );
+    mockRepo.deleteApiKey.mockImplementation((...args: unknown[]) =>
+      mockApiKey.delete({ where: { id: args[0] } })
+    );
+    mockRepo.findAIBySlugAndUser.mockImplementation((...args: unknown[]) =>
+      mockAI.findFirst({ where: { slug: args[0], userId: args[1] } })
+    );
+    mockRepo.listUserAIs.mockImplementation((...args: unknown[]) =>
+      mockAI.findMany({ where: { userId: args[0] } })
+    );
   });
 
   describe('createApiKey', () => {
@@ -146,11 +184,7 @@ describe('PublicApiService', () => {
       const result = await service.listUserAIs('user-1');
 
       expect(result).toBe(ais);
-      expect(mockAI.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { userId: 'user-1', status: 'ACTIVE' },
-        })
-      );
+      expect(mockRepo.listUserAIs).toHaveBeenCalledWith('user-1');
     });
   });
 });

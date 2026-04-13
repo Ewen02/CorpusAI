@@ -36,9 +36,25 @@ const mockUser = prisma.user as unknown as { findUnique: ReturnType<typeof vi.fn
 describe('ExploreService', () => {
   let service: ExploreService;
 
+  const mockRepo = {
+    findPublicAIs: vi.fn((..._args: unknown[]) => Promise.all([mockAI.findMany(), mockAI.count()])),
+    findFeaturedAIs: vi.fn(() => mockAI.findMany()),
+    findCreatorProfile: vi.fn((...args: unknown[]) =>
+      mockUser.findUnique({ where: { username: args[0] } })
+    ),
+  };
+
   beforeEach(() => {
-    service = new ExploreService();
+    service = new ExploreService(mockRepo as any);
     vi.clearAllMocks();
+
+    mockRepo.findPublicAIs.mockImplementation(() =>
+      Promise.all([mockAI.findMany(), mockAI.count()])
+    );
+    mockRepo.findFeaturedAIs.mockImplementation(() => mockAI.findMany());
+    mockRepo.findCreatorProfile.mockImplementation((...args: unknown[]) =>
+      mockUser.findUnique({ where: { username: args[0] } })
+    );
   });
 
   describe('findPublicAIs', () => {
@@ -59,12 +75,11 @@ describe('ExploreService', () => {
         limit: 24,
         totalPages: 1,
       });
-      expect(mockAI.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ isPublic: true, status: 'ACTIVE', deletedAt: null }),
-          skip: 0,
-          take: 24,
-        })
+      expect(mockRepo.findPublicAIs).toHaveBeenCalledWith(
+        expect.objectContaining({ isPublic: true, status: 'ACTIVE', deletedAt: null }),
+        expect.any(Object),
+        0,
+        24
       );
     });
 
@@ -74,10 +89,11 @@ describe('ExploreService', () => {
 
       await service.findPublicAIs({ category: 'EDUCATION' as any, page: 1, limit: 24 });
 
-      expect(mockAI.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ category: 'EDUCATION' }),
-        })
+      expect(mockRepo.findPublicAIs).toHaveBeenCalledWith(
+        expect.objectContaining({ category: 'EDUCATION' }),
+        expect.any(Object),
+        0,
+        24
       );
     });
 
@@ -87,15 +103,16 @@ describe('ExploreService', () => {
 
       await service.findPublicAIs({ search: 'legal', page: 1, limit: 24 });
 
-      expect(mockAI.findMany).toHaveBeenCalledWith(
+      expect(mockRepo.findPublicAIs).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({
-            OR: [
-              { name: { contains: 'legal', mode: 'insensitive' } },
-              { description: { contains: 'legal', mode: 'insensitive' } },
-            ],
-          }),
-        })
+          OR: [
+            { name: { contains: 'legal', mode: 'insensitive' } },
+            { description: { contains: 'legal', mode: 'insensitive' } },
+          ],
+        }),
+        expect.any(Object),
+        0,
+        24
       );
     });
   });
@@ -111,13 +128,7 @@ describe('ExploreService', () => {
       const result = await service.findFeaturedAIs();
 
       expect(result).toBe(featured);
-      expect(mockAI.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ isPublic: true, status: 'ACTIVE', deletedAt: null }),
-          orderBy: { conversationCount: 'desc' },
-          take: 6,
-        })
-      );
+      expect(mockRepo.findFeaturedAIs).toHaveBeenCalled();
     });
   });
 

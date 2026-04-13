@@ -1,35 +1,26 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
-import { prisma } from '@corpusai/database';
 import { MailService } from '../mail';
+import { EndUserAuthRepository } from './end-user-auth.repository';
 
 @Injectable()
 export class EndUserAuthService {
-  constructor(private readonly mail: MailService) {}
+  constructor(
+    private readonly mail: MailService,
+    private readonly repo: EndUserAuthRepository
+  ) {}
 
   async sendMagicLink(email: string, aiSlug?: string, username?: string): Promise<void> {
-    // Upsert EndUser by email
-    const endUser = await prisma.endUser.upsert({
-      where: { email },
-      create: { email },
-      update: {},
-    });
+    const endUser = await this.repo.upsertEndUser(email);
 
     const token = randomBytes(32).toString('hex');
     const expires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
-    await prisma.endUser.update({
-      where: { id: endUser.id },
-      data: { magicLinkToken: token, magicLinkExpires: expires },
-    });
+    await this.repo.setMagicLink(endUser.id, token, expires);
 
-    // Fetch AI name if slug and username provided
     let aiName: string | undefined;
     if (aiSlug && username) {
-      const ai = await prisma.aI.findFirst({
-        where: { slug: aiSlug, user: { username }, deletedAt: null },
-        select: { name: true },
-      });
+      const ai = await this.repo.findAIBySlugAndUsername(aiSlug, username);
       aiName = ai?.name;
     }
 
@@ -37,9 +28,7 @@ export class EndUserAuthService {
   }
 
   async verifyMagicLink(token: string): Promise<string> {
-    const endUser = await prisma.endUser.findUnique({
-      where: { magicLinkToken: token },
-    });
+    const endUser = await this.repo.findByMagicLinkToken(token);
 
     if (!endUser || !endUser.magicLinkExpires || endUser.magicLinkExpires < new Date()) {
       throw new UnauthorizedException('Invalid or expired magic link');
@@ -48,24 +37,12 @@ export class EndUserAuthService {
     const sessionToken = randomBytes(32).toString('hex');
     const sessionExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-    await prisma.endUser.update({
-      where: { id: endUser.id },
-      data: {
-        magicLinkToken: null,
-        magicLinkExpires: null,
-        sessionToken,
-        sessionExpires,
-        emailVerified: true,
-      },
-    });
+    await this.repo.activateSession(endUser.id, sessionToken, sessionExpires);
 
     return sessionToken;
   }
 
   async signOut(sessionToken: string): Promise<void> {
-    await prisma.endUser.updateMany({
-      where: { sessionToken },
-      data: { sessionToken: null, sessionExpires: null },
-    });
+    await this.repo.clearSession(sessionToken);
   }
 }

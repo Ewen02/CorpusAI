@@ -1,29 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { AccessStatus, prisma, type EndUser } from '@corpusai/database';
+import type { EndUser } from '@corpusai/database';
+import { PortalRepository } from './portal.repository';
 
 @Injectable()
 export class PortalService {
+  constructor(private readonly repo: PortalRepository) {}
+
   async getMe(endUser: EndUser) {
-    const grants = await prisma.aIAccessGrant.findMany({
-      where: {
-        endUserId: endUser.id,
-        status: AccessStatus.ACTIVE,
-        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-      },
-      include: {
-        ai: {
-          select: {
-            id: true,
-            slug: true,
-            name: true,
-            description: true,
-            primaryColor: true,
-            logo: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const grants = await this.repo.findActiveGrants(endUser.id);
 
     return {
       id: endUser.id,
@@ -36,28 +20,11 @@ export class PortalService {
   }
 
   async getConversations(endUser: EndUser) {
-    return prisma.conversation.findMany({
-      where: { endUserId: endUser.id, messageCount: { gt: 0 } },
-      select: {
-        id: true,
-        title: true,
-        messageCount: true,
-        createdAt: true,
-        updatedAt: true,
-        ai: { select: { id: true, slug: true, name: true, primaryColor: true, logo: true } },
-      },
-      orderBy: { updatedAt: 'desc' },
-    });
+    return this.repo.findConversations(endUser.id);
   }
 
   async getConversation(endUser: EndUser, conversationId: string) {
-    const conversation = await prisma.conversation.findFirst({
-      where: { id: conversationId, endUserId: endUser.id },
-      include: {
-        messages: { orderBy: { createdAt: 'asc' } },
-        ai: { select: { id: true, slug: true, name: true, primaryColor: true, logo: true } },
-      },
-    });
+    const conversation = await this.repo.findConversation(endUser.id, conversationId);
 
     if (!conversation) {
       throw new NotFoundException('Conversation not found');

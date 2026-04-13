@@ -50,9 +50,42 @@ describe('AdminService', () => {
 
   const mockQueue = { getFailed: vi.fn(), getFailedCount: vi.fn(), getJob: vi.fn() };
 
+  const mockRepo = {
+    getCounts: vi.fn(() =>
+      Promise.all([
+        mockUser.count(),
+        mockAI.count(),
+        mockDocument.count(),
+        mockConversation.count(),
+        mockMessage.count(),
+      ])
+    ),
+    getUsersByPlan: vi.fn(() => mockUser.groupBy()),
+    getDocumentsByStatus: vi.fn(() => mockDocument.groupBy()),
+    countRecentSignups: vi.fn(() => mockUser.count()),
+    getTopAIs: vi.fn(() => mockAI.findMany()),
+    countFailedDocs: vi.fn(() => mockDocument.count()),
+    getUsers: vi.fn((skip: number, take: number, where: object) =>
+      Promise.all([mockUser.findMany({ where, skip, take }), mockUser.count({ where })])
+    ),
+    getAIs: vi.fn((skip: number, take: number, where: object) =>
+      Promise.all([mockAI.findMany({ where, skip, take }), mockAI.count({ where })])
+    ),
+    updateUserRole: vi.fn((...args: unknown[]) =>
+      mockUser.update({ where: { id: args[0] }, data: { role: args[1] } })
+    ),
+    updateUserPlan: vi.fn((...args: unknown[]) =>
+      mockUser.update({ where: { id: args[0] }, data: { subscriptionPlan: args[1] } })
+    ),
+    pingPostgres: vi.fn().mockResolvedValue([{ '?column?': 1 }]),
+    getDocumentQueueCounts: vi.fn(() =>
+      Promise.all([mockDocument.count(), mockDocument.count(), mockDocument.count()])
+    ),
+  };
+
   beforeEach(() => {
     const mockConfig = { get: vi.fn().mockReturnValue('http://localhost:6333') };
-    service = new AdminService(mockConfig as any, mockQueue as any);
+    service = new AdminService(mockConfig as any, mockQueue as any, mockRepo as any);
     vi.clearAllMocks();
   });
 
@@ -95,7 +128,7 @@ describe('AdminService', () => {
 
     it('should use cached result on second call within TTL', async () => {
       const mockConfig2 = { get: vi.fn().mockReturnValue('http://localhost:6333') };
-      const cachedService = new AdminService(mockConfig2 as any, mockQueue as any);
+      const cachedService = new AdminService(mockConfig2 as any, mockQueue as any, mockRepo as any);
       mockUser.count.mockResolvedValue(1);
       mockAI.count.mockResolvedValue(1);
       mockDocument.count.mockResolvedValue(1);
@@ -199,14 +232,7 @@ describe('AdminService', () => {
 
       await service.updateUserPlan('user-1', 'FREE');
 
-      expect(mockUser.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            subscriptionPlan: 'FREE',
-            subscriptionStatus: 'ACTIVE',
-          }),
-        })
-      );
+      expect(mockRepo.updateUserPlan).toHaveBeenCalledWith('user-1', 'FREE', 'ACTIVE');
     });
   });
 });

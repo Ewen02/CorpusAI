@@ -1,77 +1,32 @@
 import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
 import * as crypto from 'node:crypto';
-import { prisma } from '@corpusai/database';
+import { WebhooksRepository } from './webhooks.repository';
 
 @Injectable()
 export class WebhooksService {
   private readonly logger = new Logger(WebhooksService.name);
 
-  // ── Create ──
+  constructor(private readonly repo: WebhooksRepository) {}
 
   async create(userId: string, dto: { url: string; events: string[] }) {
     const secret = crypto.randomBytes(32).toString('hex');
-
-    return prisma.webhook.create({
-      data: {
-        userId,
-        url: dto.url,
-        events: dto.events,
-        secret,
-      },
-      select: {
-        id: true,
-        url: true,
-        events: true,
-        secret: true,
-        active: true,
-        createdAt: true,
-      },
-    });
+    return this.repo.create(userId, dto.url, dto.events, secret);
   }
-
-  // ── List ──
 
   async list(userId: string) {
-    return prisma.webhook.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        url: true,
-        events: true,
-        active: true,
-        createdAt: true,
-        lastDeliveredAt: true,
-        failureCount: true,
-        deliveries: {
-          take: 5,
-          orderBy: { createdAt: 'desc' },
-          select: {
-            id: true,
-            eventType: true,
-            statusCode: true,
-            success: true,
-            createdAt: true,
-          },
-        },
-      },
-    });
+    return this.repo.list(userId);
   }
 
-  // ── Delete ──
-
   async delete(userId: string, id: string) {
-    const webhook = await prisma.webhook.findUnique({ where: { id } });
+    const webhook = await this.repo.findById(id);
     if (!webhook) throw new NotFoundException('Webhook not found');
     if (webhook.userId !== userId) throw new ForbiddenException('Access denied');
 
-    await prisma.webhook.delete({ where: { id } });
+    await this.repo.delete(id);
   }
 
-  // ── Test ──
-
   async test(userId: string, id: string) {
-    const webhook = await prisma.webhook.findUnique({ where: { id } });
+    const webhook = await this.repo.findById(id);
     if (!webhook) throw new NotFoundException('Webhook not found');
     if (webhook.userId !== userId) throw new ForbiddenException('Access denied');
 
@@ -81,16 +36,8 @@ export class WebhooksService {
     return { success: true };
   }
 
-  // ── Emit (fire-and-forget to all matching webhooks) ──
-
   async emit(userId: string, event: string, payload: Record<string, unknown>) {
-    const webhooks = await prisma.webhook.findMany({
-      where: {
-        userId,
-        active: true,
-        events: { has: event },
-      },
-    });
+    const webhooks = await this.repo.findActiveByEvent(userId, event);
 
     for (const webhook of webhooks) {
       this.deliver(webhook, event, payload).catch((err) => {
@@ -98,8 +45,6 @@ export class WebhooksService {
       });
     }
   }
-
-  // ── Deliver ──
 
   async deliver(
     webhook: { id: string; url: string; secret: string },
@@ -135,33 +80,12 @@ export class WebhooksService {
       this.logger.warn(`Webhook delivery failed for ${webhook.id}: ${(err as Error).message}`);
     }
 
-    // Log the delivery
-    await prisma.webhookDelivery.create({
-      data: {
-        webhookId: webhook.id,
-        eventType,
-        payload: payload as object,
-        statusCode,
-        success,
-      },
-    });
+    await this.repo.createDelivery(webhook.id, eventType, payload as object, statusCode, success);
 
-    // Update webhook status
     if (success) {
-      await prisma.webhook.update({
-        where: { id: webhook.id },
-        data: {
-          lastDeliveredAt: new Date(),
-          failureCount: 0,
-        },
-      });
+      await this.repo.markDelivered(webhook.id);
     } else {
-      await prisma.webhook.update({
-        where: { id: webhook.id },
-        data: {
-          failureCount: { increment: 1 },
-        },
-      });
+      await this.repo.incrementFailure(webhook.id);
     }
   }
 }

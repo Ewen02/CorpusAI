@@ -36,9 +36,27 @@ const mockEndUser = {
 describe('PortalService', () => {
   let service: PortalService;
 
+  const mockRepo = {
+    findActiveGrants: vi.fn(() => mockAccessGrant.findMany()),
+    findConversations: vi.fn((...args: unknown[]) =>
+      mockConversation.findMany({ where: { endUserId: args[0] } })
+    ),
+    findConversation: vi.fn((...args: unknown[]) =>
+      mockConversation.findFirst({ where: { id: args[1], endUserId: args[0] } })
+    ),
+  };
+
   beforeEach(() => {
-    service = new PortalService();
+    service = new PortalService(mockRepo as any);
     vi.clearAllMocks();
+
+    mockRepo.findActiveGrants.mockImplementation(() => mockAccessGrant.findMany());
+    mockRepo.findConversations.mockImplementation((...args: unknown[]) =>
+      mockConversation.findMany({ where: { endUserId: args[0] } })
+    );
+    mockRepo.findConversation.mockImplementation((...args: unknown[]) =>
+      mockConversation.findFirst({ where: { id: args[1], endUserId: args[0] } })
+    );
   });
 
   describe('getMe', () => {
@@ -73,11 +91,7 @@ describe('PortalService', () => {
       expect(result.email).toBe('end@test.com');
       expect(result.name).toBe('End User');
       expect(result.ais).toEqual([grants[0]!.ai, grants[1]!.ai]);
-      expect(mockAccessGrant.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ endUserId: 'eu-1', status: 'ACTIVE' }),
-        })
-      );
+      expect(mockRepo.findActiveGrants).toHaveBeenCalledWith('eu-1');
     });
   });
 
@@ -98,12 +112,7 @@ describe('PortalService', () => {
       const result = await service.getConversations(mockEndUser as any);
 
       expect(result).toBe(conversations);
-      expect(mockConversation.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { endUserId: 'eu-1', messageCount: { gt: 0 } },
-          orderBy: { updatedAt: 'desc' },
-        })
-      );
+      expect(mockRepo.findConversations).toHaveBeenCalledWith('eu-1');
     });
   });
 

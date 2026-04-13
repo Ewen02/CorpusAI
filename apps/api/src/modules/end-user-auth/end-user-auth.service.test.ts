@@ -43,9 +43,43 @@ describe('EndUserAuthService', () => {
     sendMagicLink: vi.fn(),
   };
 
+  const mockRepo = {
+    upsertEndUser: vi.fn((...args: unknown[]) => mockEndUser.upsert({ where: { email: args[0] } })),
+    setMagicLink: vi.fn((...args: unknown[]) => mockEndUser.update({ where: { id: args[0] } })),
+    findAIBySlugAndUsername: vi.fn((...args: unknown[]) =>
+      mockAI.findFirst({ where: { slug: args[0] } })
+    ),
+    findByMagicLinkToken: vi.fn((...args: unknown[]) =>
+      mockEndUser.findUnique({ where: { magicLinkToken: args[0] } })
+    ),
+    activateSession: vi.fn((...args: unknown[]) => mockEndUser.update({ where: { id: args[0] } })),
+    clearSession: vi.fn((...args: unknown[]) =>
+      mockEndUser.updateMany({ where: { sessionToken: args[0] } })
+    ),
+  };
+
   beforeEach(() => {
-    service = new EndUserAuthService(mockMailService as any);
+    service = new EndUserAuthService(mockMailService as any, mockRepo as any);
     vi.clearAllMocks();
+
+    mockRepo.upsertEndUser.mockImplementation((...args: unknown[]) =>
+      mockEndUser.upsert({ where: { email: args[0] } })
+    );
+    mockRepo.setMagicLink.mockImplementation((...args: unknown[]) =>
+      mockEndUser.update({ where: { id: args[0] } })
+    );
+    mockRepo.findAIBySlugAndUsername.mockImplementation((...args: unknown[]) =>
+      mockAI.findFirst({ where: { slug: args[0] } })
+    );
+    mockRepo.findByMagicLinkToken.mockImplementation((...args: unknown[]) =>
+      mockEndUser.findUnique({ where: { magicLinkToken: args[0] } })
+    );
+    mockRepo.activateSession.mockImplementation((...args: unknown[]) =>
+      mockEndUser.update({ where: { id: args[0] } })
+    );
+    mockRepo.clearSession.mockImplementation((...args: unknown[]) =>
+      mockEndUser.updateMany({ where: { sessionToken: args[0] } })
+    );
   });
 
   describe('sendMagicLink', () => {
@@ -56,11 +90,7 @@ describe('EndUserAuthService', () => {
 
       await service.sendMagicLink('end@user.com');
 
-      expect(mockEndUser.upsert).toHaveBeenCalledWith({
-        where: { email: 'end@user.com' },
-        create: { email: 'end@user.com' },
-        update: {},
-      });
+      expect(mockRepo.upsertEndUser).toHaveBeenCalledWith('end@user.com');
     });
 
     it('should update existing endUser with new token', async () => {
@@ -70,13 +100,11 @@ describe('EndUserAuthService', () => {
 
       await service.sendMagicLink('existing@user.com');
 
-      expect(mockEndUser.update).toHaveBeenCalledWith({
-        where: { id: 'eu-2' },
-        data: {
-          magicLinkToken: 'mock-token-hex-value',
-          magicLinkExpires: expect.any(Date),
-        },
-      });
+      expect(mockRepo.setMagicLink).toHaveBeenCalledWith(
+        'eu-2',
+        'mock-token-hex-value',
+        expect.any(Date)
+      );
     });
 
     it('should call mailService.sendMagicLink', async () => {
@@ -123,19 +151,12 @@ describe('EndUserAuthService', () => {
       const sessionToken = await service.verifyMagicLink('valid-token');
 
       expect(sessionToken).toBe('mock-token-hex-value');
-      expect(mockEndUser.findUnique).toHaveBeenCalledWith({
-        where: { magicLinkToken: 'valid-token' },
-      });
-      expect(mockEndUser.update).toHaveBeenCalledWith({
-        where: { id: 'eu-1' },
-        data: {
-          magicLinkToken: null,
-          magicLinkExpires: null,
-          sessionToken: 'mock-token-hex-value',
-          sessionExpires: expect.any(Date),
-          emailVerified: true,
-        },
-      });
+      expect(mockRepo.findByMagicLinkToken).toHaveBeenCalledWith('valid-token');
+      expect(mockRepo.activateSession).toHaveBeenCalledWith(
+        'eu-1',
+        'mock-token-hex-value',
+        expect.any(Date)
+      );
     });
 
     it('should throw UnauthorizedException for invalid token', async () => {
@@ -174,10 +195,7 @@ describe('EndUserAuthService', () => {
 
       await service.signOut('session-token-123');
 
-      expect(mockEndUser.updateMany).toHaveBeenCalledWith({
-        where: { sessionToken: 'session-token-123' },
-        data: { sessionToken: null, sessionExpires: null },
-      });
+      expect(mockRepo.clearSession).toHaveBeenCalledWith('session-token-123');
     });
 
     it('should not throw if session does not exist', async () => {
