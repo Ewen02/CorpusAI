@@ -87,14 +87,80 @@ describe('ConversationsService', () => {
     updateMemory: vi.fn().mockResolvedValue(undefined),
   };
 
+  // Mock repository delegating to prisma mocks
+  const mockRepo = {
+    findAccessGrant: vi.fn(),
+    countTodayQuestions: vi.fn().mockResolvedValue([{ count: BigInt(0) }]),
+    findConversationHistory: vi.fn().mockResolvedValue([]),
+    findAIPublicInfo: vi.fn((...args: unknown[]) =>
+      mockAI.findFirst({ where: { slug: args[1], user: { username: args[0] } } })
+    ),
+    findAIByIdAndUser: vi.fn((...args: unknown[]) =>
+      mockAI.findFirst({ where: { id: args[0], userId: args[1] } })
+    ),
+    findConversationsByAI: vi.fn((...args: unknown[]) =>
+      mockConversation.findMany({ where: { aiId: args[0] } })
+    ),
+    findConversationWithMessages: vi.fn((...args: unknown[]) =>
+      mockConversation.findUnique({ where: { id: args[0] } })
+    ),
+    findConversationExists: vi.fn((...args: unknown[]) =>
+      mockConversation.findUnique({ where: { id: args[0] } })
+    ),
+    findMessages: vi.fn(),
+    findAIBySlugAndUsername: vi.fn(),
+    findEndUserBySession: vi.fn(),
+    createConversationWithCounterUpdate: vi.fn(),
+    findConversationWithAI: vi.fn((...args: unknown[]) =>
+      mockConversation.findUnique({ where: { id: args[0] } })
+    ),
+    createMessage: vi.fn((...args: unknown[]) => mockMessage.create(args[0])),
+    updateConversationAndQuestionCount: vi.fn().mockResolvedValue(undefined),
+    findMessageForFeedback: vi.fn(),
+    updateMessageFeedback: vi.fn(),
+    findConversationForDelete: vi.fn((...args: unknown[]) =>
+      mockConversation.findUnique({ where: { id: args[0] } })
+    ),
+    deleteConversationWithCounterUpdate: vi.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(() => {
     service = new ConversationsService(
       mockRagService as any,
       mockWebhooksService as any,
-      mockMemoryService as any
+      mockMemoryService as any,
+      mockRepo as any
     );
     vi.clearAllMocks();
     (canAskQuestion as ReturnType<typeof vi.fn>).mockReturnValue(true);
+
+    // Re-apply delegates after clearAllMocks
+    mockRepo.countTodayQuestions.mockResolvedValue([{ count: BigInt(0) }]);
+    mockRepo.findConversationHistory.mockResolvedValue([]);
+    mockRepo.findAIPublicInfo.mockImplementation((...args: unknown[]) =>
+      mockAI.findFirst({ where: { slug: args[1], user: { username: args[0] } } })
+    );
+    mockRepo.findAIByIdAndUser.mockImplementation((...args: unknown[]) =>
+      mockAI.findFirst({ where: { id: args[0], userId: args[1] } })
+    );
+    mockRepo.findConversationsByAI.mockImplementation((...args: unknown[]) =>
+      mockConversation.findMany({ where: { aiId: args[0] } })
+    );
+    mockRepo.findConversationWithMessages.mockImplementation((...args: unknown[]) =>
+      mockConversation.findUnique({ where: { id: args[0] } })
+    );
+    mockRepo.findConversationExists.mockImplementation((...args: unknown[]) =>
+      mockConversation.findUnique({ where: { id: args[0] } })
+    );
+    mockRepo.findConversationWithAI.mockImplementation((...args: unknown[]) =>
+      mockConversation.findUnique({ where: { id: args[0] } })
+    );
+    mockRepo.createMessage.mockImplementation((...args: unknown[]) => mockMessage.create(args[0]));
+    mockRepo.updateConversationAndQuestionCount.mockResolvedValue(undefined);
+    mockRepo.findConversationForDelete.mockImplementation((...args: unknown[]) =>
+      mockConversation.findUnique({ where: { id: args[0] } })
+    );
+    mockRepo.deleteConversationWithCounterUpdate.mockResolvedValue(undefined);
   });
 
   describe('getAIPublicInfo', () => {
@@ -166,21 +232,24 @@ describe('ConversationsService', () => {
       id: 'conv-1',
       aiId: 'ai-1',
       title: null,
+      endUserId: null,
+      messageCount: 0,
       ai: {
         id: 'ai-1',
         userId: 'user-1',
         systemPrompt: 'You are helpful',
+        language: null,
         temperature: 0.7,
         maxTokens: 1024,
         scoreThreshold: 0.6,
+        llmModel: null,
+        memoryEnabled: false,
         user: { subscriptionPlan: 'FREE' },
       },
     };
 
     it('should save user message and RAG response', async () => {
       mockConversation.findUnique.mockResolvedValue(conversation);
-      mockMessage.count.mockResolvedValue(5);
-      mockMessage.findMany.mockResolvedValue([]);
       mockMessage.create
         .mockResolvedValueOnce({ id: 'msg-user', role: 'USER', content: 'hello' })
         .mockResolvedValueOnce({ id: 'msg-assistant', role: 'ASSISTANT', content: 'response' });
@@ -191,11 +260,9 @@ describe('ConversationsService', () => {
         metrics: { totalTokens: 150 },
       });
 
-      (prisma.$transaction as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
-
       const result = await service.sendMessage('conv-1', 'hello');
       expect(result.isError).toBe(false);
-      expect(mockMessage.create).toHaveBeenCalledTimes(2);
+      expect(mockRepo.createMessage).toHaveBeenCalledTimes(2);
     });
 
     it('should throw when conversation not found', async () => {
@@ -205,7 +272,7 @@ describe('ConversationsService', () => {
 
     it('should throw ForbiddenException when daily limit reached', async () => {
       mockConversation.findUnique.mockResolvedValue(conversation);
-      mockMessage.count.mockResolvedValue(100);
+      mockRepo.countTodayQuestions.mockResolvedValue([{ count: BigInt(100) }]);
       (canAskQuestion as ReturnType<typeof vi.fn>).mockReturnValue(false);
 
       await expect(service.sendMessage('conv-1', 'hello')).rejects.toThrow(ForbiddenException);
@@ -213,11 +280,8 @@ describe('ConversationsService', () => {
 
     it('should return fallback response on RAG error', async () => {
       mockConversation.findUnique.mockResolvedValue(conversation);
-      mockMessage.count.mockResolvedValue(0);
-      mockMessage.findMany.mockResolvedValue([]);
       mockMessage.create.mockResolvedValue({ id: 'msg', role: 'ASSISTANT', content: 'fallback' });
       mockRagService.query.mockRejectedValue(new Error('OpenAI down'));
-      (prisma.$transaction as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
 
       const result = await service.sendMessage('conv-1', 'hello');
       expect(result.isError).toBe(true);
@@ -230,7 +294,6 @@ describe('ConversationsService', () => {
         id: 'conv-1',
         ai: { id: 'ai-1', userId: 'user-1' },
       });
-      (prisma.$transaction as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
 
       const result = await service.delete('user-1', 'conv-1');
       expect(result).toEqual({ success: true });

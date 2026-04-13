@@ -48,14 +48,104 @@ describe('AIsService', () => {
     verifyConversationOwnership: vi.fn(),
   };
 
+  // Mock repository that delegates to the same prisma mocks
+  const mockRepo = {
+    findAllByUser: vi.fn((...args: unknown[]) =>
+      mockAI.findMany({ where: { userId: args[0] }, skip: args[1], take: args[2] })
+    ),
+    findOneWithDocuments: vi.fn((...args: unknown[]) =>
+      mockAI.findFirst({ where: { id: args[0], userId: args[1] } })
+    ),
+    findByUserAndSlug: vi.fn((...args: unknown[]) =>
+      mockAI.findFirst({ where: { slug: args[1], user: { username: args[0] } } })
+    ),
+    findUserWithAICount: vi.fn((...args: unknown[]) =>
+      mockUser.findUnique({ where: { id: args[0] } })
+    ),
+    findSlugForUser: vi.fn((...args: unknown[]) =>
+      mockAI.findFirst({ where: { slug: args[0], userId: args[1] } })
+    ),
+    create: vi.fn((...args: unknown[]) => mockAI.create({ data: args[1] })),
+    update: vi.fn((...args: unknown[]) => mockAI.update({ where: { id: args[0] }, data: args[1] })),
+    delete: vi.fn((...args: unknown[]) => mockAI.delete({ where: { id: args[0] } })),
+    findForSuggestions: vi.fn((...args: unknown[]) =>
+      mockAI.findFirst({ where: { id: args[0], userId: args[1] } })
+    ),
+    findStats: vi.fn((...args: unknown[]) =>
+      mockAI.findFirst({ where: { id: args[0], userId: args[1] } })
+    ),
+    findDocumentForAI: vi.fn(),
+    findForAccess: vi.fn((...args: unknown[]) =>
+      mockAI.findFirst({ where: { id: args[0], userId: args[1] } })
+    ),
+    updateAccessToken: vi.fn(),
+    findWithUsername: vi.fn(),
+    updateAccessCode: vi.fn(),
+    updateInviteOnly: vi.fn(),
+    updateAccessMode: vi.fn(),
+    findActiveMembers: vi.fn(),
+    countActiveGrants: vi.fn(),
+    findUserPlan: vi.fn(),
+    findUserUsername: vi.fn(),
+    upsertEndUser: vi.fn(),
+    upsertAccessGrant: vi.fn(),
+    revokeGrant: vi.fn(),
+    findDailyStats: vi.fn(),
+    getConfidenceStats: vi.fn(),
+    getFeedbackStats: vi.fn(),
+    getAvgMessagesPerConversation: vi.fn(),
+    getUniqueUsers: vi.fn(),
+    getKnowledgeBase: vi.fn(),
+    getTopQuestions: vi.fn(),
+    getRetention: vi.fn(),
+    getFunnelData: vi.fn(),
+    getDocumentUsage: vi.fn(),
+    getDocumentChunkUsage: vi.fn(),
+  };
+
   beforeEach(() => {
     service = new AIsService(
       mockRagService as any,
       mockTextGenerationService as any,
-      mockOwnershipService as any
+      mockOwnershipService as any,
+      mockRepo as any
     );
     vi.clearAllMocks();
     (canCreateAI as ReturnType<typeof vi.fn>).mockReturnValue(true);
+
+    // Re-apply default delegates after clearAllMocks
+    mockRepo.findAllByUser.mockImplementation((...args: unknown[]) =>
+      mockAI.findMany({ where: { userId: args[0] }, skip: args[1], take: args[2] })
+    );
+    mockRepo.findOneWithDocuments.mockImplementation((...args: unknown[]) =>
+      mockAI.findFirst({ where: { id: args[0], userId: args[1] } })
+    );
+    mockRepo.findByUserAndSlug.mockImplementation((...args: unknown[]) =>
+      mockAI.findFirst({ where: { slug: args[1], user: { username: args[0] } } })
+    );
+    mockRepo.findUserWithAICount.mockImplementation((...args: unknown[]) =>
+      mockUser.findUnique({ where: { id: args[0] } })
+    );
+    mockRepo.findSlugForUser.mockImplementation((...args: unknown[]) =>
+      mockAI.findFirst({ where: { slug: args[0], userId: args[1] } })
+    );
+    mockRepo.create.mockImplementation((...args: unknown[]) => mockAI.create({ data: args[1] }));
+    mockRepo.update.mockImplementation((...args: unknown[]) =>
+      mockAI.update({ where: { id: args[0] }, data: args[1] })
+    );
+    mockRepo.delete.mockImplementation((...args: unknown[]) =>
+      mockAI.delete({ where: { id: args[0] } })
+    );
+    mockRepo.findForSuggestions.mockImplementation((...args: unknown[]) =>
+      mockAI.findFirst({ where: { id: args[0], userId: args[1] } })
+    );
+    mockRepo.findStats.mockImplementation((...args: unknown[]) =>
+      mockAI.findFirst({ where: { id: args[0], userId: args[1] } })
+    );
+    mockRepo.findForAccess.mockImplementation((...args: unknown[]) =>
+      mockAI.findFirst({ where: { id: args[0], userId: args[1] } })
+    );
+    mockOwnershipService.verifyAIOwnership.mockResolvedValue(undefined);
   });
 
   describe('findAll', () => {
@@ -65,19 +155,12 @@ describe('AIsService', () => {
 
       const result = await service.findAll('user-1', { skip: 0, take: 10 });
       expect(result).toBe(ais);
-      expect(mockAI.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ userId: 'user-1' }),
-          skip: 0,
-          take: 10,
-        })
-      );
     });
 
     it('should use default pagination', async () => {
       mockAI.findMany.mockResolvedValue([]);
       await service.findAll('user-1');
-      expect(mockAI.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 0, take: 50 }));
+      expect(mockRepo.findAllByUser).toHaveBeenCalledWith('user-1', 0, 50);
     });
   });
 
@@ -140,7 +223,7 @@ describe('AIsService', () => {
 
     it('should create AI when within limits', async () => {
       mockUser.findUnique.mockResolvedValue({ subscriptionPlan: 'FREE', _count: { ais: 1 } });
-      mockAI.findUnique.mockResolvedValue(null); // slug not taken
+      mockAI.findFirst.mockResolvedValue(null); // slug not taken
       mockAI.create.mockResolvedValue({ id: 'ai-new', ...dto });
 
       const result = await service.create('user-1', dto);
@@ -169,7 +252,6 @@ describe('AIsService', () => {
 
   describe('update', () => {
     it('should update AI', async () => {
-      mockAI.findFirst.mockResolvedValue({ id: 'ai-1' });
       mockAI.update.mockResolvedValue({ id: 'ai-1', name: 'Updated' });
 
       const result = await service.update('user-1', 'ai-1', { name: 'Updated' });
@@ -188,7 +270,6 @@ describe('AIsService', () => {
 
   describe('delete', () => {
     it('should delete AI and clean up Qdrant', async () => {
-      mockAI.findFirst.mockResolvedValue({ id: 'ai-1' });
       mockAI.delete.mockResolvedValue({});
 
       const result = await service.delete('user-1', 'ai-1');
@@ -197,7 +278,6 @@ describe('AIsService', () => {
     });
 
     it('should still delete even if Qdrant cleanup fails', async () => {
-      mockAI.findFirst.mockResolvedValue({ id: 'ai-1' });
       mockRagService.deleteAIVectors.mockRejectedValue(new Error('qdrant down'));
       mockAI.delete.mockResolvedValue({});
 

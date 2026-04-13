@@ -7,13 +7,10 @@ import {
   Logger,
 } from '@nestjs/common';
 import {
-  prisma,
   MessageRole,
   AIStatus,
-  AccessStatus,
   ConfidenceLevel,
   ConversationSource,
-  type TransactionClient,
   type AI,
   type EndUser,
 } from '@corpusai/database';
@@ -24,7 +21,7 @@ import type { RAGResponse } from '@corpusai/corpus';
 import { RagService } from '../rag';
 import { WebhooksService } from '../webhooks';
 import { EndUserMemoryService } from './memory.service';
-import { incrementDailyStats } from '../../shared/daily-stats';
+import { ConversationsRepository } from './conversations.repository';
 
 @Injectable()
 export class ConversationsService {
@@ -33,7 +30,8 @@ export class ConversationsService {
   constructor(
     private ragService: RagService,
     private webhooksService: WebhooksService,
-    private memoryService: EndUserMemoryService
+    private memoryService: EndUserMemoryService,
+    private readonly repo: ConversationsRepository
   ) {}
 
   private async checkAIAccess(
@@ -42,12 +40,10 @@ export class ConversationsService {
     accessCode?: string,
     endUser?: EndUser | null
   ): Promise<void> {
-    // Token secret check
     if (ai.accessToken && accessToken !== ai.accessToken) {
       throw new UnauthorizedException({ reason: 'access_token' });
     }
 
-    // Access code check (bcrypt)
     if (ai.accessCode) {
       const valid = !!accessCode && (await bcrypt.compare(accessCode, ai.accessCode));
       if (!valid) {
@@ -55,14 +51,11 @@ export class ConversationsService {
       }
     }
 
-    // Invite-only check
     if (ai.inviteOnly) {
       if (!endUser) {
         throw new UnauthorizedException({ reason: 'invite_only' });
       }
-      const grant = await prisma.aIAccessGrant.findFirst({
-        where: { aiId: ai.id, endUserId: endUser.id, status: AccessStatus.ACTIVE },
-      });
+      const grant = await this.repo.findAccessGrant(ai.id, endUser.id);
       if (!grant || (grant.expiresAt && grant.expiresAt < new Date())) {
         throw new UnauthorizedException({ reason: 'invite_only' });
       }
@@ -73,33 +66,18 @@ export class ConversationsService {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    const [{ count }] = await prisma.$queryRaw<[{ count: bigint }]>`
-      SELECT COUNT(*) as count
-      FROM "Message" m
-      JOIN "Conversation" c ON c.id = m."conversationId"
-      WHERE c."aiId" = ${aiId}
-        AND m.role = 'USER'
-        AND m."createdAt" >= ${todayStart}
-    `;
+    const [{ count }] = await this.repo.countTodayQuestions(aiId, todayStart);
 
     if (!canAskQuestion(plan, Number(count))) {
       throw new ForbiddenException('Daily question limit reached for this AI');
     }
   }
 
-  /**
-   * Fetches the last N messages from a conversation for multi-turn context.
-   */
   private async getConversationHistory(
     conversationId: string,
     limit = 6
   ): Promise<Array<{ role: 'user' | 'assistant'; content: string }>> {
-    const messages = await prisma.message.findMany({
-      where: { conversationId },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-      select: { role: true, content: true },
-    });
+    const messages = await this.repo.findConversationHistory(conversationId, limit);
     return messages
       .reverse()
       .filter(
@@ -112,26 +90,9 @@ export class ConversationsService {
       }));
   }
 
-  /**
-   * Get public AI info for widget embed.
-   */
   async getAIPublicInfo(username: string, slug: string) {
-    // Tolerate leading '@' in username (e.g. clients that forward the URL prefix as-is)
     const normalizedUsername = username.startsWith('@') ? username.slice(1) : username;
-    const ai = await prisma.aI.findFirst({
-      where: { slug, user: { username: normalizedUsername }, deletedAt: null },
-      select: {
-        id: true,
-        slug: true,
-        name: true,
-        description: true,
-        welcomeMessage: true,
-        primaryColor: true,
-        logo: true,
-        status: true,
-        isPublic: true,
-      },
-    });
+    const ai = await this.repo.findAIPublicInfo(normalizedUsername, slug);
 
     if (!ai || !ai.isPublic || ai.status !== AIStatus.ACTIVE) {
       throw new NotFoundException('AI not found');
@@ -149,101 +110,34 @@ export class ConversationsService {
   }
 
   async findAllByAI(userId: string, aiId: string, source?: ConversationSource) {
-    // Verify ownership
-    const ai = await prisma.aI.findFirst({
-      where: { id: aiId, userId },
-      select: { id: true },
-    });
+    const ai = await this.repo.findAIByIdAndUser(aiId, userId);
 
     if (!ai) {
       throw new NotFoundException('AI not found');
     }
 
-    return prisma.conversation.findMany({
-      where: { aiId, ...(source ? { source } : {}) },
-      orderBy: { updatedAt: 'desc' },
-      select: {
-        id: true,
-        title: true,
-        messageCount: true,
-        source: true,
-        createdAt: true,
-        updatedAt: true,
-        endUser: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
-          },
-        },
-      },
-      take: 50,
-    });
+    return this.repo.findConversationsByAI(aiId, source);
   }
 
   async findOne(conversationId: string) {
-    const conversation = await prisma.conversation.findUnique({
-      where: { id: conversationId },
-      include: {
-        messages: {
-          orderBy: { createdAt: 'desc' },
-          take: 100,
-          select: {
-            id: true,
-            role: true,
-            content: true,
-            sources: true,
-            confidence: true,
-            feedback: true,
-            createdAt: true,
-          },
-        },
-        ai: {
-          select: {
-            id: true,
-            name: true,
-            welcomeMessage: true,
-            primaryColor: true,
-          },
-        },
-      },
-    });
+    const conversation = await this.repo.findConversationWithMessages(conversationId);
 
     if (!conversation) {
       throw new NotFoundException('Conversation not found');
     }
 
-    // Reverse messages to chronological order (fetched desc for take limit)
     conversation.messages.reverse();
-
     return conversation;
   }
 
   async getMessages(conversationId: string, take = 100, cursor?: string) {
-    const conversation = await prisma.conversation.findUnique({
-      where: { id: conversationId },
-      select: { id: true },
-    });
+    const conversation = await this.repo.findConversationExists(conversationId);
 
     if (!conversation) {
       throw new NotFoundException('Conversation not found');
     }
 
-    return prisma.message.findMany({
-      where: { conversationId },
-      orderBy: { createdAt: 'asc' },
-      take,
-      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-      select: {
-        id: true,
-        role: true,
-        content: true,
-        sources: true,
-        confidence: true,
-        feedback: true,
-        createdAt: true,
-      },
-    });
+    return this.repo.findMessages(conversationId, take, cursor);
   }
 
   async create(
@@ -254,60 +148,28 @@ export class ConversationsService {
     accessToken?: string,
     accessCode?: string
   ) {
-    // Tolerate leading '@' in username (clients may pass the URL prefix as-is)
     const normalizedUsername = username.startsWith('@') ? username.slice(1) : username;
-    const ai = await prisma.aI.findFirst({
-      where: { slug: aiSlug, user: { username: normalizedUsername }, deletedAt: null },
-    });
+    const ai = await this.repo.findAIBySlugAndUsername(aiSlug, normalizedUsername);
 
-    // Allow ACTIVE and DRAFT (for owner testing)
     if (!ai || (ai.status !== AIStatus.ACTIVE && ai.status !== AIStatus.DRAFT)) {
       throw new NotFoundException('AI not found or not active');
     }
 
-    // Resolve authenticated end-user from session token (cookie eu_session)
     let endUser: EndUser | null = null;
     if (endUserSessionToken) {
-      endUser = await prisma.endUser.findFirst({
-        where: { sessionToken: endUserSessionToken, sessionExpires: { gt: new Date() } },
-      });
+      endUser = await this.repo.findEndUserBySession(endUserSessionToken);
     }
 
-    // Check access control
     await this.checkAIAccess(ai, accessToken, accessCode, endUser);
 
     const endUserId = endUser?.id;
 
-    // Use transaction to ensure conversation creation and counter update are atomic
-    const conversation = await prisma.$transaction(async (tx: TransactionClient) => {
-      const newConversation = await tx.conversation.create({
-        data: {
-          aiId: ai.id,
-          endUserId,
-          source,
-        },
-        include: {
-          ai: {
-            select: {
-              id: true,
-              name: true,
-              welcomeMessage: true,
-              primaryColor: true,
-            },
-          },
-        },
-      });
-
-      // Update AI conversation count atomically
-      await tx.aI.update({
-        where: { id: ai.id },
-        data: { conversationCount: { increment: 1 } },
-      });
-
-      await incrementDailyStats(tx, ai.userId, ai.id, 'conversationCount');
-
-      return newConversation;
-    });
+    const conversation = await this.repo.createConversationWithCounterUpdate(
+      ai.id,
+      ai.userId,
+      endUserId,
+      source
+    );
 
     this.webhooksService
       .emit(ai.userId, 'conversation.started', {
@@ -321,47 +183,22 @@ export class ConversationsService {
   }
 
   async sendMessage(conversationId: string, content: string) {
-    const conversation = await prisma.conversation.findUnique({
-      where: { id: conversationId },
-      include: {
-        ai: {
-          select: {
-            id: true,
-            userId: true,
-            systemPrompt: true,
-            language: true,
-            temperature: true,
-            maxTokens: true,
-            scoreThreshold: true,
-            llmModel: true,
-            memoryEnabled: true,
-            user: {
-              select: { subscriptionPlan: true },
-            },
-          },
-        },
-      },
-    });
+    const conversation = await this.repo.findConversationWithAI(conversationId);
 
     if (!conversation) {
       throw new NotFoundException('Conversation not found');
     }
 
-    // Check rate limits
     await this.checkDailyRateLimit(conversation.aiId, conversation.ai.user.subscriptionPlan);
 
-    // Save user message
-    const userMessage = await prisma.message.create({
-      data: {
-        conversationId,
-        role: MessageRole.USER,
-        content,
-      },
+    const userMessage = await this.repo.createMessage({
+      conversationId,
+      role: MessageRole.USER,
+      content,
     });
 
     const conversationHistory = await this.getConversationHistory(conversationId);
 
-    // Fetch memory context if enabled
     let memoryContext: string | undefined;
     if (conversation.ai.memoryEnabled && conversation.endUserId) {
       memoryContext =
@@ -369,7 +206,6 @@ export class ConversationsService {
         undefined;
     }
 
-    // Query RAG pipeline
     const startTime = Date.now();
     let assistantMessage;
     let isError = false;
@@ -396,12 +232,10 @@ export class ConversationsService {
 
       const latencyMs = Date.now() - startTime;
 
-      // Calculate confidence based on source scores
       const confidence = determineConfidence(
         ragResponse.sources.map((s) => ({ relevanceScore: s.score }))
       ) as ConfidenceLevel;
 
-      // Format sources for storage
       const sources = ragResponse.sources.map((s) => ({
         chunkId: s.chunkId,
         documentSource: s.documentSource,
@@ -409,16 +243,14 @@ export class ConversationsService {
         excerpt: s.text.slice(0, 200),
       }));
 
-      assistantMessage = await prisma.message.create({
-        data: {
-          conversationId,
-          role: MessageRole.ASSISTANT,
-          content: ragResponse.answer,
-          confidence,
-          sources,
-          latencyMs,
-          tokenUsage: ragResponse.metrics?.totalTokens ?? null,
-        },
+      assistantMessage = await this.repo.createMessage({
+        conversationId,
+        role: MessageRole.ASSISTANT,
+        content: ragResponse.answer,
+        confidence,
+        sources,
+        latencyMs,
+        tokenUsage: ragResponse.metrics?.totalTokens ?? null,
       });
 
       this.logger.log(
@@ -438,38 +270,26 @@ export class ConversationsService {
       this.logger.error(`RAG query failed: ${error}`);
       isError = true;
 
-      // Fallback response on error
-      assistantMessage = await prisma.message.create({
-        data: {
-          conversationId,
-          role: MessageRole.ASSISTANT,
-          content:
-            conversation.ai.language === 'en'
-              ? "I'm sorry, I couldn't process your question. Please try again."
-              : "Je suis désolé, je n'ai pas pu traiter votre question. Veuillez réessayer.",
-          confidence: ConfidenceLevel.LOW,
-          sources: [],
-        },
+      assistantMessage = await this.repo.createMessage({
+        conversationId,
+        role: MessageRole.ASSISTANT,
+        content:
+          conversation.ai.language === 'en'
+            ? "I'm sorry, I couldn't process your question. Please try again."
+            : "Je suis désolé, je n'ai pas pu traiter votre question. Veuillez réessayer.",
+        confidence: ConfidenceLevel.LOW,
+        sources: [],
       });
     }
 
-    // Update conversation and AI question count atomically
-    await prisma.$transaction(async (tx: TransactionClient) => {
-      await tx.conversation.update({
-        where: { id: conversationId },
-        data: {
-          messageCount: { increment: 2 },
-          title: conversation.title || content.slice(0, 50),
-        },
-      });
-      await tx.aI.update({
-        where: { id: conversation.aiId },
-        data: { questionCount: { increment: 1 } },
-      });
-      await incrementDailyStats(tx, conversation.ai.userId, conversation.aiId, 'questionCount');
-    });
+    await this.repo.updateConversationAndQuestionCount(
+      conversationId,
+      conversation.aiId,
+      conversation.ai.userId,
+      conversation.title,
+      content
+    );
 
-    // Trigger async memory update (fire-and-forget)
     if (
       conversation.ai.memoryEnabled &&
       conversation.endUserId &&
@@ -488,9 +308,6 @@ export class ConversationsService {
     };
   }
 
-  /**
-   * Type pour les événements de streaming.
-   */
   static StreamEventType = {
     TOKEN: 'token',
     SOURCES: 'sources',
@@ -498,9 +315,6 @@ export class ConversationsService {
     ERROR: 'error',
   } as const;
 
-  /**
-   * Envoie un message avec streaming de la réponse.
-   */
   async *sendMessageStream(
     conversationId: string,
     content: string
@@ -508,34 +322,13 @@ export class ConversationsService {
     type: 'token' | 'sources' | 'done' | 'error';
     data: unknown;
   }> {
-    const conversation = await prisma.conversation.findUnique({
-      where: { id: conversationId },
-      include: {
-        ai: {
-          select: {
-            id: true,
-            userId: true,
-            systemPrompt: true,
-            language: true,
-            temperature: true,
-            maxTokens: true,
-            scoreThreshold: true,
-            llmModel: true,
-            memoryEnabled: true,
-            user: {
-              select: { subscriptionPlan: true },
-            },
-          },
-        },
-      },
-    });
+    const conversation = await this.repo.findConversationWithAI(conversationId);
 
     if (!conversation) {
       yield { type: 'error', data: { message: 'Conversation not found' } };
       return;
     }
 
-    // Check rate limits
     try {
       await this.checkDailyRateLimit(conversation.aiId, conversation.ai.user.subscriptionPlan);
     } catch {
@@ -543,18 +336,14 @@ export class ConversationsService {
       return;
     }
 
-    // Save user message
-    const userMessage = await prisma.message.create({
-      data: {
-        conversationId,
-        role: MessageRole.USER,
-        content,
-      },
+    const userMessage = await this.repo.createMessage({
+      conversationId,
+      role: MessageRole.USER,
+      content,
     });
 
     const conversationHistory = await this.getConversationHistory(conversationId);
 
-    // Fetch memory context if enabled
     let memoryContext: string | undefined;
     if (conversation.ai.memoryEnabled && conversation.endUserId) {
       memoryContext =
@@ -565,7 +354,6 @@ export class ConversationsService {
     const startTime = Date.now();
 
     try {
-      // Stream RAG response
       const generator = this.ragService.queryStream(
         conversation.aiId,
         content,
@@ -585,7 +373,6 @@ export class ConversationsService {
         }
       );
 
-      // Yield tokens as they come
       let result: IteratorResult<string, RAGResponse>;
       while (!(result = await generator.next()).done) {
         const token = result.value;
@@ -595,7 +382,6 @@ export class ConversationsService {
       const ragResponse = result.value;
       const latencyMs = Date.now() - startTime;
 
-      // Calculate confidence and format sources
       const confidence = determineConfidence(
         ragResponse.sources.map((s) => ({ relevanceScore: s.score }))
       ) as ConfidenceLevel;
@@ -606,37 +392,25 @@ export class ConversationsService {
         excerpt: s.text.slice(0, 200),
       }));
 
-      // Yield sources
       yield { type: 'sources', data: { sources } };
 
-      // Save assistant message
-      const assistantMessage = await prisma.message.create({
-        data: {
-          conversationId,
-          role: MessageRole.ASSISTANT,
-          content: ragResponse.answer,
-          confidence,
-          sources,
-          latencyMs,
-          tokenUsage: ragResponse.metrics?.totalTokens ?? null,
-        },
+      const assistantMessage = await this.repo.createMessage({
+        conversationId,
+        role: MessageRole.ASSISTANT,
+        content: ragResponse.answer,
+        confidence,
+        sources,
+        latencyMs,
+        tokenUsage: ragResponse.metrics?.totalTokens ?? null,
       });
 
-      // Update conversation and AI question count atomically
-      await prisma.$transaction(async (tx: TransactionClient) => {
-        await tx.conversation.update({
-          where: { id: conversationId },
-          data: {
-            messageCount: { increment: 2 },
-            title: conversation.title || content.slice(0, 50),
-          },
-        });
-        await tx.aI.update({
-          where: { id: conversation.aiId },
-          data: { questionCount: { increment: 1 } },
-        });
-        await incrementDailyStats(tx, conversation.ai.userId, conversation.aiId, 'questionCount');
-      });
+      await this.repo.updateConversationAndQuestionCount(
+        conversationId,
+        conversation.aiId,
+        conversation.ai.userId,
+        conversation.title,
+        content
+      );
 
       this.logger.log(
         `RAG stream for conversation ${conversationId}: ${ragResponse.sources.length} sources, ${latencyMs}ms`
@@ -652,7 +426,6 @@ export class ConversationsService {
         })
         .catch(() => {});
 
-      // Trigger async memory update (fire-and-forget)
       if (
         conversation.ai.memoryEnabled &&
         conversation.endUserId &&
@@ -663,7 +436,6 @@ export class ConversationsService {
           .catch((err) => this.logger.warn(`Memory update failed: ${err}`));
       }
 
-      // Yield done event
       yield {
         type: 'done',
         data: {
@@ -687,18 +459,15 @@ export class ConversationsService {
     } catch (error) {
       this.logger.error(`RAG stream failed: ${error}`);
 
-      // Save fallback response
-      const assistantMessage = await prisma.message.create({
-        data: {
-          conversationId,
-          role: MessageRole.ASSISTANT,
-          content:
-            conversation.ai.language === 'en'
-              ? "I'm sorry, I couldn't process your question. Please try again."
-              : "Je suis désolé, je n'ai pas pu traiter votre question. Veuillez réessayer.",
-          confidence: ConfidenceLevel.LOW,
-          sources: [],
-        },
+      const assistantMessage = await this.repo.createMessage({
+        conversationId,
+        role: MessageRole.ASSISTANT,
+        content:
+          conversation.ai.language === 'en'
+            ? "I'm sorry, I couldn't process your question. Please try again."
+            : "Je suis désolé, je n'ai pas pu traiter votre question. Veuillez réessayer.",
+        confidence: ConfidenceLevel.LOW,
+        sources: [],
       });
 
       yield {
@@ -723,10 +492,7 @@ export class ConversationsService {
     messageId: string,
     feedback: 'positive' | 'negative'
   ) {
-    const message = await prisma.message.findUnique({
-      where: { id: messageId },
-      select: { id: true, conversationId: true, role: true },
-    });
+    const message = await this.repo.findMessageForFeedback(messageId);
 
     if (!message || message.conversationId !== conversationId) {
       throw new NotFoundException('Message not found');
@@ -736,39 +502,18 @@ export class ConversationsService {
       throw new BadRequestException('Feedback can only be given on assistant messages');
     }
 
-    await prisma.message.update({
-      where: { id: messageId },
-      data: { feedback },
-    });
-
+    await this.repo.updateMessageFeedback(messageId, feedback);
     return { id: messageId, feedback };
   }
 
   async delete(userId: string, conversationId: string) {
-    const conversation = await prisma.conversation.findUnique({
-      where: { id: conversationId },
-      include: {
-        ai: {
-          select: { id: true, userId: true },
-        },
-      },
-    });
+    const conversation = await this.repo.findConversationForDelete(conversationId);
 
     if (!conversation || conversation.ai.userId !== userId) {
       throw new NotFoundException('Conversation not found');
     }
 
-    // Delete conversation and update counter atomically
-    await prisma.$transaction([
-      prisma.conversation.delete({
-        where: { id: conversationId },
-      }),
-      prisma.aI.update({
-        where: { id: conversation.ai.id },
-        data: { conversationCount: { decrement: 1 } },
-      }),
-    ]);
-
+    await this.repo.deleteConversationWithCounterUpdate(conversationId, conversation.ai.id);
     return { success: true };
   }
 }
