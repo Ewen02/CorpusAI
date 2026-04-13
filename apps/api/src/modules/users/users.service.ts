@@ -1,5 +1,4 @@
 import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
-import { prisma } from '@corpusai/database';
 import {
   getFeatureLimits,
   getRemainingUsage,
@@ -11,57 +10,30 @@ import {
   getDaysForPeriod,
   type AnalyticsPeriod,
 } from '../../shared/date-utils';
+import { UsersRepository } from './users.repository';
 
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
+
+  constructor(private readonly repo: UsersRepository) {}
+
   async getProfile(userId: string) {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        image: true,
-        username: true,
-        bio: true,
-        notificationPreferences: true,
-        subscriptionPlan: true,
-        subscriptionStatus: true,
-        subscriptionStart: true,
-        subscriptionEnd: true,
-        createdAt: true,
-        _count: {
-          select: {
-            ais: true,
-          },
-        },
-      },
-    });
+    const user = await this.repo.findProfile(userId);
 
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    // Back-fill username for legacy accounts that were created without one.
-    // A username is required to construct public AI chat URLs (/chat/@username/slug).
     if (!user.username) {
       const generated = await this.generateUniqueUsername(user.email);
-      const updated = await prisma.user.update({
-        where: { id: userId },
-        data: { username: generated },
-        select: { username: true },
-      });
+      const updated = await this.repo.updateUsername(userId, generated);
       user.username = updated.username;
     }
 
     return user;
   }
 
-  /**
-   * Build a unique username from an email seed, retrying on collision.
-   * Slug rule: lowercase, alphanumerics + dash, 2-30 chars, strip repeated dashes.
-   */
   private async generateUniqueUsername(email: string): Promise<string> {
     const seed =
       (email.split('@')[0] || 'user')
@@ -70,71 +42,35 @@ export class UsersService {
         .replace(/^-+|-+$/g, '')
         .slice(0, 24) || 'user';
 
-    // Try base, then base-N suffixes
     for (let i = 0; i < 10; i++) {
       const candidate = i === 0 ? seed : `${seed}-${Math.floor(1000 + Math.random() * 9000)}`;
-      const existing = await prisma.user.findUnique({
-        where: { username: candidate },
-        select: { id: true },
-      });
+      const existing = await this.repo.findByUsername(candidate);
       if (!existing) return candidate;
     }
-    // Fallback: very unlikely but safe
     return `${seed}-${Date.now().toString(36)}`;
   }
 
   async updateProfile(userId: string, data: UpdateProfileDto) {
     if (data.username) {
-      const existing = await prisma.user.findUnique({
-        where: { username: data.username },
-        select: { id: true },
-      });
+      const existing = await this.repo.findByUsername(data.username);
       if (existing && existing.id !== userId) {
         throw new ConflictException('This username is already taken');
       }
     }
 
-    return prisma.user.update({
-      where: { id: userId },
-      data: {
-        name: data.name,
-        image: data.image,
-        username: data.username,
-        bio: data.bio,
-        ...(data.notificationPreferences !== undefined
-          ? { notificationPreferences: data.notificationPreferences }
-          : {}),
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        image: true,
-        username: true,
-        bio: true,
-        notificationPreferences: true,
-        updatedAt: true,
-      },
+    return this.repo.updateProfile(userId, {
+      name: data.name,
+      image: data.image,
+      username: data.username,
+      bio: data.bio,
+      ...(data.notificationPreferences !== undefined
+        ? { notificationPreferences: data.notificationPreferences }
+        : {}),
     });
   }
 
   async getDashboardStats(userId: string) {
-    // Use Prisma aggregation to avoid N+1 and reduce memory usage
-    const [user, stats] = await Promise.all([
-      prisma.user.findUnique({
-        where: { id: userId },
-        select: { subscriptionPlan: true },
-      }),
-      prisma.aI.aggregate({
-        where: { userId },
-        _count: true,
-        _sum: {
-          documentCount: true,
-          conversationCount: true,
-          questionCount: true,
-        },
-      }),
-    ]);
+    const [user, stats] = await this.repo.getDashboardAggregates(userId);
 
     if (!user) {
       throw new NotFoundException('User not found');
@@ -150,45 +86,21 @@ export class UsersService {
   }
 
   async getAccounts(userId: string) {
-    const accounts = await prisma.account.findMany({
-      where: { userId },
-      select: {
-        providerId: true,
-        createdAt: true,
-      },
-    });
-
-    return accounts;
+    return this.repo.findAccounts(userId);
   }
 
   async getAnalytics(userId: string, period: AnalyticsPeriod = '30d') {
     const days = getDaysForPeriod(period);
     const startDate = getStartDateForPeriod(period);
 
-    // Query global DailyStats (aiId = null) for the period
-    const stats = await prisma.dailyStats.findMany({
-      where: {
-        userId,
-        aiId: null,
-        date: { gte: startDate },
-      },
-      orderBy: { date: 'asc' },
-      select: {
-        date: true,
-        documentCount: true,
-        conversationCount: true,
-        questionCount: true,
-      },
-    });
+    const stats = await this.repo.findDailyStats(userId, startDate);
 
-    // Build date -> stats map for gap filling
     const statsMap = new Map<string, (typeof stats)[0]>();
     for (const s of stats) {
       const dateKey = s.date.toISOString().split('T')[0]!;
       statsMap.set(dateKey, s);
     }
 
-    // Generate daily array with gap filling (0 for missing days)
     type DailyDataPoint = {
       date: string;
       documents: number;
@@ -213,7 +125,6 @@ export class UsersService {
       });
     }
 
-    // Calculate totals (sum over the period)
     const totals = daily.reduce(
       (acc, d) => ({
         documents: acc.documents + d.documents,
@@ -223,7 +134,6 @@ export class UsersService {
       { documents: 0, conversations: 0, questions: 0 }
     );
 
-    // Calculate trends (compare first half vs second half)
     const midpoint = Math.floor(daily.length / 2);
     const firstHalf = daily.slice(0, midpoint);
     const secondHalf = daily.slice(midpoint);
@@ -236,8 +146,6 @@ export class UsersService {
     const calcTrend = (key: MetricKey) => {
       const first = sumMetric(firstHalf, key);
       const second = sumMetric(secondHalf, key);
-      // When the baseline period is 0, a percentage is meaningless.
-      // Cap at ±999% so the UI stays readable.
       if (first === 0) {
         return { value: second > 0 ? 100 : 0, isPositive: true };
       }
@@ -258,15 +166,7 @@ export class UsersService {
   }
 
   async getUsage(userId: string) {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        subscriptionPlan: true,
-        subscriptionStatus: true,
-        subscriptionEnd: true,
-        _count: { select: { ais: true } },
-      },
-    });
+    const user = await this.repo.findUsage(userId);
 
     if (!user) {
       throw new NotFoundException('User not found');
@@ -275,17 +175,10 @@ export class UsersService {
     const plan = user.subscriptionPlan as SubscriptionPlanType;
     const limits = getFeatureLimits(plan);
 
-    // Count today's questions across all AIs
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    const questionsToday = await prisma.message.count({
-      where: {
-        role: 'USER',
-        createdAt: { gte: todayStart },
-        conversation: { ai: { userId } },
-      },
-    });
+    const questionsToday = await this.repo.countTodayQuestions(userId, todayStart);
 
     return {
       plan,
@@ -303,20 +196,14 @@ export class UsersService {
   }
 
   async deleteAccount(userId: string): Promise<void> {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, email: true },
-    });
+    const user = await this.repo.findForDelete(userId);
 
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    // Cascade delete handles most relations, but log it
     this.logger.warn(`Deleting account for user ${user.email} (${user.id})`);
-
-    await prisma.user.delete({ where: { id: userId } });
-
+    await this.repo.deleteUser(userId);
     this.logger.log(`Account deleted: ${user.email}`);
   }
 }

@@ -1,8 +1,9 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { prisma, SubscriptionPlan, SubscriptionStatus } from '@corpusai/database';
+import { SubscriptionPlan, SubscriptionStatus } from '@corpusai/database';
 import { PLAN_PRICING, type SubscriptionPlanType } from '@corpusai/subscription';
 import { StripeService } from './stripe.service';
+import { BillingRepository } from './billing.repository';
 import type Stripe from 'stripe';
 
 /** Map plan + interval to Stripe price env var name */
@@ -16,7 +17,8 @@ export class BillingService {
 
   constructor(
     private stripeService: StripeService,
-    private config: ConfigService
+    private config: ConfigService,
+    private readonly repo: BillingRepository
   ) {}
 
   async createCheckoutSession(
@@ -26,15 +28,10 @@ export class BillingService {
   ): Promise<{ url: string }> {
     const stripe = this.stripeService.client;
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true, stripeCustomerId: true },
-    });
+    const user = await this.repo.findUserForCheckout(userId);
 
     if (!user) throw new NotFoundException('User not found');
 
-    // Get or create Stripe customer.
-    // Idempotency key ensures repeated calls (e.g. retry after DB failure) return the same customer.
     let customerId = user.stripeCustomerId;
     if (!customerId) {
       const customer = await stripe.customers.create(
@@ -42,13 +39,9 @@ export class BillingService {
         { idempotencyKey: `create-customer-${userId}` }
       );
       customerId = customer.id;
-      await prisma.user.update({
-        where: { id: userId },
-        data: { stripeCustomerId: customerId },
-      });
+      await this.repo.updateStripeCustomerId(userId, customerId);
     }
 
-    // Get price ID from env
     const priceId = this.config.get<string>(stripePriceEnvKey(plan, interval));
     if (!priceId) {
       throw new BadRequestException(`Price not configured for ${plan} ${interval}`);
@@ -73,10 +66,7 @@ export class BillingService {
   async createPortalSession(userId: string): Promise<{ url: string }> {
     const stripe = this.stripeService.client;
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { stripeCustomerId: true },
-    });
+    const user = await this.repo.findUserForPortal(userId);
 
     if (!user?.stripeCustomerId) {
       throw new BadRequestException('No billing account found. Subscribe to a plan first.');
@@ -95,10 +85,7 @@ export class BillingService {
   async getInvoices(userId: string) {
     const stripe = this.stripeService.client;
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { stripeCustomerId: true },
-    });
+    const user = await this.repo.findUserForInvoices(userId);
 
     if (!user?.stripeCustomerId) return [];
 
@@ -145,31 +132,25 @@ export class BillingService {
   private async syncSubscription(subscription: Stripe.Subscription): Promise<void> {
     const customerId = subscription.customer as string;
 
-    const user = await prisma.user.findFirst({
-      where: { stripeCustomerId: customerId },
-    });
+    const user = await this.repo.findUserByStripeCustomer(customerId);
 
     if (!user) {
       this.logger.warn(`No user found for Stripe customer ${customerId}`);
       return;
     }
 
-    // Extract plan from subscription metadata or price lookup key
     const plan = this.resolvePlan(subscription);
     const status = this.mapStripeStatus(subscription.status);
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        subscriptionPlan: plan,
-        subscriptionStatus: status,
-        subscriptionStart: new Date(subscription.start_date * 1000),
-        subscriptionEnd: subscription.cancel_at
-          ? new Date(subscription.cancel_at * 1000)
-          : subscription.ended_at
-            ? new Date(subscription.ended_at * 1000)
-            : null,
-      },
+    await this.repo.updateSubscription(user.id, {
+      subscriptionPlan: plan,
+      subscriptionStatus: status,
+      subscriptionStart: new Date(subscription.start_date * 1000),
+      subscriptionEnd: subscription.cancel_at
+        ? new Date(subscription.cancel_at * 1000)
+        : subscription.ended_at
+          ? new Date(subscription.ended_at * 1000)
+          : null,
     });
 
     this.logger.log(`Synced subscription for user ${user.id}: ${plan} (${status})`);
@@ -177,36 +158,21 @@ export class BillingService {
 
   private async handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
     const customerId = subscription.customer as string;
-
-    await prisma.user.updateMany({
-      where: { stripeCustomerId: customerId },
-      data: {
-        subscriptionPlan: SubscriptionPlan.FREE,
-        subscriptionStatus: SubscriptionStatus.CANCELED,
-        subscriptionEnd: new Date(),
-      },
-    });
-
+    await this.repo.revertToFree(customerId);
     this.logger.log(`Subscription deleted for customer ${customerId}, reverted to FREE`);
   }
 
   private async handlePaymentFailed(customerId: string): Promise<void> {
-    await prisma.user.updateMany({
-      where: { stripeCustomerId: customerId },
-      data: { subscriptionStatus: SubscriptionStatus.PAST_DUE },
-    });
-
+    await this.repo.markPastDue(customerId);
     this.logger.warn(`Payment failed for customer ${customerId}, status set to PAST_DUE`);
   }
 
   private resolvePlan(subscription: Stripe.Subscription): SubscriptionPlan {
-    // Try metadata first
     const metaPlan = subscription.metadata?.plan?.toUpperCase();
     if (metaPlan && metaPlan in SubscriptionPlan) {
       return metaPlan as SubscriptionPlan;
     }
 
-    // Fallback: match price ID to env vars
     const priceId = subscription.items.data[0]?.price?.id;
     if (priceId) {
       for (const plan of ['CREATOR', 'PRO', 'ENTERPRISE'] as const) {

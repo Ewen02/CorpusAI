@@ -81,12 +81,45 @@ describe('DocumentsService', () => {
     verifyDocumentOwnership: vi.fn(),
     verifyConversationOwnership: vi.fn(),
   };
+  const mockRepo = {
+    findAIByIdAndUser: vi.fn((...args: unknown[]) =>
+      mockAI.findFirst({ where: { id: args[0], userId: args[1] } })
+    ),
+    findAllByAI: vi.fn((...args: unknown[]) => mockDocument.findMany({ where: { aiId: args[0] } })),
+    findOneWithOwner: vi.fn((...args: unknown[]) =>
+      mockDocument.findUnique({ where: { id: args[0] } })
+    ),
+    findAIWithPlanAndDocCount: vi.fn((...args: unknown[]) =>
+      mockAI.findFirst({ where: { id: args[0], userId: args[1] } })
+    ),
+    createDocumentWithCounter: vi
+      .fn()
+      .mockResolvedValue({ id: 'doc-new', aiId: 'ai-1', filename: 'test.pdf' }),
+    createBulkDocumentsWithCounter: vi.fn().mockResolvedValue([
+      { id: 'doc-1', filename: 'file1.pdf' },
+      { id: 'doc-2', filename: 'file2.pdf' },
+      { id: 'doc-3', filename: 'file3.txt' },
+    ]),
+    findProgress: vi.fn((...args: unknown[]) =>
+      mockDocument.findUnique({ where: { id: args[0] } })
+    ),
+    findForDelete: vi.fn((...args: unknown[]) =>
+      mockDocument.findUnique({ where: { id: args[0] } })
+    ),
+    deleteWithCounterUpdate: vi.fn().mockResolvedValue(undefined),
+    findForRetry: vi.fn((...args: unknown[]) =>
+      mockDocument.findUnique({ where: { id: args[0] } })
+    ),
+    resetForRetry: vi.fn().mockResolvedValue(undefined),
+    findExportData: vi.fn().mockResolvedValue([]),
+  };
 
   beforeEach(() => {
     service = new DocumentsService(
       mockRagService as any,
       mockQueue as any,
-      mockOwnershipService as any
+      mockOwnershipService as any,
+      mockRepo as any
     );
     vi.clearAllMocks();
     (canAddDocument as ReturnType<typeof vi.fn>).mockReturnValue(true);

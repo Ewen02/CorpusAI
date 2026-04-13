@@ -11,6 +11,7 @@ import {
 } from '@corpusai/queue';
 import { DocumentsController } from './documents.controller';
 import { DocumentsService } from './documents.service';
+import { DocumentsRepository } from './documents.repository';
 import { MailService } from '../mail';
 import { WebhooksService } from '../webhooks';
 import { RagModule } from '../rag';
@@ -20,6 +21,7 @@ import { RagModule } from '../rag';
   controllers: [DocumentsController],
   providers: [
     DocumentsService,
+    DocumentsRepository,
     {
       provide: 'DOCUMENT_QUEUE',
       useFactory: (configService: ConfigService) => {

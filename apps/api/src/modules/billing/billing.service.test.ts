@@ -72,8 +72,39 @@ describe('BillingService', () => {
     }),
   };
 
+  const mockRepo = {
+    findUserForCheckout: vi.fn((...args: unknown[]) =>
+      mockUser.findUnique({ where: { id: args[0] } })
+    ),
+    updateStripeCustomerId: vi.fn((...args: unknown[]) =>
+      mockUser.update({ where: { id: args[0] }, data: { stripeCustomerId: args[1] } })
+    ),
+    findUserForPortal: vi.fn((...args: unknown[]) =>
+      mockUser.findUnique({ where: { id: args[0] } })
+    ),
+    findUserForInvoices: vi.fn((...args: unknown[]) =>
+      mockUser.findUnique({ where: { id: args[0] } })
+    ),
+    findUserByStripeCustomer: vi.fn((...args: unknown[]) =>
+      mockUser.findFirst({ where: { stripeCustomerId: args[0] } })
+    ),
+    updateSubscription: vi.fn((...args: unknown[]) =>
+      mockUser.update({ where: { id: args[0] }, data: args[1] })
+    ),
+    revertToFree: vi.fn((...args: unknown[]) =>
+      mockUser.updateMany({ where: { stripeCustomerId: args[0] } })
+    ),
+    markPastDue: vi.fn((...args: unknown[]) =>
+      mockUser.updateMany({ where: { stripeCustomerId: args[0] } })
+    ),
+  };
+
   beforeEach(() => {
-    service = new BillingService(mockStripeService as any, mockConfigService as any);
+    service = new BillingService(
+      mockStripeService as any,
+      mockConfigService as any,
+      mockRepo as any
+    );
     vi.clearAllMocks();
     // Re-apply config mock after clearAllMocks
     mockConfigService.get.mockImplementation((key: string) => {
@@ -258,7 +289,7 @@ describe('BillingService', () => {
     });
 
     it('should handle subscription deletion', async () => {
-      mockUser.updateMany.mockResolvedValue({ count: 1 });
+      mockRepo.revertToFree.mockResolvedValue({ count: 1 });
 
       const event = {
         type: 'customer.subscription.deleted',
@@ -275,18 +306,11 @@ describe('BillingService', () => {
 
       await service.handleWebhookEvent(event as any);
 
-      expect(mockUser.updateMany).toHaveBeenCalledWith({
-        where: { stripeCustomerId: 'cus_456' },
-        data: {
-          subscriptionPlan: 'FREE',
-          subscriptionStatus: 'CANCELED',
-          subscriptionEnd: expect.any(Date),
-        },
-      });
+      expect(mockRepo.revertToFree).toHaveBeenCalledWith('cus_456');
     });
 
     it('should handle invoice.payment_failed', async () => {
-      mockUser.updateMany.mockResolvedValue({ count: 1 });
+      mockRepo.markPastDue.mockResolvedValue({ count: 1 });
 
       const event = {
         type: 'invoice.payment_failed',
@@ -299,10 +323,7 @@ describe('BillingService', () => {
 
       await service.handleWebhookEvent(event as any);
 
-      expect(mockUser.updateMany).toHaveBeenCalledWith({
-        where: { stripeCustomerId: 'cus_789' },
-        data: { subscriptionStatus: 'PAST_DUE' },
-      });
+      expect(mockRepo.markPastDue).toHaveBeenCalledWith('cus_789');
     });
 
     it('should not throw for unhandled event types', async () => {

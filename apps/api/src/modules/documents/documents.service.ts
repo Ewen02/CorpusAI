@@ -1,5 +1,5 @@
 import { Injectable, Inject, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
-import { prisma, DocumentStatus, type TransactionClient } from '@corpusai/database';
+import { DocumentStatus } from '@corpusai/database';
 import { assertCanAddDocument, assertCanUploadDocument } from '../../shared/subscription-checks';
 import { OwnershipService } from '../../shared/ownership.service';
 import { canAddDocument, canUploadDocument } from '@corpusai/subscription';
@@ -10,7 +10,7 @@ import { JOB_RETRY_CONFIG } from '@corpusai/queue';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { CreateTextDocumentDto } from './dto/create-text-document.dto';
 import { RagService } from '../rag';
-import { incrementDailyStats } from '../../shared/daily-stats';
+import { DocumentsRepository } from './documents.repository';
 
 export interface PaginationOptions {
   skip?: number;
@@ -24,49 +24,23 @@ export class DocumentsService {
   constructor(
     private ragService: RagService,
     @Inject('DOCUMENT_QUEUE') private documentQueue: Queue<DocumentProcessingJobData>,
-    private readonly ownership: OwnershipService
+    private readonly ownership: OwnershipService,
+    private readonly repo: DocumentsRepository
   ) {}
 
   async findAllByAI(userId: string, aiId: string, options?: PaginationOptions) {
     const { skip = 0, take = 50 } = options ?? {};
 
-    const ai = await prisma.aI.findFirst({
-      where: { id: aiId, userId },
-    });
-
+    const ai = await this.repo.findAIByIdAndUser(aiId, userId);
     if (!ai) {
       throw new NotFoundException('AI not found');
     }
 
-    return prisma.document.findMany({
-      where: { aiId },
-      orderBy: { createdAt: 'desc' },
-      skip,
-      take,
-      select: {
-        id: true,
-        filename: true,
-        mimeType: true,
-        size: true,
-        status: true,
-        chunkCount: true,
-        pageCount: true,
-        wordCount: true,
-        errorMessage: true,
-        createdAt: true,
-      },
-    });
+    return this.repo.findAllByAI(aiId, skip, take);
   }
 
   async findOne(userId: string, documentId: string) {
-    const document = await prisma.document.findUnique({
-      where: { id: documentId },
-      include: {
-        ai: {
-          select: { userId: true },
-        },
-      },
-    });
+    const document = await this.repo.findOneWithOwner(documentId);
 
     if (!document || document.ai.userId !== userId) {
       throw new NotFoundException('Document not found');
@@ -76,17 +50,7 @@ export class DocumentsService {
   }
 
   async create(userId: string, aiId: string, dto: CreateDocumentDto) {
-    const ai = await prisma.aI.findFirst({
-      where: { id: aiId, userId },
-      include: {
-        user: {
-          select: { subscriptionPlan: true },
-        },
-        _count: {
-          select: { documents: true },
-        },
-      },
-    });
+    const ai = await this.repo.findAIWithPlanAndDocCount(aiId, userId);
 
     if (!ai) {
       throw new NotFoundException('AI not found');
@@ -104,26 +68,11 @@ export class DocumentsService {
       );
     }
 
-    const document = await prisma.$transaction(async (tx: TransactionClient) => {
-      const newDocument = await tx.document.create({
-        data: {
-          aiId,
-          filename: dto.filename,
-          mimeType: dto.mimeType,
-          size: dto.size,
-          url: dto.url,
-          status: DocumentStatus.PENDING,
-        },
-      });
-
-      await tx.aI.update({
-        where: { id: aiId },
-        data: { documentCount: { increment: 1 } },
-      });
-
-      await incrementDailyStats(tx, userId, aiId, 'documentCount');
-
-      return newDocument;
+    const document = await this.repo.createDocumentWithCounter(aiId, userId, {
+      filename: dto.filename,
+      mimeType: dto.mimeType,
+      size: dto.size,
+      url: dto.url,
     });
 
     await this.documentQueue.add(
@@ -143,17 +92,7 @@ export class DocumentsService {
   }
 
   async createFromText(userId: string, aiId: string, dto: CreateTextDocumentDto) {
-    const ai = await prisma.aI.findFirst({
-      where: { id: aiId, userId },
-      include: {
-        user: {
-          select: { subscriptionPlan: true },
-        },
-        _count: {
-          select: { documents: true },
-        },
-      },
-    });
+    const ai = await this.repo.findAIWithPlanAndDocCount(aiId, userId);
 
     if (!ai) {
       throw new NotFoundException('AI not found');
@@ -164,25 +103,10 @@ export class DocumentsService {
     const sizeMB = Buffer.byteLength(dto.content, 'utf8') / (1024 * 1024);
     assertCanUploadDocument(ai.user.subscriptionPlan, sizeMB);
 
-    const document = await prisma.$transaction(async (tx: TransactionClient) => {
-      const newDocument = await tx.document.create({
-        data: {
-          aiId,
-          filename: dto.filename,
-          mimeType: 'text/plain',
-          size: Buffer.byteLength(dto.content, 'utf8'),
-          status: DocumentStatus.PENDING,
-        },
-      });
-
-      await tx.aI.update({
-        where: { id: aiId },
-        data: { documentCount: { increment: 1 } },
-      });
-
-      await incrementDailyStats(tx, userId, aiId, 'documentCount');
-
-      return newDocument;
+    const document = await this.repo.createDocumentWithCounter(aiId, userId, {
+      filename: dto.filename,
+      mimeType: 'text/plain',
+      size: Buffer.byteLength(dto.content, 'utf8'),
     });
 
     await this.documentQueue.add(
@@ -202,17 +126,7 @@ export class DocumentsService {
   }
 
   async createFromUpload(userId: string, aiId: string, file: Express.Multer.File) {
-    const ai = await prisma.aI.findFirst({
-      where: { id: aiId, userId },
-      include: {
-        user: {
-          select: { subscriptionPlan: true },
-        },
-        _count: {
-          select: { documents: true },
-        },
-      },
-    });
+    const ai = await this.repo.findAIWithPlanAndDocCount(aiId, userId);
 
     if (!ai) {
       throw new NotFoundException('AI not found');
@@ -230,29 +144,12 @@ export class DocumentsService {
       );
     }
 
-    const document = await prisma.$transaction(async (tx: TransactionClient) => {
-      const newDocument = await tx.document.create({
-        data: {
-          aiId,
-          filename: file.originalname,
-          mimeType: file.mimetype,
-          size: file.size,
-          status: DocumentStatus.PENDING,
-        },
-      });
-
-      await tx.aI.update({
-        where: { id: aiId },
-        data: { documentCount: { increment: 1 } },
-      });
-
-      await incrementDailyStats(tx, userId, aiId, 'documentCount');
-
-      return newDocument;
+    const document = await this.repo.createDocumentWithCounter(aiId, userId, {
+      filename: file.originalname,
+      mimeType: file.mimetype,
+      size: file.size,
     });
 
-    // Pass file content via BullMQ (base64) — API and worker containers
-    // do not share a filesystem on Railway, so filePath-based passing fails.
     await this.documentQueue.add(
       'process',
       {
@@ -270,13 +167,7 @@ export class DocumentsService {
   }
 
   async createFromBulkUpload(userId: string, aiId: string, files: Express.Multer.File[]) {
-    const ai = await prisma.aI.findFirst({
-      where: { id: aiId, userId },
-      include: {
-        user: { select: { subscriptionPlan: true } },
-        _count: { select: { documents: true } },
-      },
-    });
+    const ai = await this.repo.findAIWithPlanAndDocCount(aiId, userId);
 
     if (!ai) {
       throw new NotFoundException('AI not found');
@@ -284,7 +175,6 @@ export class DocumentsService {
 
     const plan = ai.user.subscriptionPlan;
 
-    // Validate all files upfront before creating any records
     const errors: { filename: string; reason: string }[] = [];
 
     if (!canAddDocument(plan, ai._count.documents + files.length - 1)) {
@@ -316,33 +206,8 @@ export class DocumentsService {
       throw new BadRequestException({ message: 'Some files failed validation', errors });
     }
 
-    // Create all documents in a single transaction
-    const documents = await prisma.$transaction(async (tx: TransactionClient) => {
-      const created = [];
-      for (const file of files) {
-        const doc = await tx.document.create({
-          data: {
-            aiId,
-            filename: file.originalname,
-            mimeType: file.mimetype,
-            size: file.size,
-            status: DocumentStatus.PENDING,
-          },
-        });
-        created.push(doc);
-      }
+    const documents = await this.repo.createBulkDocumentsWithCounter(aiId, userId, files);
 
-      await tx.aI.update({
-        where: { id: aiId },
-        data: { documentCount: { increment: files.length } },
-      });
-
-      await incrementDailyStats(tx, userId, aiId, 'documentCount', files.length);
-
-      return created;
-    });
-
-    // Enqueue jobs with inline base64 content — no shared filesystem across containers.
     for (let i = 0; i < documents.length; i++) {
       const doc = documents[i]!;
       const file = files[i]!;
@@ -364,21 +229,7 @@ export class DocumentsService {
   }
 
   async getProgress(userId: string, documentId: string) {
-    const document = await prisma.document.findUnique({
-      where: { id: documentId },
-      select: {
-        id: true,
-        status: true,
-        processingProgress: true,
-        processingStep: true,
-        processingStartedAt: true,
-        processingCompletedAt: true,
-        errorMessage: true,
-        ai: {
-          select: { userId: true },
-        },
-      },
-    });
+    const document = await this.repo.findProgress(documentId);
 
     if (!document || document.ai.userId !== userId) {
       throw new NotFoundException('Document not found');
@@ -396,14 +247,7 @@ export class DocumentsService {
   }
 
   async delete(userId: string, documentId: string) {
-    const document = await prisma.document.findUnique({
-      where: { id: documentId },
-      include: {
-        ai: {
-          select: { id: true, userId: true },
-        },
-      },
-    });
+    const document = await this.repo.findForDelete(documentId);
 
     if (!document || document.ai.userId !== userId) {
       throw new NotFoundException('Document not found');
@@ -415,28 +259,13 @@ export class DocumentsService {
       this.logger.warn(`Failed to delete vectors for document ${documentId}: ${error}`);
     }
 
-    await prisma.$transaction([
-      prisma.document.delete({
-        where: { id: documentId },
-      }),
-      prisma.aI.update({
-        where: { id: document.ai.id },
-        data: { documentCount: { decrement: 1 } },
-      }),
-    ]);
+    await this.repo.deleteWithCounterUpdate(documentId, document.ai.id);
 
     return { success: true };
   }
 
   async retryProcessing(userId: string, documentId: string) {
-    const document = await prisma.document.findUnique({
-      where: { id: documentId },
-      include: {
-        ai: {
-          select: { userId: true },
-        },
-      },
-    });
+    const document = await this.repo.findForRetry(documentId);
 
     if (!document || document.ai.userId !== userId) {
       throw new NotFoundException('Document not found');
@@ -446,15 +275,7 @@ export class DocumentsService {
       throw new BadRequestException('Only failed documents can be retried');
     }
 
-    await prisma.document.update({
-      where: { id: documentId },
-      data: {
-        status: DocumentStatus.PENDING,
-        errorMessage: null,
-        processingProgress: 0,
-        processingStep: null,
-      },
-    });
+    await this.repo.resetForRetry(documentId);
 
     await this.documentQueue.add(
       'process',
@@ -472,39 +293,9 @@ export class DocumentsService {
     return { success: true };
   }
 
-  /**
-   * Fetch all indexed documents with their chunks for export.
-   */
   async getExportData(userId: string, aiId: string) {
     const ai = await this.ownership.getOwnedAI(aiId, userId);
-
-    const documents = await prisma.document.findMany({
-      where: { aiId, status: 'INDEXED' },
-      select: {
-        id: true,
-        filename: true,
-        mimeType: true,
-        size: true,
-        chunkCount: true,
-        pageCount: true,
-        wordCount: true,
-        language: true,
-        title: true,
-        author: true,
-        createdAt: true,
-        chunks: {
-          select: {
-            id: true,
-            content: true,
-            position: true,
-            pageNumber: true,
-          },
-          orderBy: { position: 'asc' },
-        },
-      },
-      orderBy: { createdAt: 'asc' },
-    });
-
+    const documents = await this.repo.findExportData(aiId);
     return { ai, documents };
   }
 }

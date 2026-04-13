@@ -45,10 +45,68 @@ const mockMessage = prisma.message as unknown as { count: ReturnType<typeof vi.f
 
 describe('UsersService', () => {
   let service: UsersService;
+  const mockRepo = {
+    findProfile: vi.fn((...args: unknown[]) => mockUser.findUnique({ where: { id: args[0] } })),
+    findByUsername: vi.fn((...args: unknown[]) =>
+      mockUser.findUnique({ where: { username: args[0] } })
+    ),
+    updateUsername: vi.fn((...args: unknown[]) =>
+      mockUser.update({ where: { id: args[0] }, data: { username: args[1] } })
+    ),
+    updateProfile: vi.fn((...args: unknown[]) =>
+      mockUser.update({ where: { id: args[0] }, data: args[1] })
+    ),
+    getDashboardAggregates: vi.fn((userId: string) =>
+      Promise.all([
+        mockUser.findUnique({ where: { id: userId } }),
+        mockAI.aggregate({ where: { userId } }),
+      ])
+    ),
+    findAccounts: vi.fn((...args: unknown[]) =>
+      mockAccount.findMany({ where: { userId: args[0] } })
+    ),
+    findDailyStats: vi.fn().mockResolvedValue([]),
+    findUsage: vi.fn((...args: unknown[]) => mockUser.findUnique({ where: { id: args[0] } })),
+    countTodayQuestions: vi.fn((..._args: unknown[]) => mockMessage.count()),
+    findForDelete: vi.fn((...args: unknown[]) => mockUser.findUnique({ where: { id: args[0] } })),
+    deleteUser: vi.fn().mockResolvedValue(undefined),
+  };
 
   beforeEach(() => {
-    service = new UsersService();
+    service = new UsersService(mockRepo as any);
     vi.clearAllMocks();
+
+    // Re-apply delegates after clearAllMocks
+    mockRepo.findProfile.mockImplementation((...args: unknown[]) =>
+      mockUser.findUnique({ where: { id: args[0] } })
+    );
+    mockRepo.findByUsername.mockImplementation((...args: unknown[]) =>
+      mockUser.findUnique({ where: { username: args[0] } })
+    );
+    mockRepo.updateUsername.mockImplementation((...args: unknown[]) =>
+      mockUser.update({ where: { id: args[0] }, data: { username: args[1] } })
+    );
+    mockRepo.updateProfile.mockImplementation((...args: unknown[]) =>
+      mockUser.update({ where: { id: args[0] }, data: args[1] })
+    );
+    mockRepo.getDashboardAggregates.mockImplementation((userId: string) =>
+      Promise.all([
+        mockUser.findUnique({ where: { id: userId } }),
+        mockAI.aggregate({ where: { userId } }),
+      ])
+    );
+    mockRepo.findAccounts.mockImplementation((...args: unknown[]) =>
+      mockAccount.findMany({ where: { userId: args[0] } })
+    );
+    mockRepo.findDailyStats.mockResolvedValue([]);
+    mockRepo.findUsage.mockImplementation((...args: unknown[]) =>
+      mockUser.findUnique({ where: { id: args[0] } })
+    );
+    mockRepo.countTodayQuestions.mockImplementation(() => mockMessage.count());
+    mockRepo.findForDelete.mockImplementation((...args: unknown[]) =>
+      mockUser.findUnique({ where: { id: args[0] } })
+    );
+    mockRepo.deleteUser.mockResolvedValue(undefined);
   });
 
   describe('getProfile', () => {
