@@ -1,22 +1,22 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { prisma, MessageRole } from '@corpusai/database';
+import { MessageRole } from '@corpusai/database';
 import { LLM_SERVICE, type LLMService } from '../../infrastructure/llm';
+import { MemoryRepository } from './memory.repository';
 
 @Injectable()
 export class EndUserMemoryService {
   private readonly logger = new Logger(EndUserMemoryService.name);
 
-  constructor(@Inject(LLM_SERVICE) private readonly llm: LLMService) {}
+  constructor(
+    @Inject(LLM_SERVICE) private readonly llm: LLMService,
+    private readonly repo: MemoryRepository
+  ) {}
 
   /**
    * Retrieves the memory summary for an end-user + AI pair.
    */
   async getMemory(endUserId: string, aiId: string): Promise<string | null> {
-    const memory = await prisma.endUserMemory.findUnique({
-      where: { endUserId_aiId: { endUserId, aiId } },
-      select: { summary: true },
-    });
-    return memory?.summary ?? null;
+    return this.repo.findSummary(endUserId, aiId);
   }
 
   /**
@@ -24,11 +24,7 @@ export class EndUserMemoryService {
    * by summarizing the conversation with LLM and upserting the result.
    */
   async updateMemory(endUserId: string, aiId: string, conversationId: string): Promise<void> {
-    const messages = await prisma.message.findMany({
-      where: { conversationId },
-      orderBy: { createdAt: 'asc' },
-      select: { role: true, content: true },
-    });
+    const messages = await this.repo.findConversationMessages(conversationId);
 
     if (messages.length < 4) return;
 
@@ -60,11 +56,7 @@ ${existingMemory}`
       const summary = response.content?.trim();
       if (!summary) return;
 
-      await prisma.endUserMemory.upsert({
-        where: { endUserId_aiId: { endUserId, aiId } },
-        create: { endUserId, aiId, summary },
-        update: { summary },
-      });
+      await this.repo.upsertSummary(endUserId, aiId, summary);
 
       this.logger.log(
         `Memory updated for endUser=${endUserId} ai=${aiId} (${summary.length} chars)`

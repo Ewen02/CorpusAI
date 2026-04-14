@@ -1,27 +1,20 @@
 import { Inject, Injectable, BadRequestException } from '@nestjs/common';
-import { prisma, DocumentStatus } from '@corpusai/database';
 import { LLM_SERVICE, type LLMService } from '../../infrastructure/llm';
+import { TextGenerationRepository } from './text-generation.repository';
 
 @Injectable()
 export class TextGenerationService {
-  constructor(@Inject(LLM_SERVICE) private readonly llm: LLMService) {}
+  constructor(
+    @Inject(LLM_SERVICE) private readonly llm: LLMService,
+    private readonly repo: TextGenerationRepository
+  ) {}
 
   async generateAISuggestions(params: {
     aiId: string;
     aiName: string;
     language?: string | null;
   }): Promise<{ description: string; systemPrompt: string; welcomeMessage: string }> {
-    const chunks = await prisma.chunk.findMany({
-      where: {
-        document: {
-          aiId: params.aiId,
-          status: DocumentStatus.INDEXED,
-        },
-      },
-      select: { content: true },
-      orderBy: { position: 'asc' },
-      take: 20,
-    });
+    const chunks = await this.repo.findIndexedChunks(params.aiId, 20);
 
     if (chunks.length === 0) {
       throw new BadRequestException('No indexed documents found for this AI');
