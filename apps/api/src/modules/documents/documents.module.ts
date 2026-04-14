@@ -4,7 +4,6 @@ import { EventEmitter } from 'node:events';
 import Redis from 'ioredis';
 import { prisma } from '@corpusai/database';
 import {
-  createDocumentQueue,
   REDIS_CHANNELS,
   type DocumentFinalFailureEvent,
   type DocumentProgressEvent,
@@ -22,17 +21,6 @@ import { RagModule } from '../rag';
   providers: [
     DocumentsService,
     DocumentsRepository,
-    {
-      provide: 'DOCUMENT_QUEUE',
-      useFactory: (configService: ConfigService) => {
-        const redisUrl = configService.get<string>('REDIS_URL');
-        if (!redisUrl) {
-          throw new Error('REDIS_URL is required for document processing queue');
-        }
-        return createDocumentQueue(redisUrl);
-      },
-      inject: [ConfigService],
-    },
     {
       provide: 'REDIS_URL',
       useFactory: (configService: ConfigService) => {
@@ -94,7 +82,7 @@ import { RagModule } from '../rag';
       inject: ['PROGRESS_SUBSCRIBER'],
     },
   ],
-  exports: [DocumentsService, 'DOCUMENT_QUEUE'],
+  exports: [DocumentsService],
 })
 export class DocumentsModule implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger('DocumentsModule');

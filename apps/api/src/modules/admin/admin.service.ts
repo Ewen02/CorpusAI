@@ -1,7 +1,6 @@
 import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { Queue } from 'bullmq';
-import type { DocumentProcessingJobData } from '@corpusai/queue';
+import { DOCUMENT_QUEUE_PORT, type IDocumentQueue } from '../../infrastructure/queue';
 import { AdminRepository } from './admin.repository';
 
 const DASHBOARD_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -13,7 +12,7 @@ export class AdminService {
 
   constructor(
     private readonly config: ConfigService,
-    @Inject('DOCUMENT_QUEUE') private readonly documentQueue: Queue<DocumentProcessingJobData>,
+    @Inject(DOCUMENT_QUEUE_PORT) private readonly documentQueue: IDocumentQueue,
     private readonly repo: AdminRepository
   ) {}
 
@@ -349,11 +348,11 @@ export class AdminService {
   // ---------------------------------------------------------------------------
 
   async getFailedJobs(skip = 0, take = 20) {
-    const jobs = await this.documentQueue.getFailed(skip, skip + take - 1);
+    const jobs = await this.documentQueue.getFailedJobs(skip, skip + take - 1);
     return {
       total: await this.documentQueue.getFailedCount(),
       jobs: jobs.map((job) => ({
-        jobId: job.id,
+        jobId: job.jobId,
         documentId: job.data.documentId,
         aiId: job.data.aiId,
         filename: job.data.filename,
@@ -366,17 +365,15 @@ export class AdminService {
   }
 
   async retryFailedJob(jobId: string) {
-    const job = await this.documentQueue.getJob(jobId);
-    if (!job) throw new NotFoundException('Job not found');
-    await job.retry();
+    const retried = await this.documentQueue.retryJob(jobId);
+    if (!retried) throw new NotFoundException('Job not found');
     this.logger.log(`Retried failed job ${jobId}`);
     return { success: true };
   }
 
   async discardFailedJob(jobId: string) {
-    const job = await this.documentQueue.getJob(jobId);
-    if (!job) throw new NotFoundException('Job not found');
-    await job.remove();
+    const removed = await this.documentQueue.removeJob(jobId);
+    if (!removed) throw new NotFoundException('Job not found');
     this.logger.log(`Discarded failed job ${jobId}`);
     return { success: true };
   }

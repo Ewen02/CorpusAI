@@ -4,9 +4,8 @@ import { assertCanAddDocument, assertCanUploadDocument } from '../../shared/subs
 import { OwnershipService } from '../../shared/ownership.service';
 import { canAddDocument, canUploadDocument } from '@corpusai/subscription';
 import { SUPPORTED_DOCUMENT_TYPES, type SupportedDocumentType } from '@corpusai/types';
-import type { Queue } from 'bullmq';
-import type { DocumentProcessingJobData } from '@corpusai/queue';
 import { JOB_RETRY_CONFIG } from '@corpusai/queue';
+import { DOCUMENT_QUEUE_PORT, type IDocumentQueue } from '../../infrastructure/queue';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { CreateTextDocumentDto } from './dto/create-text-document.dto';
 import { RagService } from '../rag';
@@ -23,7 +22,7 @@ export class DocumentsService {
 
   constructor(
     private ragService: RagService,
-    @Inject('DOCUMENT_QUEUE') private documentQueue: Queue<DocumentProcessingJobData>,
+    @Inject(DOCUMENT_QUEUE_PORT) private documentQueue: IDocumentQueue,
     private readonly ownership: OwnershipService,
     private readonly repo: DocumentsRepository
   ) {}

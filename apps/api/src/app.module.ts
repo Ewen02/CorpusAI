@@ -23,6 +23,7 @@ import { PortalModule } from './modules/portal';
 import { WebhooksModule } from './modules/webhooks';
 import { DatabaseModule } from './infrastructure/database';
 import { LLMModule } from './infrastructure/llm';
+import { QueueModule } from './infrastructure/queue';
 import { SharedModule } from './shared/shared.module';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middleware';
@@ -85,6 +86,7 @@ import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middle
     DatabaseModule,
     LLMModule,
     MailInfrastructureModule,
+    QueueModule,
     SharedModule,
     AuthModule,
     UsersModule,
