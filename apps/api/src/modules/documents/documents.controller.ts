@@ -31,7 +31,8 @@ import {
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Observable } from 'rxjs';
-import { EventEmitter } from 'node:events';
+import type { EventEmitter } from 'node:events';
+import { EVENT_BUS, type IEventBus } from '../../infrastructure/redis';
 import type { DocumentProgressEvent } from '@corpusai/queue';
 import { DocumentsService } from './documents.service';
 import { AuthGuard, CurrentUser, type CurrentUserData } from '../auth';
@@ -44,10 +45,14 @@ import { CreateTextDocumentDto } from './dto/create-text-document.dto';
 @Throttle({ short: { limit: 10, ttl: 1000 } })
 @Controller('ais/:aiId/documents')
 export class DocumentsController {
+  private readonly progressEmitter: EventEmitter;
+
   constructor(
     private readonly documentsService: DocumentsService,
-    @Inject('PROGRESS_EMITTER') private readonly progressEmitter: EventEmitter
-  ) {}
+    @Inject(EVENT_BUS) eventBus: IEventBus
+  ) {
+    this.progressEmitter = eventBus.getEmitter();
+  }
 
   @Get()
   @ApiOperation({ summary: 'List all documents for an AI' })

@@ -5,23 +5,20 @@ import {
   CallHandler,
   HttpException,
   Inject,
-  Logger,
-  Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import type { Response } from 'express';
-import type Redis from 'ioredis';
+import { RATE_LIMITER, type IRateLimiter } from '../../infrastructure/redis';
 import type { ApiKeyRequest } from '../auth';
 
 @Injectable()
 export class ApiKeyRateLimitInterceptor implements NestInterceptor {
-  private readonly logger = new Logger(ApiKeyRateLimitInterceptor.name);
   private readonly limit: number;
 
   constructor(
-    @Optional() @Inject('RATE_LIMIT_REDIS') private readonly redis: Redis | null,
+    @Inject(RATE_LIMITER) private readonly rateLimiter: IRateLimiter,
     private readonly config: ConfigService
   ) {
     this.limit = this.config.get<number>('API_KEY_RATE_LIMIT', 60);
@@ -32,35 +29,25 @@ export class ApiKeyRateLimitInterceptor implements NestInterceptor {
     const response = context.switchToHttp().getResponse<Response>();
 
     const keyHash = request.apiKeyHash;
-    if (!keyHash || !this.redis) {
-      // Not an API key request or Redis unavailable — skip
+    if (!keyHash) {
       return next.handle();
     }
 
-    const windowStart = Math.floor(Date.now() / 60000);
-    const redisKey = `ratelimit:apikey:${keyHash}:${windowStart}`;
-    const windowResetEpoch = (windowStart + 1) * 60;
+    const result = await this.rateLimiter.checkAndIncrement(
+      `ratelimit:apikey:${keyHash}`,
+      this.limit,
+      60
+    );
 
-    let count: number;
-    try {
-      count = await this.redis.incr(redisKey);
-      if (count === 1) {
-        await this.redis.expire(redisKey, 120);
-      }
-    } catch (err) {
-      this.logger.warn(`Redis rate limit check failed, allowing request: ${String(err)}`);
-      return next.handle();
-    }
+    // Fail open if rate limiter unavailable (Redis down or not configured)
+    if (!result) return next.handle();
 
-    const remaining = Math.max(0, this.limit - count);
+    response.setHeader('X-RateLimit-Limit', result.limit);
+    response.setHeader('X-RateLimit-Remaining', result.remaining);
+    response.setHeader('X-RateLimit-Reset', result.resetAt);
 
-    // Set headers before checking limit (so 429 responses also have them)
-    response.setHeader('X-RateLimit-Limit', this.limit);
-    response.setHeader('X-RateLimit-Remaining', remaining);
-    response.setHeader('X-RateLimit-Reset', windowResetEpoch);
-
-    if (count > this.limit) {
-      const retryAfter = windowResetEpoch - Math.floor(Date.now() / 1000);
+    if (result.count > result.limit) {
+      const retryAfter = result.resetAt - Math.floor(Date.now() / 1000);
       response.setHeader('Retry-After', Math.max(1, retryAfter));
       throw new HttpException(
         {
@@ -72,10 +59,6 @@ export class ApiKeyRateLimitInterceptor implements NestInterceptor {
       );
     }
 
-    return next.handle().pipe(
-      tap(() => {
-        // Headers already set above
-      })
-    );
+    return next.handle().pipe(tap(() => {}));
   }
 }

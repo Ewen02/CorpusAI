@@ -24,6 +24,7 @@ import { WebhooksModule } from './modules/webhooks';
 import { DatabaseModule } from './infrastructure/database';
 import { LLMModule } from './infrastructure/llm';
 import { QueueModule } from './infrastructure/queue';
+import { RedisModule } from './infrastructure/redis';
 import { SharedModule } from './shared/shared.module';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middleware';
@@ -87,6 +88,7 @@ import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middle
     LLMModule,
     MailInfrastructureModule,
     QueueModule,
+    RedisModule,
     SharedModule,
     AuthModule,
     UsersModule,
