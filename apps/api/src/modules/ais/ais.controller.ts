@@ -10,6 +10,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Inject,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -22,7 +23,7 @@ import {
 import { SkipThrottle } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
 import { AIsService } from './ais.service';
-import { MailService } from '../mail';
+import { MAIL_SERVICE, type IMailService } from '../../infrastructure/mail';
 import { AuthGuard, CurrentUser, type CurrentUserData } from '../auth';
 import { CreateAIDto } from './dto/create-ai.dto';
 import { UpdateAIDto } from './dto/update-ai.dto';
@@ -41,7 +42,7 @@ import {
 export class AIsController {
   constructor(
     private readonly aisService: AIsService,
-    private readonly mailService: MailService,
+    @Inject(MAIL_SERVICE) private readonly mailService: IMailService,
     private readonly config: ConfigService
   ) {}
 

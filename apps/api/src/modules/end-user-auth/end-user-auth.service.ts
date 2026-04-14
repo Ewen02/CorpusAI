@@ -1,12 +1,12 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
-import { MailService } from '../mail';
+import { MAIL_SERVICE, type IMailService } from '../../infrastructure/mail';
 import { EndUserAuthRepository } from './end-user-auth.repository';
 
 @Injectable()
 export class EndUserAuthService {
   constructor(
-    private readonly mail: MailService,
+    @Inject(MAIL_SERVICE) private readonly mail: IMailService,
     private readonly repo: EndUserAuthRepository
   ) {}
 

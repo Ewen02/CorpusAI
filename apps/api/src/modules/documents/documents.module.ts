@@ -12,7 +12,7 @@ import {
 import { DocumentsController } from './documents.controller';
 import { DocumentsService } from './documents.service';
 import { DocumentsRepository } from './documents.repository';
-import { MailService } from '../mail';
+import { MAIL_SERVICE, type IMailService } from '../../infrastructure/mail';
 import { WebhooksService } from '../webhooks';
 import { RagModule } from '../rag';
 
@@ -102,7 +102,7 @@ export class DocumentsModule implements OnModuleInit, OnModuleDestroy {
   constructor(
     @Inject('PROGRESS_SUBSCRIBER') private readonly subscriber: Redis,
     @Inject('PROGRESS_EMITTER') private readonly emitter: EventEmitter,
-    private readonly mailService: MailService,
+    @Inject(MAIL_SERVICE) private readonly mailService: IMailService,
     private readonly webhooksService: WebhooksService
   ) {}
 

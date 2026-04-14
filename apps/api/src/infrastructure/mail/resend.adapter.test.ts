@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { MailService } from './mail.service';
+import { ResendMailAdapter } from './resend.adapter';
 
 const mockSend = vi.fn();
 
@@ -9,8 +9,8 @@ vi.mock('resend', () => ({
   })),
 }));
 
-describe('MailService', () => {
-  let service: MailService;
+describe('ResendMailAdapter', () => {
+  let service: ResendMailAdapter;
 
   const mockConfigWithKey = {
     get: vi.fn((key: string) => {
@@ -35,7 +35,7 @@ describe('MailService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    service = new MailService(mockConfigWithKey as any);
+    service = new ResendMailAdapter(mockConfigWithKey as any);
   });
 
   describe('sendMagicLink', () => {
@@ -85,7 +85,6 @@ describe('MailService', () => {
           from: 'noreply@test.io',
         })
       );
-      // Verify the HTML contains the access URL and creator name
       const htmlArg = mockSend.mock.calls[0]![0].html as string;
       expect(htmlArg).toContain('Alice');
       expect(htmlArg).toContain('Sales Bot');
@@ -114,12 +113,10 @@ describe('MailService', () => {
 
   describe('send (private, via public methods)', () => {
     it('should log warning and not crash when RESEND_API_KEY is not configured', async () => {
-      const serviceNoKey = new MailService(mockConfigWithoutKey as any);
+      const adapterNoKey = new ResendMailAdapter(mockConfigWithoutKey as any);
 
-      // Should not throw
-      await serviceNoKey.sendWelcome('user@test.com', 'Test');
+      await adapterNoKey.sendWelcome('user@test.com', 'Test');
 
-      // Resend.emails.send should never be called
       expect(mockSend).not.toHaveBeenCalled();
     });
   });

@@ -17,7 +17,7 @@ import { BillingModule } from './modules/billing';
 import { AdminModule } from './modules/admin';
 import { PublicApiModule } from './modules/public-api';
 import { ExploreModule } from './modules/explore';
-import { MailModule } from './modules/mail';
+import { MailInfrastructureModule } from './infrastructure/mail';
 import { EndUserAuthModule } from './modules/end-user-auth';
 import { PortalModule } from './modules/portal';
 import { WebhooksModule } from './modules/webhooks';
@@ -84,6 +84,7 @@ import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middle
     ]),
     DatabaseModule,
     LLMModule,
+    MailInfrastructureModule,
     SharedModule,
     AuthModule,
     UsersModule,
@@ -96,7 +97,6 @@ import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middle
     AdminModule,
     PublicApiModule,
     ExploreModule,
-    MailModule,
     EndUserAuthModule,
     PortalModule,
     WebhooksModule,

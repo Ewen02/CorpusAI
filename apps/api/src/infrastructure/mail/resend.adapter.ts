@@ -9,10 +9,11 @@ import {
   documentFailedTemplate,
   type Locale,
 } from '@corpusai/email';
+import type { IMailService } from './mail.port';
 
 @Injectable()
-export class MailService {
-  private readonly logger = new Logger(MailService.name);
+export class ResendMailAdapter implements IMailService {
+  private readonly logger = new Logger(ResendMailAdapter.name);
   private readonly resend: Resend | null = null;
   private readonly fromEmail: string;
   private readonly frontendUrl: string;
