@@ -1,21 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import OpenAI from 'openai';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { prisma, MessageRole } from '@corpusai/database';
+import { LLM_SERVICE, type LLMService } from '../../infrastructure/llm';
 
 @Injectable()
 export class EndUserMemoryService {
   private readonly logger = new Logger(EndUserMemoryService.name);
-  private readonly openai: OpenAI;
-  private readonly model: string;
 
-  constructor(private configService: ConfigService) {
-    this.openai = new OpenAI({
-      apiKey: this.configService.get<string>('OPENAI_API_KEY'),
-      baseURL: this.configService.get<string>('LLM_BASE_URL') || undefined,
-    });
-    this.model = this.configService.get<string>('LLM_MODEL') || 'gpt-4o-mini';
-  }
+  constructor(@Inject(LLM_SERVICE) private readonly llm: LLMService) {}
 
   /**
    * Retrieves the memory summary for an end-user + AI pair.
@@ -57,17 +48,16 @@ ${existingMemory}`
       : `You are a memory summarizer. Summarize the key points from this conversation that would be useful context for future conversations with this user. Focus on: user preferences, key topics discussed, important facts shared, and any requests or needs mentioned. The summary must be concise (max 500 tokens). Write in the same language as the conversation.`;
 
     try {
-      const response = await this.openai.chat.completions.create({
-        model: this.model,
+      const response = await this.llm.chatCompletion({
         temperature: 0.3,
-        max_tokens: 600,
+        maxTokens: 600,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `CONVERSATION:\n${conversationText}` },
         ],
       });
 
-      const summary = response.choices[0]?.message?.content?.trim();
+      const summary = response.content?.trim();
       if (!summary) return;
 
       await prisma.endUserMemory.upsert({

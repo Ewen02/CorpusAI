@@ -1,22 +1,10 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import OpenAI from 'openai';
+import { Inject, Injectable, BadRequestException } from '@nestjs/common';
 import { prisma, DocumentStatus } from '@corpusai/database';
+import { LLM_SERVICE, type LLMService } from '../../infrastructure/llm';
 
 @Injectable()
 export class TextGenerationService {
-  private readonly openai: OpenAI;
-  private readonly model: string;
-
-  constructor(private configService: ConfigService) {
-    const apiKey =
-      this.configService.get<string>('LLM_API_KEY') ||
-      this.configService.get<string>('OPENAI_API_KEY') ||
-      '';
-    const baseURL = this.configService.get<string>('LLM_BASE_URL');
-    this.model = this.configService.get<string>('LLM_MODEL') || 'gpt-4o-mini';
-    this.openai = new OpenAI({ apiKey, ...(baseURL && { baseURL }) });
-  }
+  constructor(@Inject(LLM_SERVICE) private readonly llm: LLMService) {}
 
   async generateAISuggestions(params: {
     aiId: string;
@@ -46,10 +34,9 @@ export class TextGenerationService {
 
     const lang = params.language === 'en' ? 'English' : 'French';
 
-    const response = await this.openai.chat.completions.create({
-      model: this.model,
+    const response = await this.llm.chatCompletion({
       temperature: 0.7,
-      response_format: { type: 'json_object' },
+      responseFormat: { type: 'json_object' },
       messages: [
         {
           role: 'user',
@@ -69,10 +56,7 @@ Return a JSON object with exactly these 3 fields:
       ],
     });
 
-    const result = JSON.parse(response.choices[0]?.message.content ?? '{}') as Record<
-      string,
-      string
-    >;
+    const result = JSON.parse(response.content || '{}') as Record<string, string>;
 
     return {
       description: (result.description ?? '').slice(0, 500),
