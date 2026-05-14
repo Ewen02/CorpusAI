@@ -1,8 +1,17 @@
 export const MAIL_SERVICE = Symbol('MAIL_SERVICE');
 
+export type MailLocale = 'fr' | 'en';
+
 export interface IMailService {
   sendMagicLink(email: string, token: string, aiName?: string): Promise<void>;
   sendInvite(email: string, aiName: string, creatorName: string, accessUrl: string): Promise<void>;
+  sendCollaboratorInvite(
+    email: string,
+    aiName: string,
+    inviterName: string,
+    acceptUrl: string,
+    locale?: MailLocale
+  ): Promise<void>;
   sendWelcome(email: string, name: string): Promise<void>;
   sendDocumentIndexed(
     email: string,

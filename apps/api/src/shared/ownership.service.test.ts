@@ -9,6 +9,7 @@ function makeRepo() {
     findFullAIByIdAndUser: vi.fn(),
     findDocumentWithOwner: vi.fn(),
     findConversationWithOwner: vi.fn(),
+    findEditorCollaboration: vi.fn(),
   };
 }
 
@@ -97,6 +98,28 @@ describe('OwnershipService', () => {
         ai: { id: 'ai-1', userId: 'user-2' },
       });
       await expect(service.verifyConversationOwnership('conv-1', 'user-1')).rejects.toBeInstanceOf(
+        NotFoundException
+      );
+    });
+  });
+
+  describe('verifyAIEditAccess', () => {
+    it('returns OWNER when user owns the AI', async () => {
+      repo.findAIByIdAndUser.mockResolvedValue({ id: 'ai-1' });
+      await expect(service.verifyAIEditAccess('ai-1', 'user-1')).resolves.toBe('OWNER');
+      expect(repo.findEditorCollaboration).not.toHaveBeenCalled();
+    });
+
+    it('returns EDITOR when user has accepted editor collaboration', async () => {
+      repo.findAIByIdAndUser.mockResolvedValue(null);
+      repo.findEditorCollaboration.mockResolvedValue({ id: 'collab-1', role: 'EDITOR' });
+      await expect(service.verifyAIEditAccess('ai-1', 'user-1')).resolves.toBe('EDITOR');
+    });
+
+    it('throws when user is neither owner nor accepted editor', async () => {
+      repo.findAIByIdAndUser.mockResolvedValue(null);
+      repo.findEditorCollaboration.mockResolvedValue(null);
+      await expect(service.verifyAIEditAccess('ai-1', 'user-1')).rejects.toBeInstanceOf(
         NotFoundException
       );
     });

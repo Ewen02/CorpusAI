@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { CollaboratorRole } from '@corpusai/database';
 import { PrismaService } from '../infrastructure/database';
 
 @Injectable()
@@ -37,6 +38,18 @@ export class OwnershipRepository {
           select: { id: true, userId: true },
         },
       },
+    });
+  }
+
+  async findEditorCollaboration(aiId: string, userId: string) {
+    return this.db.client.aICollaborator.findFirst({
+      where: {
+        aiId,
+        userId,
+        role: CollaboratorRole.EDITOR,
+        acceptedAt: { not: null },
+      },
+      select: { id: true, role: true },
     });
   }
 }

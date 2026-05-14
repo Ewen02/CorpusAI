@@ -4,12 +4,13 @@ import { Resend } from 'resend';
 import {
   magicLinkTemplate,
   inviteTemplate,
+  collaboratorInviteTemplate,
   welcomeTemplate,
   documentIndexedTemplate,
   documentFailedTemplate,
   type Locale,
 } from '@corpusai/email';
-import type { IMailService } from './mail.port';
+import type { IMailService, MailLocale } from './mail.port';
 
 @Injectable()
 export class ResendMailAdapter implements IMailService {
@@ -44,6 +45,22 @@ export class ResendMailAdapter implements IMailService {
     accessUrl: string
   ): Promise<void> {
     const { subject, html } = inviteTemplate(aiName, creatorName, accessUrl, this.locale);
+    await this.send(email, subject, html);
+  }
+
+  async sendCollaboratorInvite(
+    email: string,
+    aiName: string,
+    inviterName: string,
+    acceptUrl: string,
+    locale?: MailLocale
+  ): Promise<void> {
+    const { subject, html } = collaboratorInviteTemplate(
+      aiName,
+      inviterName,
+      acceptUrl,
+      (locale ?? this.locale) as Locale
+    );
     await this.send(email, subject, html);
   }
 
