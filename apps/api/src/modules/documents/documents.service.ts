@@ -4,7 +4,7 @@ import { assertCanAddDocument, assertCanUploadDocument } from '../../shared/subs
 import { OwnershipService } from '../../shared/ownership.service';
 import { canAddDocument, canUploadDocument } from '@corpusai/subscription';
 import { SUPPORTED_DOCUMENT_TYPES, type SupportedDocumentType } from '@corpusai/types';
-import { JOB_RETRY_CONFIG } from '@corpusai/queue';
+import { JOB_RETRY_CONFIG, buildDocumentJobId } from '@corpusai/queue';
 import { DOCUMENT_QUEUE_PORT, type IDocumentQueue } from '../../infrastructure/queue';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { CreateTextDocumentDto } from './dto/create-text-document.dto';
@@ -83,7 +83,7 @@ export class DocumentsService {
         mimeType: dto.mimeType,
         url: dto.url,
       },
-      JOB_RETRY_CONFIG
+      { ...JOB_RETRY_CONFIG, jobId: buildDocumentJobId(document.id) }
     );
 
     this.logger.log(`Document ${document.id} queued for processing`);
@@ -117,7 +117,7 @@ export class DocumentsService {
         mimeType: 'text/plain',
         content: dto.content,
       },
-      JOB_RETRY_CONFIG
+      { ...JOB_RETRY_CONFIG, jobId: buildDocumentJobId(document.id) }
     );
 
     this.logger.log(`Text document ${document.id} queued for processing`);
@@ -158,7 +158,7 @@ export class DocumentsService {
         mimeType: file.mimetype,
         buffer: file.buffer.toString('base64'),
       },
-      JOB_RETRY_CONFIG
+      { ...JOB_RETRY_CONFIG, jobId: buildDocumentJobId(document.id) }
     );
 
     this.logger.log(`Uploaded document ${document.id} queued for processing`);
@@ -219,7 +219,7 @@ export class DocumentsService {
           mimeType: file.mimetype,
           buffer: file.buffer.toString('base64'),
         },
-        JOB_RETRY_CONFIG
+        { ...JOB_RETRY_CONFIG, jobId: buildDocumentJobId(doc.id) }
       );
     }
 
@@ -285,7 +285,7 @@ export class DocumentsService {
         mimeType: document.mimeType,
         url: document.url ?? undefined,
       },
-      JOB_RETRY_CONFIG
+      { ...JOB_RETRY_CONFIG, jobId: `${buildDocumentJobId(document.id)}:retry:${Date.now()}` }
     );
 
     this.logger.log(`Document ${documentId} re-queued for processing`);

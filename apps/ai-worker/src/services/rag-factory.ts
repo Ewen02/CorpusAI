@@ -87,9 +87,9 @@ function init(): void {
   const cohereApiKey = process.env.COHERE_API_KEY;
   if (cohereApiKey) {
     reranker = new CohereReranker({ apiKey: cohereApiKey });
-    console.log('Cohere cross-encoder reranker enabled (post-RRF)');
+    console.warn('Cohere cross-encoder reranker enabled (post-RRF)');
   } else {
-    console.log('No Cohere API key — using Qdrant native RRF hybrid search only');
+    console.warn('No Cohere API key — using Qdrant native RRF hybrid search only');
   }
 
   initialized = true;

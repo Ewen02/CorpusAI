@@ -15,6 +15,7 @@ import { RagModule } from './modules/rag';
 import { HealthModule } from './modules/health';
 import { BillingModule } from './modules/billing';
 import { AdminModule } from './modules/admin';
+import { AnalyticsModule } from './modules/analytics';
 import { PublicApiModule } from './modules/public-api';
 import { ExploreModule } from './modules/explore';
 import { MailInfrastructureModule } from './infrastructure/mail';
@@ -47,7 +48,9 @@ import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middle
         SENTRY_DSN: Joi.string().optional().allow(''),
         RESEND_API_KEY: Joi.string().optional().allow(''),
         RESEND_FROM_EMAIL: Joi.string().optional().allow(''),
+        RESEND_WEBHOOK_SECRET: Joi.string().optional().allow(''),
         API_KEY_RATE_LIMIT: Joi.number().default(60),
+        BILLING_BLOCKED_STATUSES: Joi.string().default('CANCELED,PAST_DUE'),
         NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
         PORT: Joi.number().default(3001),
       }),
@@ -99,6 +102,7 @@ import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middle
     HealthModule,
     BillingModule,
     AdminModule,
+    AnalyticsModule,
     PublicApiModule,
     ExploreModule,
     EndUserAuthModule,

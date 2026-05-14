@@ -48,6 +48,7 @@ vi.mock('@corpusai/types', () => ({
 
 vi.mock('@corpusai/queue', () => ({
   JOB_RETRY_CONFIG: { attempts: 3, backoff: { type: 'exponential', delay: 5000 } },
+  buildDocumentJobId: vi.fn((id: string) => `doc:${id}`),
 }));
 
 vi.mock('node:fs/promises', () => ({

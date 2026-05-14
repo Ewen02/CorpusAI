@@ -5,6 +5,14 @@ export const DOCUMENT_QUEUE_PORT = Symbol('DOCUMENT_QUEUE_PORT');
 export interface QueueJobOptions {
   attempts?: number;
   backoff?: { type: string; delay: number };
+  /**
+   * Stable id used by BullMQ for deduplication. Setting the same jobId twice
+   * while a job is queued/active/delayed silently no-ops the second call,
+   * preventing double processing of the same document.
+   */
+  jobId?: string;
+  removeOnComplete?: boolean | number | { age: number; count?: number; limit?: number };
+  removeOnFail?: boolean | number | { age: number; count?: number; limit?: number };
 }
 
 export interface FailedJob {
