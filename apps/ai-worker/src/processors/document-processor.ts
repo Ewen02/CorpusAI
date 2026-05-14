@@ -59,7 +59,17 @@ async function publishProgress(
 }
 
 export async function processDocument(data: DocumentProcessingJobData): Promise<void> {
-  const { documentId, aiId, filename, mimeType, url, content, buffer, filePath } = data;
+  const {
+    documentId,
+    documentVersionId,
+    aiId,
+    filename,
+    mimeType,
+    url,
+    content,
+    buffer,
+    filePath,
+  } = data;
 
   // Mark as processing
   await prisma.document.update({
@@ -71,6 +81,13 @@ export async function processDocument(data: DocumentProcessingJobData): Promise<
       processingStep: ProcessingStep.PARSING,
     },
   });
+
+  if (documentVersionId) {
+    await prisma.documentVersion.update({
+      where: { id: documentVersionId },
+      data: { status: DocumentStatus.PROCESSING },
+    });
+  }
 
   try {
     await publishProgress(documentId, DocumentStatus.PROCESSING, 2, ProcessingStep.PARSING);
@@ -165,12 +182,14 @@ export async function processDocument(data: DocumentProcessingJobData): Promise<
     const wordCount =
       metadata.wordCount ?? parsedContent.split(/\s+/).filter((w) => w.length > 0).length;
 
-    // Persist chunks to DB for analytics and text-based features (e.g. AI suggestions)
+    // Persist chunks to DB for analytics and text-based features (e.g. AI suggestions).
+    // Tag with documentVersionId so rollback can re-upsert past chunks without re-parsing.
     if (result.chunks.length > 0) {
       await prisma.chunk.createMany({
         data: result.chunks.map((c) => ({
           id: c.id,
           documentId,
+          documentVersionId: documentVersionId ?? null,
           content: c.text,
           position: c.position,
           pageNumber: c.pageNumber ?? null,
@@ -197,6 +216,24 @@ export async function processDocument(data: DocumentProcessingJobData): Promise<
       },
     });
 
+    // Keep the DocumentVersion snapshot in sync.
+    if (documentVersionId) {
+      await prisma.documentVersion.update({
+        where: { id: documentVersionId },
+        data: {
+          status: DocumentStatus.INDEXED,
+          chunkCount: result.chunksCreated,
+          wordCount,
+          pageCount: metadata.pageCount,
+          metadata: {
+            ...(metadata.title ? { title: metadata.title } : {}),
+            ...(metadata.author ? { author: metadata.author } : {}),
+            ...(metadata.language ? { language: metadata.language } : {}),
+          },
+        },
+      });
+    }
+
     await publishProgress(documentId, DocumentStatus.INDEXED, 100, null);
 
     logger.info({ documentId, chunks: result.chunksCreated, wordCount }, 'Document indexed');
@@ -222,6 +259,16 @@ export async function processDocument(data: DocumentProcessingJobData): Promise<
         chunkCount: 0,
       },
     });
+
+    if (documentVersionId) {
+      await prisma.documentVersion.update({
+        where: { id: documentVersionId },
+        data: {
+          status: DocumentStatus.FAILED,
+          chunkCount: 0,
+        },
+      });
+    }
 
     await publishProgress(documentId, DocumentStatus.FAILED, 0, null, errorMessage);
 
