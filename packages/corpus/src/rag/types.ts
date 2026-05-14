@@ -181,6 +181,14 @@ export interface LLMConfig {
   baseURL?: string;
   /** Modèle à utiliser */
   model?: string;
+  /**
+   * Provider à utiliser. Détermine quel SDK est instancié sous le capot.
+   * - `openai` (défaut): SDK OpenAI sur baseURL OpenAI ou compatible
+   * - `anthropic`: SDK Anthropic (messages API). Pas de streaming
+   *   via OpenAI SDK — utiliser un adapter dédié dans l'application hôte.
+   * - `groq`: SDK OpenAI avec baseURL=https://api.groq.com/openai/v1
+   */
+  provider?: 'openai' | 'anthropic' | 'groq';
   /** Temperature (0 = déterministe, 1 = créatif) */
   temperature?: number;
   /** Nombre max de tokens en sortie */
