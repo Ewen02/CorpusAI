@@ -58,3 +58,24 @@ export function assertCanAddEndUser(plan: SubscriptionPlanType, currentCount: nu
     );
   }
 }
+
+/**
+ * Plans allowed to pick a non-default LLM provider (anthropic, groq).
+ * OpenAI remains available on every plan.
+ */
+const PROVIDER_GATED_PLANS: readonly SubscriptionPlanType[] = ['PRO', 'ENTERPRISE'];
+
+/**
+ * Throws ForbiddenException when a user on FREE/CREATOR tries to switch the
+ * AI's `llmProvider` to anything other than `openai`. Multi-provider routing
+ * is a PRO+ feature.
+ */
+export function assertCanUseLLMProvider(plan: SubscriptionPlanType, provider: string): void {
+  if (provider === 'openai') return;
+  if (!PROVIDER_GATED_PLANS.includes(plan)) {
+    throw new ForbiddenException(
+      `LLM provider "${provider}" is only available on PRO plans and above. ` +
+        `Upgrade your plan or keep the default OpenAI provider.`
+    );
+  }
+}

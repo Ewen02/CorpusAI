@@ -111,4 +111,69 @@ describe('llm-pricing', () => {
       expect(cost).toBe(0);
     });
   });
+
+  describe('multi-provider pricing (Anthropic + Groq)', () => {
+    it('computes claude-sonnet-4-5 cost ($3 in / $15 out per 1M)', () => {
+      // 10k in → 0.03 USD ; 2k out → 0.03 USD → 0.06 USD total
+      const cost = computeMessageCost({
+        model: 'claude-sonnet-4-5',
+        tokensIn: 10_000,
+        tokensOut: 2_000,
+      });
+      expect(cost).toBe(0.06);
+    });
+
+    it('computes claude-haiku-4-5 cost ($1 in / $5 out per 1M)', () => {
+      // 50k in → 0.05 USD ; 10k out → 0.05 USD → 0.10 USD total
+      const cost = computeMessageCost({
+        model: 'claude-haiku-4-5',
+        tokensIn: 50_000,
+        tokensOut: 10_000,
+      });
+      expect(cost).toBe(0.1);
+    });
+
+    it('computes llama-3.3-70b-versatile cost (Groq: $0.59 in / $0.79 out)', () => {
+      // 100k in → 0.059 ; 50k out → 0.0395 → 0.0985 USD total
+      const cost = computeMessageCost({
+        model: 'llama-3.3-70b-versatile',
+        tokensIn: 100_000,
+        tokensOut: 50_000,
+      });
+      expect(cost).toBe(0.0985);
+    });
+
+    it('computes llama-3.1-8b-instant cost (Groq: $0.05 in / $0.08 out)', () => {
+      // 1M in → 0.05 ; 500k out → 0.04 → 0.09 USD total
+      const cost = computeMessageCost({
+        model: 'llama-3.1-8b-instant',
+        tokensIn: 1_000_000,
+        tokensOut: 500_000,
+      });
+      expect(cost).toBe(0.09);
+    });
+
+    it('looks up Anthropic and Groq models case-insensitively', () => {
+      expect(getPricingForModel('CLAUDE-SONNET-4-5')).toEqual(LLM_PRICING['claude-sonnet-4-5']);
+      expect(getPricingForModel('Llama-3.1-8b-Instant')).toEqual(
+        LLM_PRICING['llama-3.1-8b-instant']
+      );
+    });
+
+    it('exposes all four new models in the canonical table', () => {
+      // Sanity check that pricing entries exist and are well-formed.
+      const required = [
+        'claude-sonnet-4-5',
+        'claude-haiku-4-5',
+        'llama-3.3-70b-versatile',
+        'llama-3.1-8b-instant',
+      ];
+      for (const model of required) {
+        const entry = LLM_PRICING[model];
+        expect(entry).toBeDefined();
+        expect(entry!.inputPerMillion).toBeGreaterThan(0);
+        expect(entry!.outputPerMillion).toBeGreaterThan(0);
+      }
+    });
+  });
 });

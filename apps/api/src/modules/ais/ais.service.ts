@@ -1,8 +1,18 @@
-import { Injectable, Logger, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { AIStatus } from '@corpusai/database';
 import * as bcrypt from 'bcryptjs';
 import { customAlphabet } from 'nanoid';
-import { assertCanCreateAI, assertCanAddEndUser } from '../../shared/subscription-checks';
+import {
+  assertCanCreateAI,
+  assertCanAddEndUser,
+  assertCanUseLLMProvider,
+} from '../../shared/subscription-checks';
 import { OwnershipService } from '../../shared/ownership.service';
 import {
   getStartDateForPeriod,
@@ -70,6 +80,10 @@ export class AIsService {
 
     assertCanCreateAI(user.subscriptionPlan, user._count.ais);
 
+    if (dto.llmProvider) {
+      assertCanUseLLMProvider(user.subscriptionPlan, dto.llmProvider);
+    }
+
     const existingSlug = await this.repo.findSlugForUser(dto.slug, userId);
 
     if (existingSlug) {
@@ -81,6 +95,15 @@ export class AIsService {
 
   async update(userId: string, aiId: string, dto: UpdateAIDto) {
     await this.ownership.verifyAIOwnership(aiId, userId);
+
+    if (dto.llmProvider) {
+      const user = await this.repo.findUserPlan(userId);
+      if (!user) {
+        throw new ForbiddenException('User not found');
+      }
+      assertCanUseLLMProvider(user.subscriptionPlan, dto.llmProvider);
+    }
+
     return this.repo.update(aiId, dto);
   }
 

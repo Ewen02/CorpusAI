@@ -232,6 +232,7 @@ export class ConversationsRepository {
             maxTokens: true,
             scoreThreshold: true,
             llmModel: true,
+            llmProvider: true,
             memoryEnabled: true,
             user: { select: { subscriptionPlan: true } },
           },

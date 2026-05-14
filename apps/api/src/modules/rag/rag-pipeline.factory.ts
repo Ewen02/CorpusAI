@@ -17,6 +17,7 @@ import {
   type CacheMetrics,
   type AsyncReranker,
 } from '@corpusai/corpus';
+import { LLMProviderFactory, type LLMProvider } from '../../infrastructure/llm';
 
 /**
  * Factory pour créer des pipelines RAG par AI.
@@ -41,7 +42,10 @@ export class RagPipelineFactory implements OnModuleDestroy {
   private readonly llmBaseURL?: string;
   private readonly llmModel: string;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private readonly llmProviderFactory: LLMProviderFactory
+  ) {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY');
     if (!apiKey) {
       throw new Error('OPENAI_API_KEY is required');
@@ -162,16 +166,24 @@ export class RagPipelineFactory implements OnModuleDestroy {
   /**
    * Creates a RAG pipeline for a specific AI.
    * Uses the shared global collection with ai_id tenant filtering.
+   *
+   * Provider routing:
+   * - `openai` (default): uses the OpenAI SDK with the configured base URL.
+   * - `groq`: OpenAI-compatible — switches `baseURL` to Groq and reuses
+   *   `GROQ_API_KEY`. The model identifier is forwarded as-is.
+   * - `anthropic`: not natively wired into the corpus pipeline because the
+   *   OpenAI SDK cannot speak the Messages API. The factory falls back to
+   *   OpenAI for retrieval-augmented chat and emits a one-time warning;
+   *   tasks that do not require streaming (suggestions, summaries) still
+   *   route through `LLMProviderFactory.resolve()` and use the Anthropic
+   *   adapter directly.
    */
   createForAI(aiId: string, llmConfig?: Partial<LLMConfig>): RAGPipelineImpl {
     this.validateAiId(aiId);
 
-    // Resolve per-model API key and base URL if a specific model is requested
+    const provider = (llmConfig?.provider ?? 'openai') as LLMProvider;
     const requestedModel = llmConfig?.model || this.llmModel;
-    const resolved = resolveModelConfig(requestedModel, {
-      OPENAI_API_KEY: this.configService.get<string>('OPENAI_API_KEY') || '',
-      MISTRAL_API_KEY: this.configService.get<string>('MISTRAL_API_KEY') || '',
-    });
+    const providerConfig = this.resolveProviderConfig(provider, requestedModel);
 
     return new RAGPipelineImpl(
       aiId,
@@ -180,15 +192,65 @@ export class RagPipelineFactory implements OnModuleDestroy {
       this.sparseGenerator,
       this.chunker,
       {
-        apiKey: resolved?.apiKey || this.llmApiKey,
-        baseURL: resolved?.baseURL || this.llmBaseURL,
-        model: resolved?.model || requestedModel,
+        apiKey: providerConfig.apiKey,
+        baseURL: providerConfig.baseURL,
+        model: providerConfig.model,
+        provider: providerConfig.provider,
         temperature: llmConfig?.temperature ?? 0.2,
         maxTokens: llmConfig?.maxTokens ?? 1000,
         systemPrompt: llmConfig?.systemPrompt,
       },
       this.reranker
     );
+  }
+
+  /**
+   * Returns the (apiKey, baseURL, model) tuple the corpus pipeline should use.
+   * Falls back to OpenAI when the requested provider is unavailable so
+   * end-users never hit a 500 due to a missing key.
+   */
+  private resolveProviderConfig(
+    provider: LLMProvider,
+    requestedModel: string
+  ): { apiKey: string; baseURL?: string; model: string; provider: LLMProvider } {
+    if (provider === 'groq') {
+      const groqKey = this.configService.get<string>('GROQ_API_KEY');
+      if (groqKey) {
+        return {
+          apiKey: groqKey,
+          baseURL:
+            this.configService.get<string>('GROQ_BASE_URL') || 'https://api.groq.com/openai/v1',
+          model: requestedModel,
+          provider: 'groq',
+        };
+      }
+      this.logger.warn(
+        `GROQ_API_KEY missing — RAG pipeline for model "${requestedModel}" falls back to OpenAI.`
+      );
+    }
+
+    if (provider === 'anthropic') {
+      // The corpus pipeline talks OpenAI Chat Completions wire format.
+      // For Anthropic chat we'd need a parallel `AnthropicRAGPipeline`; until
+      // then, route to OpenAI to keep the user-facing flow working.
+      this.logger.warn(
+        `Anthropic streaming RAG is not yet wired into the corpus pipeline ` +
+          `(model "${requestedModel}"). Falling back to OpenAI for this call.`
+      );
+    }
+
+    // OpenAI path (default + fallback).
+    const resolved = resolveModelConfig(requestedModel, {
+      OPENAI_API_KEY: this.configService.get<string>('OPENAI_API_KEY') || '',
+      MISTRAL_API_KEY: this.configService.get<string>('MISTRAL_API_KEY') || '',
+    });
+
+    return {
+      apiKey: resolved?.apiKey || this.llmApiKey,
+      baseURL: resolved?.baseURL || this.llmBaseURL,
+      model: resolved?.model || requestedModel,
+      provider: 'openai',
+    };
   }
 
   private static readonly AI_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;

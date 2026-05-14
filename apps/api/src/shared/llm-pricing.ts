@@ -1,15 +1,19 @@
 /**
  * Per-model USD pricing matrix and cost computation helpers.
  *
- * Prices are expressed per 1M tokens and reflect the public OpenAI pricing as
- * of 2026-Q2. They are intentionally kept in code (not the database) so that
- * historical messages can have their costs recomputed if a new pricing tier is
- * applied retroactively.
+ * Prices are expressed per 1M tokens and reflect the public pricing of each
+ * provider as of 2026-Q2. They are intentionally kept in code (not the
+ * database) so that historical messages can have their costs recomputed if
+ * a new pricing tier is applied retroactively.
  *
  * Sources (validate before raising prices in prod):
  *   - gpt-4o-mini             : $0.150 in / $0.600 out per 1M tokens
  *   - gpt-4o                  : $2.50  in / $10.00 out per 1M tokens
  *   - text-embedding-3-small  : $0.020 in per 1M tokens (no completion side)
+ *   - claude-sonnet-4-5       : $3.00  in / $15.00 out per 1M tokens
+ *   - claude-haiku-4-5        : $1.00  in / $5.00  out per 1M tokens
+ *   - llama-3.3-70b-versatile : $0.59  in / $0.79  out per 1M tokens (Groq)
+ *   - llama-3.1-8b-instant    : $0.05  in / $0.08  out per 1M tokens (Groq)
  */
 
 export interface LLMModelPricing {
@@ -26,8 +30,16 @@ export interface LLMModelPricing {
  * adding a model, keep the alphabetical order to make diffs reviewable.
  */
 export const LLM_PRICING: Readonly<Record<string, LLMModelPricing>> = Object.freeze({
+  // Anthropic Claude family
+  'claude-haiku-4-5': { inputPerMillion: 1.0, outputPerMillion: 5.0 },
+  'claude-sonnet-4-5': { inputPerMillion: 3.0, outputPerMillion: 15.0 },
+  // OpenAI GPT family
   'gpt-4o': { inputPerMillion: 2.5, outputPerMillion: 10.0 },
   'gpt-4o-mini': { inputPerMillion: 0.15, outputPerMillion: 0.6 },
+  // Groq (Llama hosted on LPU)
+  'llama-3.1-8b-instant': { inputPerMillion: 0.05, outputPerMillion: 0.08 },
+  'llama-3.3-70b-versatile': { inputPerMillion: 0.59, outputPerMillion: 0.79 },
+  // OpenAI embeddings
   'text-embedding-3-small': { inputPerMillion: 0.02, outputPerMillion: 0 },
 });
 

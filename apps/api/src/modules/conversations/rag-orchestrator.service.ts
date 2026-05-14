@@ -48,6 +48,10 @@ export class RagOrchestratorService {
       userMessage,
       llmOptions: {
         model: conversation.ai.llmModel,
+        // `llmProvider` selects between openai / anthropic / groq adapters.
+        // Falls back to "openai" in the factory when the corresponding API
+        // key is missing or the provider is unknown.
+        provider: conversation.ai.llmProvider as 'openai' | 'anthropic' | 'groq',
         systemPrompt: buildSystemPrompt({
           customPrompt: conversation.ai.systemPrompt ?? undefined,
           language: conversation.ai.language,

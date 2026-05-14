@@ -43,6 +43,7 @@ const AI_OWNER_DETAIL_SELECT = {
   temperature: true,
   scoreThreshold: true,
   llmModel: true,
+  llmProvider: true,
   memoryEnabled: true,
   accessType: true,
   price: true,
@@ -156,6 +157,7 @@ export class AIsRepository {
         language: dto.language,
         memoryEnabled: dto.memoryEnabled ?? false,
         llmModel: dto.llmModel,
+        ...(dto.llmProvider ? { llmProvider: dto.llmProvider } : {}),
       },
       select: AI_OWNER_SAFE_SELECT,
     });
@@ -181,6 +183,7 @@ export class AIsRepository {
         language: dto.language,
         memoryEnabled: dto.memoryEnabled,
         llmModel: dto.llmModel,
+        llmProvider: dto.llmProvider,
       },
       select: AI_OWNER_SAFE_SELECT,
     });

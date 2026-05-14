@@ -6,4 +6,13 @@ export type {
   LLMChatCompletionResponse,
 } from './llm.port';
 export { OpenAILLMAdapter } from './openai.adapter';
+export { AnthropicLLMAdapter } from './anthropic.adapter';
+export { GroqLLMAdapter } from './groq.adapter';
+export {
+  LLMProviderFactory,
+  MODELS_BY_PROVIDER,
+  SUPPORTED_LLM_PROVIDERS,
+  isLLMProvider,
+  type LLMProvider,
+} from './llm-provider.factory';
 export { LLMModule } from './llm.module';

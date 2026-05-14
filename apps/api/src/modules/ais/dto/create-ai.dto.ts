@@ -129,11 +129,37 @@ export class CreateAIDto {
 
   @ApiPropertyOptional({
     description: 'LLM model to use for generation',
-    enum: ['gpt-4o-mini', 'gpt-4o', 'mistral-large-latest', 'mistral-small-latest'],
+    enum: [
+      'gpt-4o-mini',
+      'gpt-4o',
+      'claude-sonnet-4-5',
+      'claude-haiku-4-5',
+      'llama-3.3-70b-versatile',
+      'llama-3.1-8b-instant',
+    ],
     default: 'gpt-4o-mini',
   })
   @IsOptional()
   @IsString()
-  @IsIn(['gpt-4o-mini', 'gpt-4o', 'mistral-large-latest', 'mistral-small-latest'])
+  @IsIn([
+    'gpt-4o-mini',
+    'gpt-4o',
+    'claude-sonnet-4-5',
+    'claude-haiku-4-5',
+    'llama-3.3-70b-versatile',
+    'llama-3.1-8b-instant',
+  ])
   llmModel?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'LLM provider to use for generation. Embeddings always stay on OpenAI. ' +
+      'Non-OpenAI providers require a PRO (or higher) subscription.',
+    enum: ['openai', 'anthropic', 'groq'],
+    default: 'openai',
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn(['openai', 'anthropic', 'groq'])
+  llmProvider?: 'openai' | 'anthropic' | 'groq';
 }
