@@ -1,7 +1,25 @@
 {
   "name": "@corpusai/sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Official TypeScript SDK for the CorpusAI API",
+  "license": "MIT",
+  "author": "CorpusAI",
+  "keywords": [
+    "corpusai",
+    "rag",
+    "ai",
+    "chatbot",
+    "embeddings",
+    "vector-search",
+    "sdk"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ewenlq/corpusai.git",
+    "directory": "packages/sdk"
+  },
+  "homepage": "https://corpusai.io",
+  "bugs": "https://github.com/ewenlq/corpusai/issues",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -13,13 +31,19 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm run build",
     "clean": "rm -rf dist"
   },
   "devDependencies": {
