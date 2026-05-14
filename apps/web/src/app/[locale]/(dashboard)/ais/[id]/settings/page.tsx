@@ -8,7 +8,7 @@ import { DocumentStatus } from '@corpusai/types';
 
 import { useRouter } from '@/i18n/routing';
 import { PageWrapper } from '@/components/page-wrapper';
-import { useAI, useDeleteAI, useDocuments } from '@/lib/queries';
+import { useAI, useDeleteAI, useDocuments, useUserProfile } from '@/lib/queries';
 
 import { TAB_TRIGGER_CLASS } from './constants';
 import { useAISettingsForm, useAISuggestions } from './hooks';
@@ -22,6 +22,7 @@ export default function AISettingsPage() {
 
   const { data: ai, isLoading } = useAI(aiId);
   const { data: documents } = useDocuments(aiId);
+  const { data: userProfile } = useUserProfile();
   const deleteAI = useDeleteAI();
 
   const form = useAISettingsForm(aiId, ai);
@@ -161,13 +162,16 @@ export default function AISettingsPage() {
             systemPrompt={form.systemPrompt}
             welcomeMessage={form.welcomeMessage}
             language={form.language}
+            llmProvider={form.llmProvider}
             llmModel={form.llmModel}
             maxTokens={form.maxTokens}
             temperature={form.temperature}
             scoreThreshold={form.scoreThreshold}
+            subscriptionPlan={userProfile?.subscriptionPlan ?? 'FREE'}
             setSystemPrompt={form.setSystemPrompt}
             setWelcomeMessage={form.setWelcomeMessage}
             setLanguage={form.setLanguage}
+            setLlmProvider={form.setLlmProvider}
             setLlmModel={form.setLlmModel}
             setMaxTokens={form.setMaxTokens}
             setTemperature={form.setTemperature}

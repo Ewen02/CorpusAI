@@ -183,3 +183,17 @@ export {
   useRevokeMember,
   type AIAccessGrant,
 } from './use-ai-access';
+
+// Collaborator hooks
+export {
+  collaboratorKeys,
+  useCollaborators,
+  useInviteCollaborator,
+  useUpdateCollaborator,
+  useRevokeCollaborator,
+  useAcceptCollaboratorInvite,
+  type Collaborator,
+  type CollaboratorRole,
+  type InviteCollaboratorResponse,
+  type AcceptInviteResponse,
+} from './use-collaborators';

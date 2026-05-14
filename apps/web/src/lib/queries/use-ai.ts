@@ -54,6 +54,7 @@ interface UpdateAIData extends Partial<CreateAIInput> {
   category?: 'SUPPORT' | 'EDUCATION' | 'LEGAL' | 'FINANCE' | 'HEALTH' | 'TECH' | 'OTHER';
   scoreThreshold?: number;
   llmModel?: string;
+  llmProvider?: 'openai' | 'anthropic' | 'groq';
   memoryEnabled?: boolean;
 }
 

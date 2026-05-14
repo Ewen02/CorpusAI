@@ -15,6 +15,7 @@ export interface AISettingsFormState {
   primaryColor: string;
   isPublic: boolean;
   category: AICategory;
+  llmProvider: 'openai' | 'anthropic' | 'groq';
   llmModel: string;
   maxTokens: number;
   temperature: number;
@@ -31,6 +32,7 @@ export interface AISettingsFormHelpers {
   setPrimaryColor: (v: string) => void;
   setIsPublic: (v: boolean) => void;
   setCategory: (v: AICategory) => void;
+  setLlmProvider: (v: 'openai' | 'anthropic' | 'groq') => void;
   setLlmModel: (v: string) => void;
   setMaxTokens: (v: number) => void;
   setTemperature: (v: number) => void;
@@ -58,6 +60,7 @@ export function useAISettingsForm(aiId: string, ai: AI | undefined): UseAISettin
   const [primaryColor, setPrimaryColor] = React.useState('#3b82f6');
   const [isPublic, setIsPublic] = React.useState(true);
   const [category, setCategory] = React.useState<AICategory>('OTHER');
+  const [llmProvider, setLlmProvider] = React.useState<'openai' | 'anthropic' | 'groq'>('openai');
   const [llmModel, setLlmModel] = React.useState('gpt-4o-mini');
   const [maxTokens, setMaxTokens] = React.useState(1024);
   const [temperature, setTemperature] = React.useState(0.7);
@@ -77,6 +80,13 @@ export function useAISettingsForm(aiId: string, ai: AI | undefined): UseAISettin
       setPrimaryColor(ai.primaryColor || '#3b82f6');
       setIsPublic(ai.isPublic ?? true);
       setCategory((ai.category as AICategory) || 'OTHER');
+      setLlmProvider(
+        (((ai as unknown as Record<string, unknown>).llmProvider as
+          | 'openai'
+          | 'anthropic'
+          | 'groq'
+          | undefined) || 'openai') as 'openai' | 'anthropic' | 'groq'
+      );
       setLlmModel(((ai as unknown as Record<string, unknown>).llmModel as string) || 'gpt-4o-mini');
       setMaxTokens(ai.maxTokens || 1024);
       setTemperature(ai.temperature || 0.7);
@@ -101,6 +111,7 @@ export function useAISettingsForm(aiId: string, ai: AI | undefined): UseAISettin
             primaryColor,
             isPublic,
             category,
+            llmProvider,
             llmModel,
             maxTokens,
             temperature,
@@ -127,6 +138,7 @@ export function useAISettingsForm(aiId: string, ai: AI | undefined): UseAISettin
       primaryColor,
       isPublic,
       category,
+      llmProvider,
       llmModel,
       maxTokens,
       temperature,
@@ -145,6 +157,7 @@ export function useAISettingsForm(aiId: string, ai: AI | undefined): UseAISettin
     primaryColor,
     isPublic,
     category,
+    llmProvider,
     llmModel,
     maxTokens,
     temperature,
@@ -158,6 +171,7 @@ export function useAISettingsForm(aiId: string, ai: AI | undefined): UseAISettin
     setPrimaryColor,
     setIsPublic,
     setCategory,
+    setLlmProvider,
     setLlmModel,
     setMaxTokens,
     setTemperature,

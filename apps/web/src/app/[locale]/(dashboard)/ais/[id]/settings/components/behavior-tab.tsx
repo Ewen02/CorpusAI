@@ -11,18 +11,47 @@ import { CARD_CLASS, SELECT_CLASS, TEXTAREA_CLASS } from '../constants';
 import { GenerateAIButton } from './generate-ai-button';
 import { SuggestionHint } from './suggestion-hint';
 
+export type LLMProvider = 'openai' | 'anthropic' | 'groq';
+
+/**
+ * Models available per provider. Kept in sync with `MODELS_BY_PROVIDER`
+ * on the backend (apps/api/src/infrastructure/llm/llm-provider.factory.ts)
+ * and with `LLM_PRICING` (apps/api/src/shared/llm-pricing.ts).
+ */
+export const MODELS_BY_PROVIDER: Readonly<Record<LLMProvider, ReadonlyArray<[string, string]>>> = {
+  openai: [
+    ['gpt-4o-mini', 'GPT-4o Mini'],
+    ['gpt-4o', 'GPT-4o'],
+  ],
+  anthropic: [
+    ['claude-haiku-4-5', 'Claude Haiku 4.5'],
+    ['claude-sonnet-4-5', 'Claude Sonnet 4.5'],
+  ],
+  groq: [
+    ['llama-3.1-8b-instant', 'Llama 3.1 8B Instant'],
+    ['llama-3.3-70b-versatile', 'Llama 3.3 70B Versatile'],
+  ],
+};
+
+/** Plans on which non-OpenAI providers are usable. Mirrors the API check. */
+const PROVIDER_GATED_PLANS = ['PRO', 'ENTERPRISE'];
+
 interface BehaviorTabProps {
   systemPrompt: string;
   welcomeMessage: string;
   language: 'fr' | 'en';
+  llmProvider: LLMProvider;
   llmModel: string;
   maxTokens: number;
   temperature: number;
   scoreThreshold: number;
+  /** Current user's subscription plan — gates non-OpenAI providers. */
+  subscriptionPlan: string;
 
   setSystemPrompt: (v: string) => void;
   setWelcomeMessage: (v: string) => void;
   setLanguage: (v: 'fr' | 'en') => void;
+  setLlmProvider: (v: LLMProvider) => void;
   setLlmModel: (v: string) => void;
   setMaxTokens: (v: number) => void;
   setTemperature: (v: number) => void;
@@ -42,13 +71,16 @@ export function BehaviorTab({
   systemPrompt,
   welcomeMessage,
   language,
+  llmProvider,
   llmModel,
   maxTokens,
   temperature,
   scoreThreshold,
+  subscriptionPlan,
   setSystemPrompt,
   setWelcomeMessage,
   setLanguage,
+  setLlmProvider,
   setLlmModel,
   setMaxTokens,
   setTemperature,
@@ -62,6 +94,19 @@ export function BehaviorTab({
   dismissSuggestion,
 }: BehaviorTabProps) {
   const t = useTranslations('aiSettings');
+  const isProviderGated = !PROVIDER_GATED_PLANS.includes(subscriptionPlan);
+  const availableModels = MODELS_BY_PROVIDER[llmProvider];
+
+  const handleProviderChange = (next: LLMProvider) => {
+    if (next === llmProvider) return;
+    setLlmProvider(next);
+    // Auto-pick the first model of the new provider so the saved tuple stays valid.
+    const firstModel = MODELS_BY_PROVIDER[next][0];
+    if (firstModel) {
+      setLlmModel(firstModel[0]);
+    }
+    save();
+  };
 
   return (
     <div className="space-y-6">
@@ -178,6 +223,32 @@ export function BehaviorTab({
           </div>
 
           <div className="space-y-2">
+            <label htmlFor="llmProvider" className="text-[13px] font-medium text-tx-secondary">
+              {t('llmProvider.label')}
+            </label>
+            <select
+              id="llmProvider"
+              value={llmProvider}
+              onChange={(e) => handleProviderChange(e.target.value as LLMProvider)}
+              disabled={isProviderGated && llmProvider === 'openai'}
+              className="w-full rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-2))] px-3 py-2 text-[13px] text-tx-primary disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <option value="openai">{t('llmProvider.openai')}</option>
+              <option value="anthropic" disabled={isProviderGated}>
+                {t('llmProvider.anthropic')}
+                {isProviderGated ? ` — ${t('llmProvider.proRequired')}` : ''}
+              </option>
+              <option value="groq" disabled={isProviderGated}>
+                {t('llmProvider.groq')}
+                {isProviderGated ? ` — ${t('llmProvider.proRequired')}` : ''}
+              </option>
+            </select>
+            <p className="text-[12px] text-tx-disabled">
+              {isProviderGated ? t('llmProvider.upgradeHint') : t('llmProvider.hint')}
+            </p>
+          </div>
+
+          <div className="space-y-2">
             <label htmlFor="llmModel" className="text-[13px] font-medium text-tx-secondary">
               {t('behaviorTab.model')}
             </label>
@@ -190,10 +261,11 @@ export function BehaviorTab({
               }}
               className="w-full rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-2))] px-3 py-2 text-[13px] text-tx-primary"
             >
-              <option value="gpt-4o-mini">GPT-4o Mini</option>
-              <option value="gpt-4o">GPT-4o</option>
-              <option value="mistral-large-latest">Mistral Large</option>
-              <option value="mistral-small-latest">Mistral Small</option>
+              {availableModels.map(([id, label]) => (
+                <option key={id} value={id}>
+                  {label}
+                </option>
+              ))}
             </select>
             <p className="text-[12px] text-tx-disabled">{t('behaviorTab.modelHint')}</p>
           </div>
