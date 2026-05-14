@@ -9,6 +9,12 @@ export interface DocumentProcessingJobData {
   buffer?: string;
   /** Path to temp file on shared disk (preferred over buffer) */
   filePath?: string;
+  /**
+   * Document version this processing run belongs to. When set, the worker
+   * tags every chunk it persists with this id so rollbacks can re-upsert
+   * past chunks without re-embedding.
+   */
+  documentVersionId?: string;
 }
 
 export interface DocumentFinalFailureEvent {
