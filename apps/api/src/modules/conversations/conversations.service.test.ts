@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { ConversationsService } from './conversations.service';
+import { AccessControlService } from './access-control.service';
+import { MessageHistoryService } from './message-history.service';
+import { RagOrchestratorService } from './rag-orchestrator.service';
 
 vi.mock('@corpusai/database', () => ({
   prisma: {
@@ -125,11 +128,21 @@ describe('ConversationsService', () => {
   };
 
   beforeEach(() => {
-    service = new ConversationsService(
+    const accessControlService = new AccessControlService(mockRepo as any);
+    const messageHistoryService = new MessageHistoryService(mockRepo as any);
+    const ragOrchestrator = new RagOrchestratorService(
       mockRagService as any,
       mockWebhooksService as any,
       mockMemoryService as any,
-      mockRepo as any
+      mockRepo as any,
+      messageHistoryService
+    );
+    service = new ConversationsService(
+      mockWebhooksService as any,
+      mockRepo as any,
+      accessControlService,
+      messageHistoryService,
+      ragOrchestrator
     );
     vi.clearAllMocks();
     (canAskQuestion as ReturnType<typeof vi.fn>).mockReturnValue(true);

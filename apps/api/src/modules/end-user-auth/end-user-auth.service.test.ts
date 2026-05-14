@@ -6,6 +6,10 @@ vi.mock('crypto', () => ({
   randomBytes: vi.fn(() => ({
     toString: vi.fn(() => 'mock-token-hex-value'),
   })),
+  createHash: vi.fn(() => ({
+    update: vi.fn().mockReturnThis(),
+    digest: vi.fn(() => 'mock-hashed-token'),
+  })),
 }));
 
 vi.mock('@corpusai/database', () => ({
@@ -102,7 +106,7 @@ describe('EndUserAuthService', () => {
 
       expect(mockRepo.setMagicLink).toHaveBeenCalledWith(
         'eu-2',
-        'mock-token-hex-value',
+        'mock-hashed-token',
         expect.any(Date)
       );
     });
@@ -151,10 +155,10 @@ describe('EndUserAuthService', () => {
       const sessionToken = await service.verifyMagicLink('valid-token');
 
       expect(sessionToken).toBe('mock-token-hex-value');
-      expect(mockRepo.findByMagicLinkToken).toHaveBeenCalledWith('valid-token');
+      expect(mockRepo.findByMagicLinkToken).toHaveBeenCalledWith('mock-hashed-token');
       expect(mockRepo.activateSession).toHaveBeenCalledWith(
         'eu-1',
-        'mock-token-hex-value',
+        'mock-hashed-token',
         expect.any(Date)
       );
     });
@@ -195,7 +199,7 @@ describe('EndUserAuthService', () => {
 
       await service.signOut('session-token-123');
 
-      expect(mockRepo.clearSession).toHaveBeenCalledWith('session-token-123');
+      expect(mockRepo.clearSession).toHaveBeenCalledWith('mock-hashed-token');
     });
 
     it('should not throw if session does not exist', async () => {

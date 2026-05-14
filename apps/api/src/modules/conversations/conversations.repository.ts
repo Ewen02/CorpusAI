@@ -9,6 +9,57 @@ import {
 } from '@corpusai/database';
 import { incrementDailyStats } from '../../shared/daily-stats';
 
+// ============================================================================
+// SELECT CONSTANTS
+// ============================================================================
+
+/**
+ * Internal-only AI shape used when starting a conversation — INCLUDES secrets
+ * (accessToken, accessCode, inviteOnly) for access-control validation in
+ * ConversationsService.checkAIAccess. This object MUST NOT be returned to the
+ * client; callers should pick only safe fields.
+ */
+const AI_FOR_ACCESS_CHECK_SELECT = {
+  id: true,
+  userId: true,
+  slug: true,
+  name: true,
+  status: true,
+  accessToken: true,
+  accessCode: true,
+  inviteOnly: true,
+} as const;
+
+/** Public AI fields safe to embed in conversation responses (no secrets). */
+const AI_PUBLIC_EMBED_SELECT = {
+  id: true,
+  name: true,
+  welcomeMessage: true,
+  primaryColor: true,
+} as const;
+
+/** Minimal Conversation fields (excludes nothing sensitive — Conversation has no secrets). */
+const CONVERSATION_BASE_SELECT = {
+  id: true,
+  aiId: true,
+  endUserId: true,
+  title: true,
+  messageCount: true,
+  source: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
+const MESSAGE_PUBLIC_SELECT = {
+  id: true,
+  role: true,
+  content: true,
+  sources: true,
+  confidence: true,
+  feedback: true,
+  createdAt: true,
+} as const;
+
 @Injectable()
 export class ConversationsRepository {
   constructor(private readonly db: PrismaService) {}
@@ -16,6 +67,7 @@ export class ConversationsRepository {
   async findAccessGrant(aiId: string, endUserId: string) {
     return this.db.client.aIAccessGrant.findFirst({
       where: { aiId, endUserId, status: AccessStatus.ACTIVE },
+      select: { id: true, status: true, expiresAt: true },
     });
   }
 
@@ -83,22 +135,15 @@ export class ConversationsRepository {
   async findConversationWithMessages(conversationId: string) {
     return this.db.client.conversation.findUnique({
       where: { id: conversationId },
-      include: {
+      select: {
+        ...CONVERSATION_BASE_SELECT,
         messages: {
           orderBy: { createdAt: 'desc' },
           take: 100,
-          select: {
-            id: true,
-            role: true,
-            content: true,
-            sources: true,
-            confidence: true,
-            feedback: true,
-            createdAt: true,
-          },
+          select: MESSAGE_PUBLIC_SELECT,
         },
         ai: {
-          select: { id: true, name: true, welcomeMessage: true, primaryColor: true },
+          select: AI_PUBLIC_EMBED_SELECT,
         },
       },
     });
@@ -117,27 +162,30 @@ export class ConversationsRepository {
       orderBy: { createdAt: 'asc' },
       take,
       ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-      select: {
-        id: true,
-        role: true,
-        content: true,
-        sources: true,
-        confidence: true,
-        feedback: true,
-        createdAt: true,
-      },
+      select: MESSAGE_PUBLIC_SELECT,
     });
   }
 
+  /**
+   * INTERNAL ONLY — returns AI with accessToken/accessCode for in-memory access
+   * checks. Caller must not return this object to the client.
+   */
   async findAIBySlugAndUsername(slug: string, username: string) {
     return this.db.client.aI.findFirst({
       where: { slug, user: { username }, deletedAt: null },
+      select: AI_FOR_ACCESS_CHECK_SELECT,
     });
   }
 
+  /**
+   * INTERNAL ONLY — finds an EndUser by sessionToken. Returns minimal identity
+   * (no sessionToken / magicLinkToken in output) so callers cannot accidentally
+   * leak credentials.
+   */
   async findEndUserBySession(sessionToken: string) {
     return this.db.client.endUser.findFirst({
       where: { sessionToken, sessionExpires: { gt: new Date() } },
+      select: { id: true, email: true, name: true, emailVerified: true },
     });
   }
 
@@ -150,9 +198,10 @@ export class ConversationsRepository {
     return this.db.client.$transaction(async (tx: TransactionClient) => {
       const newConversation = await tx.conversation.create({
         data: { aiId, endUserId, source },
-        include: {
+        select: {
+          ...CONVERSATION_BASE_SELECT,
           ai: {
-            select: { id: true, name: true, welcomeMessage: true, primaryColor: true },
+            select: AI_PUBLIC_EMBED_SELECT,
           },
         },
       });
@@ -171,7 +220,8 @@ export class ConversationsRepository {
   async findConversationWithAI(conversationId: string) {
     return this.db.client.conversation.findUnique({
       where: { id: conversationId },
-      include: {
+      select: {
+        ...CONVERSATION_BASE_SELECT,
         ai: {
           select: {
             id: true,
@@ -200,8 +250,15 @@ export class ConversationsRepository {
       | never[];
     latencyMs?: number;
     tokenUsage?: number | null;
+    tokensIn?: number | null;
+    tokensOut?: number | null;
+    cost?: number | null;
+    model?: string | null;
   }) {
-    return this.db.client.message.create({ data });
+    return this.db.client.message.create({
+      data,
+      select: MESSAGE_PUBLIC_SELECT,
+    });
   }
 
   async updateConversationAndQuestionCount(
@@ -238,13 +295,17 @@ export class ConversationsRepository {
     return this.db.client.message.update({
       where: { id: messageId },
       data: { feedback },
+      select: { id: true, feedback: true },
     });
   }
 
   async findConversationForDelete(conversationId: string) {
     return this.db.client.conversation.findUnique({
       where: { id: conversationId },
-      include: { ai: { select: { id: true, userId: true } } },
+      select: {
+        id: true,
+        ai: { select: { id: true, userId: true } },
+      },
     });
   }
 

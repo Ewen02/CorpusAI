@@ -5,6 +5,9 @@ import { ConversationsService } from './conversations.service';
 import { ConversationsRepository } from './conversations.repository';
 import { EndUserMemoryService } from './memory.service';
 import { MemoryRepository } from './memory.repository';
+import { AccessControlService } from './access-control.service';
+import { MessageHistoryService } from './message-history.service';
+import { RagOrchestratorService } from './rag-orchestrator.service';
 import { RagModule } from '../rag';
 
 @Module({
@@ -15,6 +18,9 @@ import { RagModule } from '../rag';
     ConversationsRepository,
     EndUserMemoryService,
     MemoryRepository,
+    AccessControlService,
+    MessageHistoryService,
+    RagOrchestratorService,
   ],
   exports: [ConversationsService],
 })
