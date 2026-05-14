@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RagPipelineFactory } from './rag-pipeline.factory';
+import { trace } from '../../lib/tracing';
 import type {
   LLMConfig,
   RAGResponse,
@@ -70,16 +71,21 @@ export class RagService {
 
     const pipeline = this.factory.createForAI(aiId);
 
-    const result = await pipeline.index(
-      [
-        {
-          id: document.id,
-          content: document.content,
-          source: document.source,
-          metadata: document.metadata,
-        },
-      ],
-      { onProgress: options?.onProgress }
+    const result = await trace(
+      'document.process',
+      { aiId, documentId: document.id, contentBytes: document.content.length },
+      () =>
+        pipeline.index(
+          [
+            {
+              id: document.id,
+              content: document.content,
+              source: document.source,
+              metadata: document.metadata,
+            },
+          ],
+          { onProgress: options?.onProgress }
+        )
     );
 
     this.logger.log(`Indexed document ${document.id}: ${result.chunksCreated} chunks created`);
@@ -100,12 +106,23 @@ export class RagService {
 
     const pipeline = this.factory.createForAI(aiId, aiConfig);
 
-    const response = await pipeline.query(question, {
-      topK: options?.topK,
-      scoreThreshold: options?.scoreThreshold,
-      includeSources: true,
-      conversationHistory: options?.conversationHistory,
-    });
+    const response = await trace(
+      'rag.pipeline',
+      {
+        aiId,
+        questionLength: question.length,
+        topK: options?.topK,
+        scoreThreshold: options?.scoreThreshold,
+        historyTurns: options?.conversationHistory?.length,
+      },
+      () =>
+        pipeline.query(question, {
+          topK: options?.topK,
+          scoreThreshold: options?.scoreThreshold,
+          includeSources: true,
+          conversationHistory: options?.conversationHistory,
+        })
+    );
 
     this.logger.log(
       `Query response: ${response.sources.length} sources, answer length: ${response.answer.length}`
@@ -156,6 +173,68 @@ export class RagService {
     await vectorStore.deleteByDocument(aiId, documentId);
 
     this.logger.log(`Vectors deleted for document ${documentId}`);
+  }
+
+  /**
+   * Re-upsert a set of chunks (already persisted in Postgres) into Qdrant.
+   * Used by document versioning rollback to restore a past version without
+   * re-running the parsing/chunking phases.
+   *
+   * The dense embedding still has to be recomputed (vectors are not stored
+   * in Postgres), but the chunks themselves are taken verbatim from the
+   * `Chunk` table — no re-parsing, no re-chunking.
+   */
+  async reindexChunks(
+    aiId: string,
+    documentId: string,
+    chunks: Array<{ id: string; content: string; position: number; pageNumber: number | null }>,
+    source: string
+  ): Promise<void> {
+    if (chunks.length === 0) {
+      this.logger.warn(`reindexChunks called with no chunks for document ${documentId}`);
+      return;
+    }
+
+    const vectorStore = this.factory.getVectorStore();
+    const embeddingService = this.factory.getEmbeddingService();
+    const sparseGenerator = this.factory.getSparseGenerator();
+
+    // Drop the currently-indexed points for that document before re-upserting.
+    await vectorStore.deleteByDocument(aiId, documentId);
+
+    const BATCH_SIZE = 100;
+    for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
+      const batch = chunks.slice(i, i + BATCH_SIZE);
+      const texts = batch.map((c) => c.content);
+      const denseVectors = await embeddingService.embedBatch(texts);
+      const sparseVectors = sparseGenerator.generateBatch(texts);
+
+      const points = batch.map((chunk, idx) => {
+        const dense = denseVectors[idx];
+        const sparse = sparseVectors[idx];
+        if (!dense || !sparse) {
+          throw new Error(`Missing embedding for chunk ${chunk.id}`);
+        }
+        return {
+          id: chunk.id,
+          denseVector: dense,
+          sparseVector: sparse,
+          payload: {
+            ai_id: aiId,
+            text: chunk.content,
+            source,
+            documentId,
+            chunkIndex: chunk.position,
+            ...(chunk.pageNumber != null ? { pageNumber: chunk.pageNumber } : {}),
+          },
+        };
+      });
+
+      const isLastBatch = i + BATCH_SIZE >= chunks.length;
+      await vectorStore.upsert(points, isLastBatch);
+    }
+
+    this.logger.log(`Re-upserted ${chunks.length} chunks for document ${documentId}`);
   }
 
   /**

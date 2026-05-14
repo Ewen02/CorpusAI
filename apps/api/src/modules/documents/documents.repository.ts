@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database';
 import { DocumentStatus, type TransactionClient } from '@corpusai/database';
 import { incrementDailyStats } from '../../shared/daily-stats';
+import type { CreateVersionInput } from './document-versions.repository';
 
 /** Document fields safe to return to the dashboard (Document has no secrets). */
 const DOCUMENT_DETAIL_SELECT = {
@@ -80,11 +81,7 @@ export class DocumentsRepository {
     });
   }
 
-  async createDocumentWithCounter(
-    aiId: string,
-    userId: string,
-    data: { filename: string; mimeType: string; size: number; url?: string }
-  ) {
+  async createDocumentWithCounter(aiId: string, userId: string, data: CreateVersionInput) {
     return this.db.client.$transaction(async (tx: TransactionClient) => {
       const doc = await tx.document.create({
         data: {
@@ -98,6 +95,21 @@ export class DocumentsRepository {
         select: DOCUMENT_DETAIL_SELECT,
       });
 
+      // Version 1 is the initial active version for the document.
+      const version = await tx.documentVersion.create({
+        data: {
+          documentId: doc.id,
+          version: 1,
+          filename: data.filename,
+          mimeType: data.mimeType,
+          size: data.size,
+          url: data.url,
+          status: DocumentStatus.PENDING,
+          isActive: true,
+        },
+        select: { id: true },
+      });
+
       await tx.aI.update({
         where: { id: aiId },
         data: { documentCount: { increment: 1 } },
@@ -105,7 +117,7 @@ export class DocumentsRepository {
 
       await incrementDailyStats(tx, userId, aiId, 'documentCount');
 
-      return doc;
+      return { ...doc, versionId: version.id };
     });
   }
 
@@ -115,7 +127,7 @@ export class DocumentsRepository {
     files: Array<{ originalname: string; mimetype: string; size: number }>
   ) {
     return this.db.client.$transaction(async (tx: TransactionClient) => {
-      const created = [];
+      const created: Array<{ id: string; filename: string; versionId: string }> = [];
       for (const file of files) {
         const doc = await tx.document.create({
           data: {
@@ -127,7 +139,19 @@ export class DocumentsRepository {
           },
           select: { id: true, filename: true },
         });
-        created.push(doc);
+        const version = await tx.documentVersion.create({
+          data: {
+            documentId: doc.id,
+            version: 1,
+            filename: file.originalname,
+            mimeType: file.mimetype,
+            size: file.size,
+            status: DocumentStatus.PENDING,
+            isActive: true,
+          },
+          select: { id: true },
+        });
+        created.push({ id: doc.id, filename: doc.filename, versionId: version.id });
       }
 
       await tx.aI.update({

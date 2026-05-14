@@ -95,11 +95,11 @@ describe('DocumentsService', () => {
     ),
     createDocumentWithCounter: vi
       .fn()
-      .mockResolvedValue({ id: 'doc-new', aiId: 'ai-1', filename: 'test.pdf' }),
+      .mockResolvedValue({ id: 'doc-new', aiId: 'ai-1', filename: 'test.pdf', versionId: 'dv-1' }),
     createBulkDocumentsWithCounter: vi.fn().mockResolvedValue([
-      { id: 'doc-1', filename: 'file1.pdf' },
-      { id: 'doc-2', filename: 'file2.pdf' },
-      { id: 'doc-3', filename: 'file3.txt' },
+      { id: 'doc-1', filename: 'file1.pdf', versionId: 'dv-1' },
+      { id: 'doc-2', filename: 'file2.pdf', versionId: 'dv-2' },
+      { id: 'doc-3', filename: 'file3.txt', versionId: 'dv-3' },
     ]),
     findProgress: vi.fn((...args: unknown[]) =>
       mockDocument.findUnique({ where: { id: args[0] } })
@@ -115,16 +115,34 @@ describe('DocumentsService', () => {
     findExportData: vi.fn().mockResolvedValue([]),
   };
 
+  const mockVersionsRepo = {
+    findActiveDocumentByFilename: vi.fn().mockResolvedValue(null),
+    createNewVersion: vi.fn(),
+    findVersions: vi.fn(),
+    getActiveVersion: vi.fn().mockResolvedValue(null),
+    findVersionById: vi.fn(),
+    rollbackToVersion: vi.fn(),
+    findChunksByVersion: vi.fn().mockResolvedValue([]),
+  };
+
   beforeEach(() => {
     service = new DocumentsService(
       mockRagService as any,
       mockQueue as any,
       mockOwnershipService as any,
-      mockRepo as any
+      mockRepo as any,
+      mockVersionsRepo as any
     );
     vi.clearAllMocks();
     (canAddDocument as ReturnType<typeof vi.fn>).mockReturnValue(true);
     (canUploadDocument as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    mockVersionsRepo.findActiveDocumentByFilename.mockResolvedValue(null);
+    mockRepo.createDocumentWithCounter.mockResolvedValue({
+      id: 'doc-new',
+      aiId: 'ai-1',
+      filename: 'test.pdf',
+      versionId: 'dv-1',
+    });
   });
 
   describe('findAllByAI', () => {
@@ -320,19 +338,15 @@ describe('DocumentsService', () => {
     it('should create multiple documents and queue all jobs', async () => {
       mockAI.findFirst.mockResolvedValue(aiWithPlan(2));
       let callCount = 0;
-      (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation(
-        async (fn: (tx: unknown) => unknown) =>
-          fn({
-            document: {
-              create: vi.fn().mockImplementation(() => {
-                callCount++;
-                return { id: `doc-${callCount}`, aiId: 'ai-1', filename: `file${callCount}.pdf` };
-              }),
-            },
-            aI: { update: vi.fn() },
-            dailyStats: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
-          })
-      );
+      mockRepo.createDocumentWithCounter.mockImplementation(() => {
+        callCount++;
+        return Promise.resolve({
+          id: `doc-${callCount}`,
+          aiId: 'ai-1',
+          filename: `file${callCount}.pdf`,
+          versionId: `dv-${callCount}`,
+        });
+      });
 
       const files = [
         makeFile('a.pdf', 'application/pdf'),
@@ -420,6 +434,95 @@ describe('DocumentsService', () => {
         expect(response.errors).toHaveLength(1);
         expect(response.errors[0]!.filename).toBe('bad.exe');
       }
+    });
+  });
+
+  describe('versioning on upload', () => {
+    const dto = {
+      filename: 'reuploaded.pdf',
+      mimeType: 'application/pdf',
+      size: 1024,
+      url: 'https://example.com/reuploaded.pdf',
+    };
+
+    beforeEach(() => {
+      mockAI.findFirst.mockResolvedValue({
+        id: 'ai-1',
+        userId: 'user-1',
+        user: { subscriptionPlan: 'FREE' },
+        _count: { documents: 5 },
+      });
+    });
+
+    it('creates a new version when filename already exists for the same AI', async () => {
+      mockVersionsRepo.findActiveDocumentByFilename.mockResolvedValue({
+        id: 'doc-existing',
+        aiId: 'ai-1',
+        versions: [{ id: 'dv-1', version: 1 }],
+      });
+      mockVersionsRepo.createNewVersion.mockResolvedValue({
+        documentId: 'doc-existing',
+        versionId: 'dv-2',
+        version: 2,
+      });
+      mockRepo.findOneWithOwner.mockResolvedValue({ id: 'doc-existing' });
+
+      await service.create('user-1', 'ai-1', dto);
+
+      expect(mockVersionsRepo.createNewVersion).toHaveBeenCalledWith('doc-existing', {
+        filename: dto.filename,
+        mimeType: dto.mimeType,
+        size: dto.size,
+        url: dto.url,
+      });
+      // Quota check (createDocumentWithCounter) is NOT called: re-upload does
+      // not consume a slot.
+      expect(mockRepo.createDocumentWithCounter).not.toHaveBeenCalled();
+      // Job is enqueued with the new version id stamped on the payload.
+      const enqueued = mockQueue.add.mock.calls[0]?.[1] as { documentVersionId: string };
+      expect(enqueued.documentVersionId).toBe('dv-2');
+    });
+
+    it('does NOT enforce the document-add quota for a re-upload', async () => {
+      mockAI.findFirst.mockResolvedValue({
+        id: 'ai-1',
+        userId: 'user-1',
+        user: { subscriptionPlan: 'FREE' },
+        _count: { documents: 999 },
+      });
+      // Plan is "full" but the file is a re-upload — should still succeed.
+      (canAddDocument as ReturnType<typeof vi.fn>).mockReturnValue(false);
+      mockVersionsRepo.findActiveDocumentByFilename.mockResolvedValue({
+        id: 'doc-existing',
+        aiId: 'ai-1',
+        versions: [{ id: 'dv-1', version: 1 }],
+      });
+      mockVersionsRepo.createNewVersion.mockResolvedValue({
+        documentId: 'doc-existing',
+        versionId: 'dv-2',
+        version: 2,
+      });
+      mockRepo.findOneWithOwner.mockResolvedValue({ id: 'doc-existing' });
+
+      await expect(service.create('user-1', 'ai-1', dto)).resolves.toBeDefined();
+    });
+
+    it('still enforces the quota when the upload is a brand new document', async () => {
+      mockVersionsRepo.findActiveDocumentByFilename.mockResolvedValue(null);
+      (canAddDocument as ReturnType<typeof vi.fn>).mockReturnValue(false);
+
+      await expect(service.create('user-1', 'ai-1', dto)).rejects.toThrow(ForbiddenException);
+      expect(mockVersionsRepo.createNewVersion).not.toHaveBeenCalled();
+    });
+
+    it('queues a fresh job (no version stamping needed twice) when filename is new', async () => {
+      mockVersionsRepo.findActiveDocumentByFilename.mockResolvedValue(null);
+
+      await service.create('user-1', 'ai-1', dto);
+
+      // The fresh-document path passes versionId from createDocumentWithCounter.
+      const enqueued = mockQueue.add.mock.calls[0]?.[1] as { documentVersionId: string };
+      expect(enqueued.documentVersionId).toBe('dv-1');
     });
   });
 });

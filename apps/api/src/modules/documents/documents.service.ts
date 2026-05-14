@@ -2,7 +2,11 @@ import { Injectable, Inject, NotFoundException, BadRequestException, Logger } fr
 import { DocumentStatus } from '@corpusai/database';
 import { assertCanAddDocument, assertCanUploadDocument } from '../../shared/subscription-checks';
 import { OwnershipService } from '../../shared/ownership.service';
-import { canAddDocument, canUploadDocument } from '@corpusai/subscription';
+import {
+  canAddDocument,
+  canUploadDocument,
+  type SubscriptionPlanType,
+} from '@corpusai/subscription';
 import { SUPPORTED_DOCUMENT_TYPES, type SupportedDocumentType } from '@corpusai/types';
 import { JOB_RETRY_CONFIG, buildDocumentJobId } from '@corpusai/queue';
 import { DOCUMENT_QUEUE_PORT, type IDocumentQueue } from '../../infrastructure/queue';
@@ -10,6 +14,10 @@ import { CreateDocumentDto } from './dto/create-document.dto';
 import { CreateTextDocumentDto } from './dto/create-text-document.dto';
 import { RagService } from '../rag';
 import { DocumentsRepository } from './documents.repository';
+import {
+  DocumentVersionsRepository,
+  type CreateVersionInput,
+} from './document-versions.repository';
 
 export interface PaginationOptions {
   skip?: number;
@@ -24,8 +32,38 @@ export class DocumentsService {
     private ragService: RagService,
     @Inject(DOCUMENT_QUEUE_PORT) private documentQueue: IDocumentQueue,
     private readonly ownership: OwnershipService,
-    private readonly repo: DocumentsRepository
+    private readonly repo: DocumentsRepository,
+    private readonly versionsRepo: DocumentVersionsRepository
   ) {}
+
+  /**
+   * If a document with the same `(aiId, filename)` already exists and is
+   * active, this returns the id of the existing document so the caller can
+   * create a new version on top of it. Otherwise returns `null` and the
+   * caller will create a fresh `Document`.
+   */
+  private async resolveExistingDocument(
+    aiId: string,
+    filename: string
+  ): Promise<{ documentId: string } | null> {
+    const existing = await this.versionsRepo.findActiveDocumentByFilename(aiId, filename);
+    if (existing && existing.versions.length > 0) {
+      return { documentId: existing.id };
+    }
+    return null;
+  }
+
+  /**
+   * Stamp the document/version pair on a queue job payload so the worker
+   * tags every chunk it persists with the right `documentVersionId`.
+   */
+  private buildJobOptions(documentId: string, suffix?: string) {
+    const baseId = buildDocumentJobId(documentId);
+    return {
+      ...JOB_RETRY_CONFIG,
+      jobId: suffix ? `${baseId}:${suffix}:${Date.now()}` : baseId,
+    };
+  }
 
   async findAllByAI(userId: string, aiId: string, options?: PaginationOptions) {
     const { skip = 0, take = 50 } = options ?? {};
@@ -55,8 +93,6 @@ export class DocumentsService {
       throw new NotFoundException('AI not found');
     }
 
-    assertCanAddDocument(ai.user.subscriptionPlan, ai._count.documents);
-
     const sizeMB = dto.size / (1024 * 1024);
     assertCanUploadDocument(ai.user.subscriptionPlan, sizeMB);
 
@@ -67,27 +103,87 @@ export class DocumentsService {
       );
     }
 
-    const document = await this.repo.createDocumentWithCounter(aiId, userId, {
+    const versionInput: CreateVersionInput = {
       filename: dto.filename,
       mimeType: dto.mimeType,
       size: dto.size,
       url: dto.url,
-    });
+    };
+
+    const result = await this.upsertDocumentOrVersion(
+      ai.user.subscriptionPlan,
+      ai._count.documents,
+      aiId,
+      userId,
+      versionInput
+    );
 
     await this.documentQueue.add(
       'process',
       {
-        documentId: document.id,
+        documentId: result.documentId,
+        documentVersionId: result.versionId,
         aiId,
         filename: dto.filename,
         mimeType: dto.mimeType,
         url: dto.url,
       },
-      { ...JOB_RETRY_CONFIG, jobId: buildDocumentJobId(document.id) }
+      this.buildJobOptions(
+        result.documentId,
+        result.isNewVersion ? `v${result.version}` : undefined
+      )
     );
 
-    this.logger.log(`Document ${document.id} queued for processing`);
-    return document;
+    this.logger.log(
+      `Document ${result.documentId} queued for processing (v${result.version}, new=${result.isNewVersion})`
+    );
+    return result.document;
+  }
+
+  /**
+   * Either create a fresh `Document` (plus version 1) or stack a new version
+   * on top of an existing same-filename document. Encapsulates the quota
+   * check so re-uploads do not consume a quota slot.
+   */
+  private async upsertDocumentOrVersion(
+    plan: SubscriptionPlanType,
+    currentDocumentCount: number,
+    aiId: string,
+    userId: string,
+    data: CreateVersionInput
+  ): Promise<{
+    documentId: string;
+    versionId: string;
+    version: number;
+    isNewVersion: boolean;
+    document: unknown;
+  }> {
+    const existing = await this.resolveExistingDocument(aiId, data.filename);
+
+    if (existing) {
+      // Re-upload of an existing document: stack a new version on top.
+      // Quota is not re-charged because the document already counts.
+      const result = await this.versionsRepo.createNewVersion(existing.documentId, data);
+      const document = await this.repo.findOneWithOwner(existing.documentId);
+      return {
+        documentId: existing.documentId,
+        versionId: result.versionId,
+        version: result.version,
+        isNewVersion: true,
+        document,
+      };
+    }
+
+    // Fresh document: enforce plan limit then create document + version 1.
+    assertCanAddDocument(plan, currentDocumentCount);
+    const created = await this.repo.createDocumentWithCounter(aiId, userId, data);
+    return {
+      documentId: created.id,
+      versionId: created.versionId,
+      version: 1,
+      isNewVersion: false,
+      document: created,
+    };
   }
 
   async createFromText(userId: string, aiId: string, dto: CreateTextDocumentDto) {
@@ -97,31 +193,41 @@ export class DocumentsService {
       throw new NotFoundException('AI not found');
     }
 
-    assertCanAddDocument(ai.user.subscriptionPlan, ai._count.documents);
-
     const sizeMB = Buffer.byteLength(dto.content, 'utf8') / (1024 * 1024);
     assertCanUploadDocument(ai.user.subscriptionPlan, sizeMB);
 
-    const document = await this.repo.createDocumentWithCounter(aiId, userId, {
-      filename: dto.filename,
-      mimeType: 'text/plain',
-      size: Buffer.byteLength(dto.content, 'utf8'),
-    });
+    const result = await this.upsertDocumentOrVersion(
+      ai.user.subscriptionPlan,
+      ai._count.documents,
+      aiId,
+      userId,
+      {
+        filename: dto.filename,
+        mimeType: 'text/plain',
+        size: Buffer.byteLength(dto.content, 'utf8'),
+      }
+    );
 
     await this.documentQueue.add(
       'process',
       {
-        documentId: document.id,
+        documentId: result.documentId,
+        documentVersionId: result.versionId,
         aiId,
         filename: dto.filename,
         mimeType: 'text/plain',
         content: dto.content,
       },
-      { ...JOB_RETRY_CONFIG, jobId: buildDocumentJobId(document.id) }
+      this.buildJobOptions(
+        result.documentId,
+        result.isNewVersion ? `v${result.version}` : undefined
+      )
     );
 
-    this.logger.log(`Text document ${document.id} queued for processing`);
-    return document;
+    this.logger.log(
+      `Text document ${result.documentId} queued for processing (v${result.version}, new=${result.isNewVersion})`
+    );
+    return result.document;
   }
 
   async createFromUpload(userId: string, aiId: string, file: Express.Multer.File) {
@@ -130,8 +236,6 @@ export class DocumentsService {
     if (!ai) {
       throw new NotFoundException('AI not found');
     }
-
-    assertCanAddDocument(ai.user.subscriptionPlan, ai._count.documents);
 
     const sizeMB = file.size / (1024 * 1024);
     assertCanUploadDocument(ai.user.subscriptionPlan, sizeMB);
@@ -143,26 +247,38 @@ export class DocumentsService {
       );
     }
 
-    const document = await this.repo.createDocumentWithCounter(aiId, userId, {
-      filename: file.originalname,
-      mimeType: file.mimetype,
-      size: file.size,
-    });
+    const result = await this.upsertDocumentOrVersion(
+      ai.user.subscriptionPlan,
+      ai._count.documents,
+      aiId,
+      userId,
+      {
+        filename: file.originalname,
+        mimeType: file.mimetype,
+        size: file.size,
+      }
+    );
 
     await this.documentQueue.add(
       'process',
       {
-        documentId: document.id,
+        documentId: result.documentId,
+        documentVersionId: result.versionId,
         aiId,
         filename: file.originalname,
         mimeType: file.mimetype,
         buffer: file.buffer.toString('base64'),
       },
-      { ...JOB_RETRY_CONFIG, jobId: buildDocumentJobId(document.id) }
+      this.buildJobOptions(
+        result.documentId,
+        result.isNewVersion ? `v${result.version}` : undefined
+      )
     );
 
-    this.logger.log(`Uploaded document ${document.id} queued for processing`);
-    return document;
+    this.logger.log(
+      `Uploaded document ${result.documentId} queued for processing (v${result.version}, new=${result.isNewVersion})`
+    );
+    return result.document;
   }
 
   async createFromBulkUpload(userId: string, aiId: string, files: Express.Multer.File[]) {
@@ -173,15 +289,7 @@ export class DocumentsService {
     }
 
     const plan = ai.user.subscriptionPlan;
-
     const errors: { filename: string; reason: string }[] = [];
-
-    if (!canAddDocument(plan, ai._count.documents + files.length - 1)) {
-      throw new BadRequestException(
-        `Adding ${files.length} documents would exceed the ${plan} plan limit. ` +
-          `Current: ${ai._count.documents}, trying to add: ${files.length}.`
-      );
-    }
 
     for (const file of files) {
       const sizeMB = file.size / (1024 * 1024);
@@ -205,26 +313,58 @@ export class DocumentsService {
       throw new BadRequestException({ message: 'Some files failed validation', errors });
     }
 
-    const documents = await this.repo.createBulkDocumentsWithCounter(aiId, userId, files);
+    // Quota check: only count *new* documents (re-uploads of existing
+    // filenames become new versions and do not consume a slot).
+    let newDocsCount = 0;
+    const fileResolutions = await Promise.all(
+      files.map(async (f) => {
+        const existing = await this.resolveExistingDocument(aiId, f.originalname);
+        if (!existing) newDocsCount += 1;
+        return { file: f, existing };
+      })
+    );
 
-    for (let i = 0; i < documents.length; i++) {
-      const doc = documents[i]!;
-      const file = files[i]!;
+    if (newDocsCount > 0 && !canAddDocument(plan, ai._count.documents + newDocsCount - 1)) {
+      throw new BadRequestException(
+        `Adding ${newDocsCount} documents would exceed the ${plan} plan limit. ` +
+          `Current: ${ai._count.documents}, trying to add: ${newDocsCount}.`
+      );
+    }
+
+    const queued: Array<{ id: string; filename: string }> = [];
+    for (const { file, existing } of fileResolutions) {
+      const result = await this.upsertDocumentOrVersion(plan, ai._count.documents, aiId, userId, {
+        filename: file.originalname,
+        mimeType: file.mimetype,
+        size: file.size,
+      });
+
       await this.documentQueue.add(
         'process',
         {
-          documentId: doc.id,
+          documentId: result.documentId,
+          documentVersionId: result.versionId,
           aiId,
           filename: file.originalname,
           mimeType: file.mimetype,
           buffer: file.buffer.toString('base64'),
         },
-        { ...JOB_RETRY_CONFIG, jobId: buildDocumentJobId(doc.id) }
+        this.buildJobOptions(
+          result.documentId,
+          result.isNewVersion ? `v${result.version}` : undefined
+        )
       );
+
+      queued.push({ id: result.documentId, filename: file.originalname });
+      if (existing) {
+        this.logger.log(
+          `Bulk: re-upload of "${file.originalname}" → v${result.version} on ${result.documentId}`
+        );
+      }
     }
 
-    this.logger.log(`Bulk upload: ${documents.length} documents queued for processing`);
-    return documents.map((d) => ({ id: d.id, filename: d.filename }));
+    this.logger.log(`Bulk upload: ${queued.length} documents/versions queued for processing`);
+    return queued;
   }
 
   async getProgress(userId: string, documentId: string) {
@@ -276,10 +416,14 @@ export class DocumentsService {
 
     await this.repo.resetForRetry(documentId);
 
+    // Retry the currently-active version so chunks get tagged consistently.
+    const activeVersion = await this.versionsRepo.getActiveVersion(documentId);
+
     await this.documentQueue.add(
       'process',
       {
         documentId: document.id,
+        documentVersionId: activeVersion?.id,
         aiId: document.aiId,
         filename: document.filename,
         mimeType: document.mimeType,

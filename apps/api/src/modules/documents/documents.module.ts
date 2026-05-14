@@ -4,6 +4,9 @@ import type { DocumentFinalFailureEvent, DocumentProgressEvent } from '@corpusai
 import { DocumentsController } from './documents.controller';
 import { DocumentsService } from './documents.service';
 import { DocumentsRepository } from './documents.repository';
+import { DocumentVersionsController } from './document-versions.controller';
+import { DocumentVersionsService } from './document-versions.service';
+import { DocumentVersionsRepository } from './document-versions.repository';
 import { MAIL_SERVICE, type IMailService } from '../../infrastructure/mail';
 import { EVENT_BUS, type IEventBus } from '../../infrastructure/redis';
 import { WebhooksService } from '../webhooks';
@@ -11,9 +14,14 @@ import { RagModule } from '../rag';
 
 @Module({
   imports: [RagModule, ConfigModule],
-  controllers: [DocumentsController],
-  providers: [DocumentsService, DocumentsRepository],
-  exports: [DocumentsService],
+  controllers: [DocumentsController, DocumentVersionsController],
+  providers: [
+    DocumentsService,
+    DocumentsRepository,
+    DocumentVersionsService,
+    DocumentVersionsRepository,
+  ],
+  exports: [DocumentsService, DocumentVersionsService],
 })
 export class DocumentsModule implements OnModuleInit {
   private readonly logger = new Logger('DocumentsModule');
