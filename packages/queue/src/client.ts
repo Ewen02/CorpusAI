@@ -41,3 +41,22 @@ export function createDocumentQueue(
     connection: redisOpts,
   });
 }
+
+/**
+ * Dead-letter queue for documents that exhausted all retries.
+ * The worker should move final failures here (with the same payload) so an admin
+ * can inspect or retry them via the admin/failed-jobs endpoint without losing data.
+ */
+export function createDocumentDLQ(
+  connection: RedisOptions | string
+): Queue<DocumentProcessingJobData & { errorMessage: string; failedAt: string }> {
+  const redisOpts: RedisOptions =
+    typeof connection === 'string'
+      ? parseRedisUrl(connection)
+      : { ...connection, maxRetriesPerRequest: null };
+
+  return new Queue<DocumentProcessingJobData & { errorMessage: string; failedAt: string }>(
+    QUEUE_NAMES.DOCUMENT_DLQ,
+    { connection: redisOpts }
+  );
+}
