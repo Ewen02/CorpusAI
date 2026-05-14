@@ -1,6 +1,9 @@
 // Utilities
 export { cn } from './lib/utils';
 
+// Design tokens (CSS variable values mirror, chart palette, motion, shadows).
+export * from './tokens';
+
 // Atoms
 export { IconBox } from './atoms/icon-box';
 export type { IconBoxProps } from './atoms/icon-box';
