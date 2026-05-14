@@ -21,6 +21,7 @@ export {
   resetPasswordTemplate,
   magicLinkTemplate,
   inviteTemplate,
+  collaboratorInviteTemplate,
   welcomeTemplate,
   documentIndexedTemplate,
   documentFailedTemplate,
