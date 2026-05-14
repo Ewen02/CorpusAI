@@ -1,6 +1,5 @@
 import { Module, Inject, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { prisma } from '@corpusai/database';
 import type { DocumentFinalFailureEvent, DocumentProgressEvent } from '@corpusai/queue';
 import { DocumentsController } from './documents.controller';
 import { DocumentsService } from './documents.service';
@@ -22,7 +21,8 @@ export class DocumentsModule implements OnModuleInit {
   constructor(
     @Inject(EVENT_BUS) private readonly eventBus: IEventBus,
     @Inject(MAIL_SERVICE) private readonly mailService: IMailService,
-    private readonly webhooksService: WebhooksService
+    private readonly webhooksService: WebhooksService,
+    private readonly documentsRepository: DocumentsRepository
   ) {}
 
   onModuleInit() {
@@ -44,14 +44,7 @@ export class DocumentsModule implements OnModuleInit {
   }
 
   private async handleFinalFailure(event: DocumentFinalFailureEvent): Promise<void> {
-    const ai = await prisma.aI.findUnique({
-      where: { id: event.aiId },
-      select: {
-        name: true,
-        slug: true,
-        user: { select: { id: true, email: true } },
-      },
-    });
+    const ai = await this.documentsRepository.findAIForFailureNotification(event.aiId);
 
     if (!ai?.user.email) return;
 
@@ -80,22 +73,9 @@ export class DocumentsModule implements OnModuleInit {
   }
 
   private async handleDocumentIndexed(event: DocumentProgressEvent): Promise<void> {
-    const document = await prisma.document.findUnique({
-      where: { id: event.documentId },
-      select: {
-        id: true,
-        filename: true,
-        chunkCount: true,
-        ai: {
-          select: {
-            id: true,
-            name: true,
-            userId: true,
-            user: { select: { email: true } },
-          },
-        },
-      },
-    });
+    const document = await this.documentsRepository.findDocumentForIndexedNotification(
+      event.documentId
+    );
 
     if (!document) return;
 

@@ -5,6 +5,7 @@ import {
   UnauthorizedException,
   ForbiddenException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { auth, type Session, type User } from '../../lib/auth';
 import { fromNodeHeaders } from 'better-auth/node';
 import { Sentry } from '../../lib/sentry';
@@ -15,10 +16,20 @@ export interface AuthenticatedRequest extends Request {
   user: User;
 }
 
-const BLOCKED_STATUSES = new Set(['CANCELED', 'PAST_DUE']);
-
 @Injectable()
 export class AuthGuard implements CanActivate {
+  private readonly blockedStatuses: Set<string>;
+
+  constructor(config: ConfigService) {
+    const raw = config.get<string>('BILLING_BLOCKED_STATUSES') ?? 'CANCELED,PAST_DUE';
+    this.blockedStatuses = new Set(
+      raw
+        .split(',')
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean)
+    );
+  }
+
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
 
@@ -30,21 +41,18 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException('Authentication required');
     }
 
-    // Check subscription status — block access if canceled or past due
     const status = (session.user as Record<string, unknown>).subscriptionStatus as
       | string
       | undefined;
-    if (status && BLOCKED_STATUSES.has(status)) {
+    if (status && this.blockedStatuses.has(status.toUpperCase())) {
       throw new ForbiddenException(
         'Your subscription is inactive. Please update your billing to continue.'
       );
     }
 
-    // Attach session and user to request for later use
     request.session = session.session;
     request.user = session.user;
 
-    // Enrich Sentry with authenticated creator context
     Sentry.setUser({ id: session.user.id, email: session.user.email });
     Sentry.setTag('userType', 'creator');
 

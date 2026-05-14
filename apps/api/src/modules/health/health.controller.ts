@@ -9,8 +9,8 @@ import {
   PrismaHealthIndicator,
 } from '@nestjs/terminus';
 import { SkipThrottle } from '@nestjs/throttler';
-import { prisma } from '@corpusai/database';
 import Redis from 'ioredis';
+import { PrismaService } from '../../infrastructure/database';
 
 @ApiTags('health')
 @Controller('health')
@@ -21,7 +21,8 @@ export class HealthController {
   constructor(
     private health: HealthCheckService,
     private prismaHealth: PrismaHealthIndicator,
-    private config: ConfigService
+    private config: ConfigService,
+    private prisma: PrismaService
   ) {
     const redisUrl = this.config.get<string>('REDIS_URL');
     if (redisUrl) {
@@ -50,7 +51,7 @@ export class HealthController {
   @ApiResponse({ status: 503, description: 'One or more dependencies are down' })
   @HealthCheck()
   ready(): Promise<HealthCheckResult> {
-    const checks = [() => this.prismaHealth.pingCheck('database', prisma)];
+    const checks = [() => this.prismaHealth.pingCheck('database', this.prisma.client)];
 
     if (this.redis) {
       checks.push(() => this.checkRedis());

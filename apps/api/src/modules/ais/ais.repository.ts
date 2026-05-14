@@ -4,6 +4,75 @@ import { AccessStatus } from '@corpusai/database';
 import type { CreateAIDto } from './dto/create-ai.dto';
 import type { UpdateAIDto } from './dto/update-ai.dto';
 
+// ============================================================================
+// SELECT CONSTANTS — NEVER include secrets (accessToken, accessCode) unless
+// explicitly required for owner-side access management.
+// ============================================================================
+
+/** Safe fields returned to the AI owner (dashboard) — no secrets exposed. */
+const AI_OWNER_SAFE_SELECT = {
+  id: true,
+  slug: true,
+  name: true,
+  description: true,
+  status: true,
+  accessType: true,
+  isPublic: true,
+  documentCount: true,
+  conversationCount: true,
+  questionCount: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
+/** Full configuration fields returned to the AI owner, includes secret flags only. */
+const AI_OWNER_DETAIL_SELECT = {
+  id: true,
+  userId: true,
+  slug: true,
+  name: true,
+  description: true,
+  systemPrompt: true,
+  status: true,
+  category: true,
+  language: true,
+  welcomeMessage: true,
+  primaryColor: true,
+  logo: true,
+  maxTokens: true,
+  temperature: true,
+  scoreThreshold: true,
+  llmModel: true,
+  memoryEnabled: true,
+  accessType: true,
+  price: true,
+  isPublic: true,
+  inviteOnly: true,
+  documentCount: true,
+  conversationCount: true,
+  questionCount: true,
+  createdAt: true,
+  updatedAt: true,
+  // accessToken / accessCode included to compute hasAccessToken / hasAccessCode flags
+  // (stripped by service before returning to client)
+  accessToken: true,
+  accessCode: true,
+} as const;
+
+/** Public fields safe to expose for an AI shown to end-users (widget / chat page). */
+const AI_PUBLIC_SELECT = {
+  id: true,
+  slug: true,
+  name: true,
+  description: true,
+  welcomeMessage: true,
+  primaryColor: true,
+  logo: true,
+  accessType: true,
+  price: true,
+  status: true,
+} as const;
+
 @Injectable()
 export class AIsRepository {
   constructor(private readonly db: PrismaService) {}
@@ -14,27 +83,15 @@ export class AIsRepository {
       orderBy: { createdAt: 'desc' },
       skip,
       take,
-      select: {
-        id: true,
-        slug: true,
-        name: true,
-        description: true,
-        status: true,
-        accessType: true,
-        isPublic: true,
-        documentCount: true,
-        conversationCount: true,
-        questionCount: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+      select: AI_OWNER_SAFE_SELECT,
     });
   }
 
   async findOneWithDocuments(aiId: string, userId: string) {
     return this.db.client.aI.findFirst({
       where: { id: aiId, userId },
-      include: {
+      select: {
+        ...AI_OWNER_DETAIL_SELECT,
         documents: {
           select: {
             id: true,
@@ -58,18 +115,7 @@ export class AIsRepository {
   async findByUserAndSlug(username: string, slug: string) {
     return this.db.client.aI.findFirst({
       where: { slug, user: { username }, deletedAt: null },
-      select: {
-        id: true,
-        slug: true,
-        name: true,
-        description: true,
-        welcomeMessage: true,
-        primaryColor: true,
-        logo: true,
-        accessType: true,
-        price: true,
-        status: true,
-      },
+      select: AI_PUBLIC_SELECT,
     });
   }
 
@@ -86,6 +132,7 @@ export class AIsRepository {
   async findSlugForUser(slug: string, userId: string) {
     return this.db.client.aI.findFirst({
       where: { slug, userId },
+      select: { id: true },
     });
   }
 
@@ -110,6 +157,7 @@ export class AIsRepository {
         memoryEnabled: dto.memoryEnabled ?? false,
         llmModel: dto.llmModel,
       },
+      select: AI_OWNER_SAFE_SELECT,
     });
   }
 
@@ -134,6 +182,7 @@ export class AIsRepository {
         memoryEnabled: dto.memoryEnabled,
         llmModel: dto.llmModel,
       },
+      select: AI_OWNER_SAFE_SELECT,
     });
   }
 
@@ -341,7 +390,11 @@ export class AIsRepository {
   }
 
   async updateAccessToken(aiId: string, token: string | null) {
-    return this.db.client.aI.update({ where: { id: aiId }, data: { accessToken: token } });
+    return this.db.client.aI.update({
+      where: { id: aiId },
+      data: { accessToken: token },
+      select: { id: true },
+    });
   }
 
   async findWithUsername(aiId: string) {
@@ -352,24 +405,42 @@ export class AIsRepository {
   }
 
   async updateAccessCode(aiId: string, hash: string | null) {
-    return this.db.client.aI.update({ where: { id: aiId }, data: { accessCode: hash } });
+    return this.db.client.aI.update({
+      where: { id: aiId },
+      data: { accessCode: hash },
+      select: { id: true },
+    });
   }
 
   async updateInviteOnly(aiId: string, inviteOnly: boolean) {
-    return this.db.client.aI.update({ where: { id: aiId }, data: { inviteOnly } });
+    return this.db.client.aI.update({
+      where: { id: aiId },
+      data: { inviteOnly },
+      select: { id: true, inviteOnly: true },
+    });
   }
 
   async updateAccessMode(
     aiId: string,
     data: { inviteOnly: boolean; accessToken?: string | null; accessCode?: string | null }
   ) {
-    return this.db.client.aI.update({ where: { id: aiId }, data });
+    return this.db.client.aI.update({
+      where: { id: aiId },
+      data,
+      select: { id: true, inviteOnly: true },
+    });
   }
 
   async findActiveMembers(aiId: string) {
     return this.db.client.aIAccessGrant.findMany({
       where: { aiId, status: AccessStatus.ACTIVE },
-      include: {
+      select: {
+        id: true,
+        aiId: true,
+        endUserId: true,
+        status: true,
+        expiresAt: true,
+        createdAt: true,
         endUser: {
           select: { id: true, email: true, name: true, emailVerified: true, createdAt: true },
         },
@@ -403,6 +474,7 @@ export class AIsRepository {
       where: { email },
       create: { email, ...(name ? { name } : {}) },
       update: name ? { name } : {},
+      select: { id: true, email: true, name: true },
     });
   }
 
@@ -411,6 +483,7 @@ export class AIsRepository {
       where: { aiId_endUserId: { aiId, endUserId } },
       create: { aiId, endUserId, status: AccessStatus.ACTIVE },
       update: { status: AccessStatus.ACTIVE, expiresAt: null },
+      select: { id: true, status: true, expiresAt: true },
     });
   }
 

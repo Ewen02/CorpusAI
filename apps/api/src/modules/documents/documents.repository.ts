@@ -3,6 +3,30 @@ import { PrismaService } from '../../infrastructure/database';
 import { DocumentStatus, type TransactionClient } from '@corpusai/database';
 import { incrementDailyStats } from '../../shared/daily-stats';
 
+/** Document fields safe to return to the dashboard (Document has no secrets). */
+const DOCUMENT_DETAIL_SELECT = {
+  id: true,
+  aiId: true,
+  filename: true,
+  mimeType: true,
+  size: true,
+  url: true,
+  status: true,
+  chunkCount: true,
+  pageCount: true,
+  wordCount: true,
+  language: true,
+  title: true,
+  author: true,
+  errorMessage: true,
+  processingProgress: true,
+  processingStep: true,
+  processingStartedAt: true,
+  processingCompletedAt: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
 @Injectable()
 export class DocumentsRepository {
   constructor(private readonly db: PrismaService) {}
@@ -10,7 +34,8 @@ export class DocumentsRepository {
   async findAIWithPlanAndDocCount(aiId: string, userId: string) {
     return this.db.client.aI.findFirst({
       where: { id: aiId, userId },
-      include: {
+      select: {
+        id: true,
         user: { select: { subscriptionPlan: true } },
         _count: { select: { documents: true } },
       },
@@ -41,13 +66,17 @@ export class DocumentsRepository {
   async findOneWithOwner(documentId: string) {
     return this.db.client.document.findUnique({
       where: { id: documentId },
-      include: { ai: { select: { userId: true } } },
+      select: {
+        ...DOCUMENT_DETAIL_SELECT,
+        ai: { select: { userId: true } },
+      },
     });
   }
 
   async findAIByIdAndUser(aiId: string, userId: string) {
     return this.db.client.aI.findFirst({
       where: { id: aiId, userId },
+      select: { id: true },
     });
   }
 
@@ -66,6 +95,7 @@ export class DocumentsRepository {
           url: data.url,
           status: DocumentStatus.PENDING,
         },
+        select: DOCUMENT_DETAIL_SELECT,
       });
 
       await tx.aI.update({
@@ -95,6 +125,7 @@ export class DocumentsRepository {
             size: file.size,
             status: DocumentStatus.PENDING,
           },
+          select: { id: true, filename: true },
         });
         created.push(doc);
       }
@@ -129,7 +160,10 @@ export class DocumentsRepository {
   async findForDelete(documentId: string) {
     return this.db.client.document.findUnique({
       where: { id: documentId },
-      include: { ai: { select: { id: true, userId: true } } },
+      select: {
+        id: true,
+        ai: { select: { id: true, userId: true } },
+      },
     });
   }
 
@@ -146,7 +180,15 @@ export class DocumentsRepository {
   async findForRetry(documentId: string) {
     return this.db.client.document.findUnique({
       where: { id: documentId },
-      include: { ai: { select: { userId: true } } },
+      select: {
+        id: true,
+        aiId: true,
+        filename: true,
+        mimeType: true,
+        url: true,
+        status: true,
+        ai: { select: { userId: true } },
+      },
     });
   }
 
@@ -159,6 +201,7 @@ export class DocumentsRepository {
         processingProgress: 0,
         processingStep: null,
       },
+      select: { id: true, status: true },
     });
   }
 
@@ -183,6 +226,36 @@ export class DocumentsRepository {
         },
       },
       orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async findAIForFailureNotification(aiId: string) {
+    return this.db.client.aI.findUnique({
+      where: { id: aiId },
+      select: {
+        name: true,
+        slug: true,
+        user: { select: { id: true, email: true } },
+      },
+    });
+  }
+
+  async findDocumentForIndexedNotification(documentId: string) {
+    return this.db.client.document.findUnique({
+      where: { id: documentId },
+      select: {
+        id: true,
+        filename: true,
+        chunkCount: true,
+        ai: {
+          select: {
+            id: true,
+            name: true,
+            userId: true,
+            user: { select: { email: true } },
+          },
+        },
+      },
     });
   }
 }

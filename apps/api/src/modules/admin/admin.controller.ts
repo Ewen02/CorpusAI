@@ -8,11 +8,10 @@ import {
   Query,
   Body,
   UseGuards,
-  ParseIntPipe,
-  DefaultValuePipe,
   NotFoundException,
 } from '@nestjs/common';
 import { AdminGuard } from '../auth';
+import { PagePaginationDto, PaginationDto } from '../../shared';
 import { AdminService } from './admin.service';
 import { EvalReportsService } from './eval-reports.service';
 
@@ -30,21 +29,13 @@ export class AdminController {
   }
 
   @Get('users')
-  getUsers(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
-    @Query('search') search?: string
-  ) {
-    return this.adminService.getUsers(page, limit, search);
+  getUsers(@Query() pagination: PagePaginationDto, @Query('search') search?: string) {
+    return this.adminService.getUsers(pagination.page, pagination.limit, search);
   }
 
   @Get('ais')
-  getAIs(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
-    @Query('search') search?: string
-  ) {
-    return this.adminService.getAIs(page, limit, search);
+  getAIs(@Query() pagination: PagePaginationDto, @Query('search') search?: string) {
+    return this.adminService.getAIs(pagination.page, pagination.limit, search);
   }
 
   @Patch('users/:id/role')
@@ -71,11 +62,8 @@ export class AdminController {
   }
 
   @Get('failed-jobs')
-  getFailedJobs(
-    @Query('skip', new DefaultValuePipe(0), ParseIntPipe) skip: number,
-    @Query('take', new DefaultValuePipe(20), ParseIntPipe) take: number
-  ) {
-    return this.adminService.getFailedJobs(skip, take);
+  getFailedJobs(@Query() pagination: PaginationDto) {
+    return this.adminService.getFailedJobs(pagination.skip, pagination.take);
   }
 
   @Post('failed-jobs/:jobId/retry')

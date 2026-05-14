@@ -2,6 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database';
 import { SubscriptionPlan, SubscriptionStatus } from '@corpusai/database';
 
+/** Minimal fields needed to identify a user by their Stripe customer (avoid loading hashedPassword/email tokens). */
+const USER_BY_STRIPE_SELECT = {
+  id: true,
+  email: true,
+  stripeCustomerId: true,
+  subscriptionPlan: true,
+  subscriptionStatus: true,
+} as const;
+
 @Injectable()
 export class BillingRepository {
   constructor(private readonly db: PrismaService) {}
@@ -17,6 +26,7 @@ export class BillingRepository {
     return this.db.client.user.update({
       where: { id: userId },
       data: { stripeCustomerId: customerId },
+      select: { id: true, stripeCustomerId: true },
     });
   }
 
@@ -37,6 +47,7 @@ export class BillingRepository {
   async findUserByStripeCustomer(customerId: string) {
     return this.db.client.user.findFirst({
       where: { stripeCustomerId: customerId },
+      select: USER_BY_STRIPE_SELECT,
     });
   }
 
@@ -52,6 +63,13 @@ export class BillingRepository {
     return this.db.client.user.update({
       where: { id: userId },
       data,
+      select: {
+        id: true,
+        subscriptionPlan: true,
+        subscriptionStatus: true,
+        subscriptionStart: true,
+        subscriptionEnd: true,
+      },
     });
   }
 

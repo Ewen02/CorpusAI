@@ -6,7 +6,16 @@ export class PublicApiRepository {
   constructor(private readonly db: PrismaService) {}
 
   async createApiKey(userId: string, name: string, keyHash: string, prefix: string) {
-    return this.db.client.apiKey.create({ data: { userId, name, keyHash, prefix } });
+    return this.db.client.apiKey.create({
+      data: { userId, name, keyHash, prefix },
+      select: {
+        id: true,
+        name: true,
+        prefix: true,
+        createdAt: true,
+        expiresAt: true,
+      },
+    });
   }
 
   async listApiKeys(userId: string) {
@@ -24,8 +33,15 @@ export class PublicApiRepository {
     });
   }
 
+  /**
+   * INTERNAL ONLY — used by service to verify an API key belongs to the caller
+   * before deletion. Returns only identifiers; NEVER returns keyHash.
+   */
   async findApiKey(keyId: string, userId: string) {
-    return this.db.client.apiKey.findFirst({ where: { id: keyId, userId } });
+    return this.db.client.apiKey.findFirst({
+      where: { id: keyId, userId },
+      select: { id: true, userId: true },
+    });
   }
 
   async deleteApiKey(keyId: string) {

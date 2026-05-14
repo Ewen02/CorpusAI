@@ -6,8 +6,8 @@ import {
   Logger,
 } from '@nestjs/common';
 import { createHash } from 'crypto';
-import { prisma } from '@corpusai/database';
 import type { Request } from 'express';
+import { AuthRepository } from './auth.repository';
 
 export interface ApiKeyRequest extends Request {
   apiKeyUserId: string;
@@ -22,10 +22,11 @@ function hashKey(key: string): string {
 export class ApiKeyGuard implements CanActivate {
   private readonly logger = new Logger(ApiKeyGuard.name);
 
+  constructor(private readonly authRepository: AuthRepository) {}
+
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<ApiKeyRequest>();
 
-    // Extract API key from Authorization header (Bearer cai_...)
     const authHeader = request.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
       throw new UnauthorizedException('API key required. Use: Authorization: Bearer cai_...');
@@ -38,14 +39,7 @@ export class ApiKeyGuard implements CanActivate {
 
     const keyHash = hashKey(key);
 
-    const apiKey = await prisma.apiKey.findUnique({
-      where: { keyHash },
-      select: {
-        id: true,
-        userId: true,
-        expiresAt: true,
-      },
-    });
+    const apiKey = await this.authRepository.findApiKeyByHash(keyHash);
 
     if (!apiKey) {
       throw new UnauthorizedException('Invalid API key');
@@ -55,9 +49,8 @@ export class ApiKeyGuard implements CanActivate {
       throw new UnauthorizedException('API key expired');
     }
 
-    // Update last used (fire and forget)
-    prisma.apiKey
-      .update({ where: { id: apiKey.id }, data: { lastUsedAt: new Date() } })
+    this.authRepository
+      .touchApiKeyLastUsed(apiKey.id)
       .catch((err: unknown) =>
         this.logger.warn(
           { apiKeyId: apiKey.id, err: String(err) },

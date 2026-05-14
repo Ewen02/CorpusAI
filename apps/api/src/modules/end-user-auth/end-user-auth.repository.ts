@@ -10,6 +10,7 @@ export class EndUserAuthRepository {
       where: { email },
       create: { email },
       update: {},
+      select: { id: true, email: true },
     });
   }
 
@@ -17,6 +18,7 @@ export class EndUserAuthRepository {
     return this.db.client.endUser.update({
       where: { id: endUserId },
       data: { magicLinkToken: token, magicLinkExpires: expires },
+      select: { id: true },
     });
   }
 
@@ -27,8 +29,16 @@ export class EndUserAuthRepository {
     });
   }
 
+  /**
+   * INTERNAL ONLY — used to consume a magic link. Returns only fields required
+   * for validation. Excludes sessionToken and sessionExpires (about to be
+   * overwritten) and the magicLinkToken itself (already in caller's input).
+   */
   async findByMagicLinkToken(token: string) {
-    return this.db.client.endUser.findUnique({ where: { magicLinkToken: token } });
+    return this.db.client.endUser.findUnique({
+      where: { magicLinkToken: token },
+      select: { id: true, email: true, magicLinkExpires: true },
+    });
   }
 
   async activateSession(endUserId: string, sessionToken: string, sessionExpires: Date) {
@@ -41,6 +51,7 @@ export class EndUserAuthRepository {
         sessionExpires,
         emailVerified: true,
       },
+      select: { id: true, emailVerified: true, sessionExpires: true },
     });
   }
 
@@ -48,6 +59,23 @@ export class EndUserAuthRepository {
     return this.db.client.endUser.updateMany({
       where: { sessionToken },
       data: { sessionToken: null, sessionExpires: null },
+    });
+  }
+
+  /**
+   * INTERNAL ONLY — used by guard for session validation. Caller must never
+   * return this record raw (sessionExpires is the only sensitive-adjacent field).
+   */
+  async findBySessionToken(sessionToken: string) {
+    return this.db.client.endUser.findUnique({
+      where: { sessionToken },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        emailVerified: true,
+        sessionExpires: true,
+      },
     });
   }
 }

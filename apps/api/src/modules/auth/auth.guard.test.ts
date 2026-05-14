@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { UnauthorizedException, ForbiddenException, ExecutionContext } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AuthGuard } from './auth.guard';
 
-// Mock the auth module
 vi.mock('../../lib/auth', () => ({
   auth: {
     api: {
@@ -24,11 +24,15 @@ function createMockContext(headers: Record<string, string> = {}): ExecutionConte
   } as unknown as ExecutionContext;
 }
 
+function makeConfig(blocked = 'CANCELED,PAST_DUE'): ConfigService {
+  return { get: vi.fn().mockReturnValue(blocked) } as unknown as ConfigService;
+}
+
 describe('AuthGuard', () => {
   let guard: AuthGuard;
 
   beforeEach(() => {
-    guard = new AuthGuard();
+    guard = new AuthGuard(makeConfig());
     vi.clearAllMocks();
   });
 
@@ -107,5 +111,26 @@ describe('AuthGuard', () => {
 
     const result = await guard.canActivate(context);
     expect(result).toBe(true);
+  });
+
+  it('respects custom BILLING_BLOCKED_STATUSES from config', async () => {
+    const customGuard = new AuthGuard(makeConfig('UNPAID,SUSPENDED'));
+    mockGetSession.mockResolvedValue({
+      session: { id: 'session-1' },
+      user: { id: 'user-1', subscriptionStatus: 'UNPAID' },
+    });
+    const context = createMockContext();
+
+    await expect(customGuard.canActivate(context)).rejects.toThrow(ForbiddenException);
+  });
+
+  it('treats status comparison as case-insensitive', async () => {
+    mockGetSession.mockResolvedValue({
+      session: { id: 'session-1' },
+      user: { id: 'user-1', subscriptionStatus: 'canceled' },
+    });
+    const context = createMockContext();
+
+    await expect(guard.canActivate(context)).rejects.toThrow(ForbiddenException);
   });
 });

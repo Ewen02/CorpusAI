@@ -121,6 +121,11 @@ export class UsersRepository {
   }
 
   async deleteUser(userId: string) {
-    return this.db.client.user.delete({ where: { id: userId } });
+    // Soft delete (handled by Prisma extension) — return identifier only,
+    // never expose the full deleted User row.
+    return this.db.client.user.delete({
+      where: { id: userId },
+      select: { id: true },
+    });
   }
 }
