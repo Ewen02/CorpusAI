@@ -6,6 +6,7 @@ import type { UploadedFile } from '@corpusai/ui';
 import { apiClient, ApiError, API_URL } from '@/lib/api-client';
 import { track } from '@/lib/analytics';
 import { documentKeys, useDeleteDocument, useRetryDocument } from '@/lib/queries';
+import { reportError } from '@/lib/log';
 import { useTranslations } from 'next-intl';
 
 interface UseDocumentUploadOptions {
@@ -471,7 +472,7 @@ export function useDocumentUpload({ aiId, documents }: UseDocumentUploadOptions)
           queryClient.invalidateQueries({ queryKey: documentKeys.listByAI(aiId) });
           subscribeDoc(uploadedFile.id, doc.id);
         } catch (error) {
-          console.error('Upload error:', error);
+          reportError('Upload error', error);
           setUploadedFiles((prev) =>
             prev.map((f) =>
               f.id === uploadedFile.id

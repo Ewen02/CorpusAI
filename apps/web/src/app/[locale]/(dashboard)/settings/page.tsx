@@ -21,6 +21,7 @@ import { authClient } from '@/lib/auth-client';
 import { apiClient } from '@/lib/api-client';
 import type { User } from '@corpusai/types';
 import { PageWrapper } from '@/components/page-wrapper';
+import { reportError } from '@/lib/log';
 
 export default function SettingsProfilePage() {
   const t = useTranslations('settings');
@@ -47,7 +48,7 @@ export default function SettingsProfilePage() {
         setBio(data.bio || '');
         setImageUrl(data.image || '');
       } catch (err) {
-        console.error('Error fetching profile:', err);
+        reportError('Error fetching profile', err);
       } finally {
         setIsLoading(false);
       }
@@ -346,10 +347,11 @@ function AccountDeletionSection() {
           {t('deleteIrreversible')}
         </p>
         <p className="mt-1 text-[12px] text-tx-muted">{t('deleteWarning')}</p>
-        <p
-          className="mt-3 text-[13px] text-tx-secondary"
-          dangerouslySetInnerHTML={{ __html: t('deleteConfirmPrompt') }}
-        />
+        <p className="mt-3 text-[13px] text-tx-secondary">
+          {t.rich('deleteConfirmPrompt', {
+            strong: (chunks) => <strong>{chunks}</strong>,
+          })}
+        </p>
         <div className="mt-2 flex gap-2">
           <Input
             value={confirmText}

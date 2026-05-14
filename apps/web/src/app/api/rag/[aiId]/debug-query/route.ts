@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import * as Sentry from '@sentry/nextjs';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ aiId: string }> }) {
   // Get session token from cookies (Better Auth)
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error proxying debug-query:', error);
+    Sentry.captureException(error, { extra: { route: 'debug-query', aiId } });
     return NextResponse.json({ message: 'Unable to connect to the server' }, { status: 500 });
   }
 }

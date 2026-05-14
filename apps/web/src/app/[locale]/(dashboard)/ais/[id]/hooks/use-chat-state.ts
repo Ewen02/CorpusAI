@@ -9,6 +9,7 @@ import {
   type MessageSource,
 } from '@/lib/queries';
 import { track } from '@/lib/analytics';
+import { reportError } from '@/lib/log';
 import { useTranslations } from 'next-intl';
 
 const FIRST_CHAT_FLAG_KEY = 'corpusai:first_chat_sent';
@@ -200,7 +201,7 @@ export function useChatState({ aiSlug, username }: UseChatStateOptions) {
             setStreamingMessageId(null);
           },
           onError: (error) => {
-            console.error('Streaming error:', error);
+            reportError('Streaming error', error);
             const errorMessage = extractErrorMessage(error, t);
             setMessages((prev) =>
               prev.map((m) =>
@@ -213,7 +214,7 @@ export function useChatState({ aiSlug, username }: UseChatStateOptions) {
           },
         });
       } catch (error) {
-        console.error('Error starting stream:', error);
+        reportError('Error starting stream', error);
         const errorMessage = extractErrorMessage(error, t);
         setMessages((prev) =>
           prev.map((m) =>

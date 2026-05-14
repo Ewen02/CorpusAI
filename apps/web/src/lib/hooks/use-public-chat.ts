@@ -6,6 +6,7 @@ import type { ChatMessage } from '@corpusai/ui';
 import type { AIPublicInfo, StartConversationResponse } from '@corpusai/types';
 import { mapSourcesToChat } from '@/lib/utils/chat-session';
 import { track } from '@/lib/analytics';
+import { reportError } from '@/lib/log';
 
 const FIRST_CHAT_FLAG_KEY = 'corpusai:first_chat_sent';
 
@@ -273,7 +274,7 @@ export function usePublicChat({
           { feedback }
         );
       } catch (err) {
-        console.error('Failed to submit feedback:', err);
+        reportError('Failed to submit feedback', err);
       }
     },
     [conversationId]

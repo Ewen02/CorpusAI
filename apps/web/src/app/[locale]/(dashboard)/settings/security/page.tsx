@@ -21,6 +21,7 @@ import { useFormState } from '@/lib/hooks';
 import { getProviderInfo } from '@/lib/constants';
 import { DeviceIcon, ShieldIcon } from '@/lib/icons';
 import { PageWrapper } from '@/components/page-wrapper';
+import { reportError } from '@/lib/log';
 
 interface AccountInfo {
   providerId: string;
@@ -45,7 +46,7 @@ export default function SettingsSecurityPage() {
         const data = await apiClient.get<AccountInfo[]>('/users/me/accounts');
         setAccounts(data);
       } catch (err) {
-        console.error('Error fetching accounts:', err);
+        reportError('Error fetching accounts', err);
       } finally {
         setIsLoading(false);
       }

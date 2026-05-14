@@ -10,6 +10,7 @@ import { apiClient, type StreamDoneData } from '@/lib/api-client';
 import type { AIPublicInfo, StartConversationResponse } from '@corpusai/types';
 import { getOrCreateSessionId, mapSourcesToChat } from '@/lib/utils/chat-session';
 import { track } from '@/lib/analytics';
+import { reportError } from '@/lib/log';
 
 // ============================================
 // Types
@@ -89,7 +90,7 @@ export default function EmbedPage() {
 
         setAI(data);
       } catch (err) {
-        console.error('Failed to fetch AI:', err);
+        reportError('Failed to fetch AI', err);
         setError(t('notFound'));
       } finally {
         setIsLoading(false);
@@ -118,7 +119,7 @@ export default function EmbedPage() {
         );
         setConversationId(response.id);
       } catch (err) {
-        console.error('Failed to start conversation:', err);
+        reportError('Failed to start conversation', err);
         setError(t('startError'));
       }
     }
@@ -196,7 +197,7 @@ export default function EmbedPage() {
           setIsStreaming(false);
         },
         onError: (err) => {
-          console.error('Stream error:', err);
+          reportError('Stream error', err);
           setMessages((prev) =>
             prev.map((msg) =>
               msg.id === assistantId
@@ -227,7 +228,7 @@ export default function EmbedPage() {
           { feedback }
         );
       } catch (err) {
-        console.error('Failed to submit feedback:', err);
+        reportError('Failed to submit feedback', err);
       }
     },
     [conversationId]
