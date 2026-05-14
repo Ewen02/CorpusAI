@@ -41,12 +41,14 @@ model User {
   deletedAt DateTime?
 
   // Relations
-  ais        AI[]
-  sessions   Session[]
-  accounts   Account[]
-  apiKeys    ApiKey[]
-  webhooks   Webhook[]
-  dailyStats DailyStats[]
+  ais            AI[]
+  sessions       Session[]
+  accounts       Account[]
+  apiKeys        ApiKey[]
+  webhooks       Webhook[]
+  dailyStats     DailyStats[]
+  collaborations AICollaborator[] @relation("UserCollaborations")
+  invitesSent    AICollaborator[] @relation("InvitedByUser")
 
   @@index([email])
   @@index([username])
@@ -130,6 +132,8 @@ model AI {
   temperature    Float   @default(0.7)
   scoreThreshold Float   @default(0.4)
   llmModel       String  @default("gpt-4o-mini")
+  // LLM provider: "openai" (default), "anthropic", "groq". Embeddings always stay on OpenAI.
+  llmProvider    String  @default("openai")
 
   // Memory
   memoryEnabled Boolean @default(false)
@@ -153,12 +157,13 @@ model AI {
   deletedAt DateTime?
 
   // Relations
-  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   documents     Document[]
   conversations Conversation[]
   dailyStats    DailyStats[]
   accessGrants  AIAccessGrant[]
   memories      EndUserMemory[]
+  collaborators AICollaborator[]
 
   @@unique([userId, slug])
   @@index([userId])
@@ -203,17 +208,57 @@ model Document {
   author    String?
 
   // Relations
-  ai     AI      @relation(fields: [aiId], references: [id], onDelete: Cascade)
-  chunks Chunk[]
+  ai       AI                @relation(fields: [aiId], references: [id], onDelete: Cascade)
+  chunks   Chunk[]
+  versions DocumentVersion[]
 
   @@index([aiId, status])
   @@index([aiId])
+  // Composite lookup used by the versioning flow to detect an existing active
+  // document with the same filename for a given AI (re-upload triggers a new version).
+  @@index([aiId, filename])
+}
+
+model DocumentVersion {
+  id         String @id @default(cuid())
+  documentId String
+  version    Int
+
+  // File info (snapshot at the time of the version)
+  filename String
+  mimeType String
+  size     Int
+  url      String?
+
+  // Processing snapshot for the version
+  chunkCount Int            @default(0)
+  wordCount  Int?
+  pageCount  Int?
+  status     DocumentStatus @default(PENDING)
+
+  uploadedAt DateTime @default(now())
+
+  // Marks the version currently exposed to retrieval (Qdrant).
+  isActive Boolean @default(false)
+
+  // Extra metadata (title, author, language) extracted at version creation.
+  metadata Json?
+
+  // Relations
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  chunks   Chunk[]
+
+  @@unique([documentId, version])
+  @@index([documentId, isActive])
 }
 
 model Chunk {
-  id         String   @id @default(cuid())
-  documentId String
-  createdAt  DateTime @default(now())
+  id                String   @id @default(cuid())
+  documentId        String
+  // Tag chunks with the version they belong to so rollback is a pointer flip:
+  // we re-upsert chunks of the restored version into Qdrant rather than re-embedding.
+  documentVersionId String?
+  createdAt         DateTime @default(now())
 
   // Content
   content  String
@@ -228,9 +273,11 @@ model Chunk {
   qdrantPointId String? @unique
 
   // Relations
-  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  document        Document         @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentVersion DocumentVersion? @relation(fields: [documentVersionId], references: [id], onDelete: SetNull)
 
   @@index([documentId])
+  @@index([documentVersionId])
   @@index([qdrantPointId])
 }
 
@@ -344,6 +391,38 @@ model EndUserMemory {
   @@unique([endUserId, aiId])
   @@index([endUserId])
   @@index([aiId])
+}
+
+// ============================================
+// AI COLLABORATORS (team collaboration)
+// ============================================
+
+model AICollaborator {
+  id          String           @id @default(cuid())
+  aiId        String
+  userId      String?
+  email       String
+  role        CollaboratorRole @default(EDITOR)
+  invitedBy   String
+  invitedAt   DateTime         @default(now())
+  acceptedAt  DateTime?
+  inviteToken String?          @unique
+  expiresAt   DateTime?
+
+  ai      AI    @relation(fields: [aiId], references: [id], onDelete: Cascade)
+  user    User? @relation("UserCollaborations", fields: [userId], references: [id], onDelete: Cascade)
+  inviter User  @relation("InvitedByUser", fields: [invitedBy], references: [id], onDelete: Cascade)
+
+  @@unique([aiId, userId])
+  @@unique([aiId, email])
+  @@index([aiId])
+  @@index([userId])
+  @@index([inviteToken])
+}
+
+enum CollaboratorRole {
+  EDITOR
+  VIEWER
 }
 
 // ============================================
