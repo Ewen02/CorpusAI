@@ -31,11 +31,12 @@ FROM node:20-slim AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
-COPY --from=build /app/deploy ./
+COPY --from=build --chown=node:node /app/deploy ./
 
 ENV NODE_ENV=production
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
   CMD node -e "process.exit(0)" || exit 1
 
+USER node
 CMD ["node", "dist/index.js"]

@@ -33,8 +33,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl openssl &&
 RUN npm install -g prisma@6.19.1
 WORKDIR /app
 
-COPY --from=build /app/deploy ./
-COPY apps/api/docker-entrypoint.sh ./docker-entrypoint.sh
+COPY --from=build --chown=node:node /app/deploy ./
+COPY --chown=node:node apps/api/docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 
 ENV NODE_ENV=production
@@ -43,4 +43,5 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD curl -f http://localhost:3001/health || exit 1
 
+USER node
 ENTRYPOINT ["./docker-entrypoint.sh"]
