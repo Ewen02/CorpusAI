@@ -47,6 +47,11 @@ Railway Project
 3. Note the **URL** (e.g., `https://xxx.europe-west3-0.gcp.cloud.qdrant.io:6333`)
 4. Create an **API key** from the cluster dashboard
 
+> **Need full data residency or expecting > 5 GB of vectors?** See
+> [docs/qdrant-self-hosted.md](docs/qdrant-self-hosted.md) for sidecar /
+> dedicated-VM deployments and migration steps. The rest of this guide stays
+> the same once `QDRANT_URL` and `QDRANT_API_KEY` are pointed at your instance.
+
 ## Step 4: Deploy Application Services
 
 ### Connect GitHub Repository

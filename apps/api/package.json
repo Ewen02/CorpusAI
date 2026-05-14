@@ -14,6 +14,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.96.0",
     "@corpusai/ai-rules": "workspace:*",
     "@corpusai/corpus": "workspace:*",
     "@corpusai/database": "workspace:*",
