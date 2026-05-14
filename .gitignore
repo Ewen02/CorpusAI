@@ -33,6 +33,11 @@ pnpm-debug.log*
 
 # Testing
 coverage
+playwright-report
+test-results
+
+# Claude Code (local runtime state)
+.claude/scheduled_tasks.lock
 
 # Prisma
 prisma/*.db
