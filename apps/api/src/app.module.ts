@@ -9,6 +9,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './modules/auth';
 import { UsersModule } from './modules/users';
 import { AIsModule } from './modules/ais';
+import { CollaboratorsModule } from './modules/collaborators';
 import { DocumentsModule } from './modules/documents';
 import { ConversationsModule } from './modules/conversations';
 import { RagModule } from './modules/rag';
@@ -16,6 +17,7 @@ import { HealthModule } from './modules/health';
 import { BillingModule } from './modules/billing';
 import { AdminModule } from './modules/admin';
 import { AnalyticsModule } from './modules/analytics';
+import { SLAModule } from './modules/sla';
 import { PublicApiModule } from './modules/public-api';
 import { ExploreModule } from './modules/explore';
 import { MailInfrastructureModule } from './infrastructure/mail';
@@ -96,6 +98,7 @@ import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middle
     AuthModule,
     UsersModule,
     AIsModule,
+    CollaboratorsModule,
     DocumentsModule,
     ConversationsModule,
     RagModule,
@@ -103,6 +106,7 @@ import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middle
     BillingModule,
     AdminModule,
     AnalyticsModule,
+    SLAModule,
     PublicApiModule,
     ExploreModule,
     EndUserAuthModule,
