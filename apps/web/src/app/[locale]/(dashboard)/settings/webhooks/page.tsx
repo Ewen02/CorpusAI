@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import {
   Card,
@@ -86,7 +87,7 @@ export default function SettingsWebhooksPage() {
   const handleTest = async (id: string) => {
     setTestingId(id);
     try {
-      await testWebhook.mutateAsync(id);
+      await testWebhook.mutateAsync({ id });
     } finally {
       setTestingId(null);
     }
@@ -220,6 +221,9 @@ export default function SettingsWebhooksPage() {
                         </p>
                       </div>
                       <div className="flex shrink-0 gap-1.5">
+                        <Button asChild variant="outline" size="sm">
+                          <Link href={`/settings/webhooks/${webhook.id}`}>{t('debug')}</Link>
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"

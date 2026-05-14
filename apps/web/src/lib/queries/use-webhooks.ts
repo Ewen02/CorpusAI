@@ -11,6 +11,10 @@ export interface WebhookDelivery {
   createdAt: string;
 }
 
+export interface WebhookDeliveryDetail extends WebhookDelivery {
+  attempt: number;
+}
+
 export interface WebhookInfo {
   id: string;
   url: string;
@@ -22,6 +26,16 @@ export interface WebhookInfo {
   deliveries: WebhookDelivery[];
 }
 
+export interface WebhookDetail {
+  id: string;
+  url: string;
+  events: string[];
+  active: boolean;
+  createdAt: string;
+  lastDeliveredAt: string | null;
+  failureCount: number;
+}
+
 export interface NewWebhook {
   id: string;
   url: string;
@@ -31,10 +45,24 @@ export interface NewWebhook {
   createdAt: string;
 }
 
+export interface WebhookDeliveriesPage {
+  items: WebhookDeliveryDetail[];
+  total: number;
+}
+
+export interface WebhookDeliveryResult {
+  success: boolean;
+  statusCode: number | null;
+  latencyMs: number;
+  error?: string;
+}
+
 // Keys
 
 export const webhookKeys = {
   all: ['webhooks'] as const,
+  detail: (id: string) => ['webhooks', id] as const,
+  deliveries: (id: string) => ['webhooks', id, 'deliveries'] as const,
 };
 
 // Hooks
@@ -43,6 +71,26 @@ export function useWebhooks() {
   return useQuery({
     queryKey: webhookKeys.all,
     queryFn: () => apiClient.get<WebhookInfo[]>('/webhooks'),
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useWebhook(id: string) {
+  return useQuery({
+    queryKey: webhookKeys.detail(id),
+    queryFn: () => apiClient.get<WebhookDetail>(`/webhooks/${id}`),
+    enabled: Boolean(id),
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useWebhookDeliveries(id: string, take: number = 20) {
+  return useQuery({
+    queryKey: [...webhookKeys.deliveries(id), { take }],
+    queryFn: () =>
+      apiClient.get<WebhookDeliveriesPage>(`/webhooks/${id}/deliveries?skip=0&take=${take}`),
+    enabled: Boolean(id),
+    staleTime: 15 * 1000,
   });
 }
 
@@ -70,9 +118,27 @@ export function useDeleteWebhook() {
 export function useTestWebhook() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => apiClient.post<{ success: boolean }>(`/webhooks/${id}/test`),
+    mutationFn: ({ id, eventType }: { id: string; eventType?: string }) =>
+      apiClient.post<WebhookDeliveryResult>(`/webhooks/${id}/test`, eventType ? { eventType } : {}),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: webhookKeys.all });
+      queryClient.invalidateQueries({ queryKey: webhookKeys.detail(variables.id) });
+      queryClient.invalidateQueries({ queryKey: webhookKeys.deliveries(variables.id) });
+    },
+  });
+}
+
+export function useRetryWebhookDelivery(webhookId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (deliveryId: string) =>
+      apiClient.post<WebhookDeliveryResult>(
+        `/webhooks/${webhookId}/deliveries/${deliveryId}/retry`
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: webhookKeys.all });
+      queryClient.invalidateQueries({ queryKey: webhookKeys.detail(webhookId) });
+      queryClient.invalidateQueries({ queryKey: webhookKeys.deliveries(webhookId) });
     },
   });
 }

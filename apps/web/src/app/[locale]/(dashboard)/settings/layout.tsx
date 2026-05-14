@@ -9,7 +9,7 @@ import { ROUTES } from '@/lib/constants';
 import { UserIcon, CreditCardIcon, ShieldIcon, BellIcon, KeyIcon, WebhookIcon } from '@/lib/icons';
 
 interface SettingsNavItem {
-  labelKey: 'profile' | 'billing' | 'security' | 'notifications' | 'apiKeys' | 'webhooks';
+  labelKey: 'profile' | 'billing' | 'security' | 'notifications' | 'apiKeys' | 'webhooks.label';
   href: string;
   icon: React.ReactNode;
 }
@@ -41,7 +41,7 @@ const settingsNav: SettingsNavItem[] = [
     icon: <KeyIcon className="h-4 w-4" />,
   },
   {
-    labelKey: 'webhooks',
+    labelKey: 'webhooks.label',
     href: ROUTES.settings.webhooks,
     icon: <WebhookIcon className="h-4 w-4" />,
   },

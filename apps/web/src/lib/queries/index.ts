@@ -62,6 +62,16 @@ export {
   type ChunkUsageItem,
 } from './use-analytics';
 
+// Usage stats (cost + tokens breakdown)
+export {
+  usageStatsKeys,
+  useUsageStats,
+  type UsageStats,
+  type UsageDailyPoint,
+  type UsageModelPoint,
+  type UseUsageStatsParams,
+} from './use-usage-stats';
+
 // Admin hooks
 export {
   adminKeys,
@@ -141,11 +151,18 @@ export {
 export {
   webhookKeys,
   useWebhooks,
+  useWebhook,
+  useWebhookDeliveries,
   useCreateWebhook,
   useDeleteWebhook,
   useTestWebhook,
+  useRetryWebhookDelivery,
   type WebhookInfo,
   type WebhookDelivery,
+  type WebhookDeliveryDetail,
+  type WebhookDetail,
+  type WebhookDeliveriesPage,
+  type WebhookDeliveryResult,
   type NewWebhook,
 } from './use-webhooks';
 
