@@ -7,6 +7,6 @@ import { EndUserAuthGuard } from './end-user-auth.guard';
 @Module({
   controllers: [EndUserAuthController],
   providers: [EndUserAuthService, EndUserAuthRepository, EndUserAuthGuard],
-  exports: [EndUserAuthService, EndUserAuthGuard],
+  exports: [EndUserAuthService, EndUserAuthGuard, EndUserAuthRepository],
 })
 export class EndUserAuthModule {}
