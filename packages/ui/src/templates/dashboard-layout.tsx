@@ -501,7 +501,9 @@ export function DashboardLayout({
           )}
         >
           <Header onMenuClick={() => setIsMobileOpen(true)} />
-          <main className="p-4 lg:p-6">{children}</main>
+          <main id="main-content" tabIndex={-1} className="p-4 focus:outline-none lg:p-6">
+            {children}
+          </main>
         </div>
       </div>
     </SidebarContext.Provider>
