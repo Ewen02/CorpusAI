@@ -19,14 +19,29 @@ const creatorProtectedPrefixes = [
 ];
 
 // Better Auth cookie names. When API runs on the same eTLD+1, the session cookie
-// is visible; we use it as a fast-path gate. When the API is on a different domain,
-// the cookie is invisible — we fall back to the client-side gate in the dashboard layout.
-// To still get a server-side defense-in-depth, we require at least one auth cookie marker.
+// is visible; we use it as a fast-path gate. When the API is on a different domain
+// (cross-domain deploy, e.g. Railway API + Vercel web), the cookie is invisible — the
+// middleware can't tell whether the user is signed in, so we fall back to the
+// client-side gate in the dashboard layout instead of redirecting blindly.
 const creatorAuthCookies = [
   'better-auth.session_token',
   '__Secure-better-auth.session_token',
   'creator.session',
 ];
+
+// Heuristic: if the API URL is on a different eTLD+1 than the web app, Better Auth's
+// session cookie won't be readable from middleware — defer auth checks to the client.
+function isCrossDomainApi(request: NextRequest): boolean {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl) return false;
+  try {
+    const apiHost = new URL(apiUrl).hostname;
+    const webHost = request.nextUrl.hostname;
+    return apiHost !== webHost;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Strip locale prefix from pathname to get the "logical" path.
@@ -61,9 +76,9 @@ export function middleware(request: NextRequest) {
 
   // ——— Creator dashboard auth (best-effort server-side gate) ———
   // If the session cookie is visible (same eTLD+1 deployment), enforce it here.
-  // If it isn't (cross-domain API), the dashboard layout still enforces client-side.
+  // If it isn't (cross-domain API), the dashboard layout enforces client-side instead.
   const isCreatorProtected = creatorProtectedPrefixes.some((p) => logicalPath.startsWith(p));
-  if (isCreatorProtected && !hasCreatorAuthCookie(request)) {
+  if (isCreatorProtected && !hasCreatorAuthCookie(request) && !isCrossDomainApi(request)) {
     const locale = pathname.split('/')[1] === 'en' ? 'en' : 'fr';
     const signInUrl = new URL(`/${locale}/sign-in`, request.url);
     signInUrl.searchParams.set('callbackUrl', logicalPath);
