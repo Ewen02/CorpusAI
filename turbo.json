@@ -2,6 +2,9 @@
   "$schema": "https://turbo.build/schema.json",
   "concurrency": "20",
   "globalEnv": ["BETTER_AUTH_URL", "VERCEL"],
+  "remoteCache": {
+    "enabled": true
+  },
   "tasks": {
     "build": {
       "dependsOn": ["^build", "db:generate"],
@@ -32,12 +35,12 @@
     },
     "test": {
       "dependsOn": ["^build"],
-      "cache": false
+      "inputs": ["src/**", "tsconfig*.json", "package.json", "vitest.config.*"]
     },
     "test:coverage": {
       "dependsOn": ["^build"],
-      "outputs": ["coverage/**"],
-      "cache": false
+      "inputs": ["src/**", "tsconfig*.json", "package.json", "vitest.config.*"],
+      "outputs": ["coverage/**"]
     }
   }
 }
