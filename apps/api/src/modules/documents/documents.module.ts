@@ -11,6 +11,7 @@ import { MAIL_SERVICE, type IMailService } from '../../infrastructure/mail';
 import { EVENT_BUS, type IEventBus } from '../../infrastructure/redis';
 import { WebhooksService } from '../webhooks';
 import { RagModule } from '../rag';
+import { AuthGuard } from '../auth';
 
 @Module({
   imports: [RagModule, ConfigModule],
@@ -20,6 +21,7 @@ import { RagModule } from '../rag';
     DocumentsRepository,
     DocumentVersionsService,
     DocumentVersionsRepository,
+    AuthGuard,
   ],
   exports: [DocumentsService, DocumentVersionsService],
 })

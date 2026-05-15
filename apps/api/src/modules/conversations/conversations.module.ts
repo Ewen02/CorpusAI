@@ -9,6 +9,7 @@ import { AccessControlService } from './access-control.service';
 import { MessageHistoryService } from './message-history.service';
 import { RagOrchestratorService } from './rag-orchestrator.service';
 import { RagModule } from '../rag';
+import { AuthGuard } from '../auth';
 
 @Module({
   imports: [RagModule, ConfigModule],
@@ -21,6 +22,7 @@ import { RagModule } from '../rag';
     AccessControlService,
     MessageHistoryService,
     RagOrchestratorService,
+    AuthGuard,
   ],
   exports: [ConversationsService],
 })
