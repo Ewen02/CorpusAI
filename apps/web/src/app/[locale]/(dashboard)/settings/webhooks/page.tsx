@@ -52,6 +52,7 @@ const EVENT_LABEL_KEYS: Record<WebhookEvent, string> = {
 export default function SettingsWebhooksPage() {
   const t = useTranslations('webhooks');
   const tc = useTranslations('common');
+  const ta = useTranslations('a11y');
   const locale = useLocale();
   const { data: webhooks, isLoading } = useWebhooks();
   const createWebhook = useCreateWebhook();
@@ -245,8 +246,9 @@ export default function SettingsWebhooksPage() {
                           className="text-destructive"
                           onClick={() => deleteWebhook.mutate(webhook.id)}
                           disabled={deleteWebhook.isPending}
+                          aria-label={ta('deleteWebhook')}
                         >
-                          <TrashIcon className="h-4 w-4" />
+                          <TrashIcon className="h-4 w-4" aria-hidden="true" />
                         </Button>
                       </div>
                     </div>

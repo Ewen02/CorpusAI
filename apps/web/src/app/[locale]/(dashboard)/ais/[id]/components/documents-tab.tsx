@@ -312,8 +312,14 @@ const DocumentItem = React.memo(function DocumentItem({
           {isFailed && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onRetry}>
-                  <RefreshIcon className="h-4 w-4" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={onRetry}
+                  aria-label={t('retryAnalysis')}
+                >
+                  <RefreshIcon className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>{t('retryAnalysis')}</TooltipContent>
@@ -326,8 +332,9 @@ const DocumentItem = React.memo(function DocumentItem({
                 size="icon"
                 className="h-8 w-8 text-muted-foreground hover:text-destructive"
                 onClick={onDelete}
+                aria-label={t('deleteDocument')}
               >
-                <TrashIcon className="h-4 w-4" />
+                <TrashIcon className="h-4 w-4" aria-hidden="true" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>{t('deleteDocument')}</TooltipContent>

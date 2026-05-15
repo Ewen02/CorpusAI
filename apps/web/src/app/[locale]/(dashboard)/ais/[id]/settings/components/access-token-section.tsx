@@ -42,6 +42,7 @@ export function AccessTokenSection({
             <input
               readOnly
               value={generatedToken.url}
+              aria-label={t('secretLink')}
               className="h-9 flex-1 rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--surface-2))] px-3 text-[12px] text-tx-muted"
             />
             <Button size="sm" variant="outline" onClick={() => onCopy(generatedToken.url)}>

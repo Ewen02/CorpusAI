@@ -41,21 +41,37 @@ export function AccessMembersSection({
 
       <form onSubmit={onInvite} className="mb-5 flex items-end gap-2">
         <div className="flex-1 space-y-1.5">
-          <label className="text-[13px] font-medium text-tx-secondary">{t('emailLabel')}</label>
+          <label
+            htmlFor="access-members-invite-email"
+            className="text-[13px] font-medium text-tx-secondary"
+          >
+            {t('emailLabel')}
+          </label>
           <Input
+            id="access-members-invite-email"
             type="email"
             value={inviteEmail}
             onChange={(e) => setInviteEmail(e.target.value)}
             placeholder={t('emailPlaceholder')}
             required
             className={INPUT_CLASS}
+            aria-invalid={inviteError ? 'true' : undefined}
+            aria-describedby={inviteError ? 'access-members-invite-error' : undefined}
           />
         </div>
         <Button type="submit" size="sm" disabled={isInviting}>
           {isInviting ? t('inviting') : t('invite')}
         </Button>
       </form>
-      {inviteError && <p className="mb-3 text-[12px] text-[hsl(var(--danger))]">{inviteError}</p>}
+      {inviteError && (
+        <p
+          id="access-members-invite-error"
+          role="alert"
+          className="mb-3 text-[12px] text-[hsl(var(--danger))]"
+        >
+          {inviteError}
+        </p>
+      )}
 
       {isLoading ? (
         <div className="space-y-2">

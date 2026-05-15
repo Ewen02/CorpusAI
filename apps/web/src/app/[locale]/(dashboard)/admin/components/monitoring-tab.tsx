@@ -377,8 +377,9 @@ function FailedJobRow({
           onClick={onRetry}
           disabled={isRetrying}
           title={t('retryTitle')}
+          aria-label={t('retryTitle')}
         >
-          <RotateCcw className={`h-4 w-4 ${isRetrying ? 'animate-spin' : ''}`} />
+          <RotateCcw className={`h-4 w-4 ${isRetrying ? 'animate-spin' : ''}`} aria-hidden="true" />
         </Button>
         <Button
           variant="ghost"
@@ -387,8 +388,9 @@ function FailedJobRow({
           onClick={onDiscard}
           disabled={isDiscarding}
           title={t('discardTitle')}
+          aria-label={t('discardTitle')}
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-4 w-4" aria-hidden="true" />
         </Button>
       </div>
     </div>

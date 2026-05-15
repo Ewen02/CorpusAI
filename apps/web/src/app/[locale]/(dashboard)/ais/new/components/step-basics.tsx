@@ -58,7 +58,12 @@ export function StepBasics({ state, patch, onNext, onCancel, errors }: StepBasic
         </header>
 
         <div className="space-y-5">
-          <Field label={t('basics.nameLabel')} htmlFor="ai-name" hint={errors.name}>
+          <Field
+            label={t('basics.nameLabel')}
+            htmlFor="ai-name"
+            hint={errors.name}
+            isError={!!errors.name}
+          >
             <Input
               id="ai-name"
               placeholder={t('basics.namePlaceholder')}
@@ -67,6 +72,7 @@ export function StepBasics({ state, patch, onNext, onCancel, errors }: StepBasic
               onChange={(e) => patch({ name: e.target.value })}
               className="h-9 border-[hsl(var(--border-default))] bg-[hsl(var(--surface-2))] text-[13px]"
               aria-invalid={!!errors.name}
+              aria-describedby={errors.name ? 'ai-name-hint' : undefined}
             />
           </Field>
 
@@ -74,6 +80,7 @@ export function StepBasics({ state, patch, onNext, onCancel, errors }: StepBasic
             label={t('basics.descriptionLabel')}
             htmlFor="ai-description"
             hint={errors.description ?? t('basics.descriptionHint')}
+            isError={!!errors.description}
           >
             <Textarea
               id="ai-description"
@@ -84,6 +91,7 @@ export function StepBasics({ state, patch, onNext, onCancel, errors }: StepBasic
               onChange={(e) => patch({ description: e.target.value })}
               className="border-[hsl(var(--border-default))] bg-[hsl(var(--surface-2))] text-[13px]"
               aria-invalid={!!errors.description}
+              aria-describedby="ai-description-hint"
             />
           </Field>
 
@@ -153,11 +161,14 @@ export function StepBasics({ state, patch, onNext, onCancel, errors }: StepBasic
           onChange={(e) => patch({ systemPrompt: e.target.value, systemPromptTouched: true })}
           className="border-[hsl(var(--border-default))] bg-[hsl(var(--surface-2))] text-[13px]"
           aria-invalid={!!errors.systemPrompt}
+          aria-describedby="ai-system-prompt-hint"
         />
         {errors.systemPrompt ? (
-          <p className="mt-1 text-[12px] text-red-400">{errors.systemPrompt}</p>
+          <p id="ai-system-prompt-hint" role="alert" className="mt-1 text-[12px] text-red-400">
+            {errors.systemPrompt}
+          </p>
         ) : (
-          <p className="mt-1 text-[12px] text-tx-disabled">
+          <p id="ai-system-prompt-hint" className="mt-1 text-[12px] text-tx-disabled">
             {t('basics.systemPromptHint', { count: state.systemPrompt.length, max: 4000 })}
           </p>
         )}
@@ -187,11 +198,13 @@ function Field({
   label,
   htmlFor,
   hint,
+  isError,
   children,
 }: {
   label: string;
   htmlFor: string;
   hint?: string;
+  isError?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -200,7 +213,15 @@ function Field({
         {label}
       </label>
       {children}
-      {hint ? <p className="text-[12px] text-tx-disabled">{hint}</p> : null}
+      {hint ? (
+        <p
+          id={`${htmlFor}-hint`}
+          role={isError ? 'alert' : undefined}
+          className={isError ? 'text-[12px] text-red-400' : 'text-[12px] text-tx-disabled'}
+        >
+          {hint}
+        </p>
+      ) : null}
     </div>
   );
 }

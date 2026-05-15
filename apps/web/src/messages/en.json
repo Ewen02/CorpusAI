@@ -17,6 +17,17 @@
     "retry": "Retry",
     "poweredBy": "Powered by CorpusAI"
   },
+  "a11y": {
+    "skipToMain": "Skip to main content",
+    "deleteApiKey": "Delete API key",
+    "deleteWebhook": "Delete webhook",
+    "retryJob": "Retry failed job",
+    "discardJob": "Discard failed job",
+    "retryDocument": "Retry document analysis",
+    "deleteDocument": "Delete document",
+    "publicAi": "Public AI",
+    "privateAi": "Private AI"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "myAIs": "My AIs",

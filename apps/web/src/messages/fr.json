@@ -17,6 +17,17 @@
     "retry": "Réessayer",
     "poweredBy": "Propulsé par CorpusAI"
   },
+  "a11y": {
+    "skipToMain": "Aller au contenu principal",
+    "deleteApiKey": "Supprimer la clé API",
+    "deleteWebhook": "Supprimer le webhook",
+    "retryJob": "Relancer la tâche échouée",
+    "discardJob": "Supprimer la tâche échouée",
+    "retryDocument": "Relancer l'analyse du document",
+    "deleteDocument": "Supprimer le document",
+    "publicAi": "AI publique",
+    "privateAi": "AI privée"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "myAIs": "Mes AIs",

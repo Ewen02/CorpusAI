@@ -21,6 +21,7 @@ import { PageWrapper } from '@/components/page-wrapper';
 export default function SettingsApiKeysPage() {
   const t = useTranslations('apiKeys');
   const tc = useTranslations('common');
+  const ta = useTranslations('a11y');
   const locale = useLocale();
   const { data: keys, isLoading } = useApiKeys();
   const createKey = useCreateApiKey();
@@ -139,8 +140,9 @@ export default function SettingsApiKeysPage() {
                       className="text-destructive"
                       onClick={() => deleteKey.mutate(key.id)}
                       disabled={deleteKey.isPending}
+                      aria-label={ta('deleteApiKey')}
                     >
-                      <XIcon className="h-4 w-4" />
+                      <XIcon className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   </div>
                 ))}

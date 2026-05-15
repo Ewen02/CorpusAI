@@ -26,6 +26,7 @@ import { LanguageSwitcher } from '@/components/language-switcher';
 
 export default function DashboardLayoutWrapper({ children }: { children: React.ReactNode }) {
   const t = useTranslations('nav');
+  const ta = useTranslations('a11y');
   const router = useRouter();
   const pathname = usePathname();
   const { data: session, isPending } = authClient.useSession();
@@ -151,30 +152,38 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
   const navItems = isAdmin ? [...mainNavItems, adminNavItem] : mainNavItems;
 
   return (
-    <DashboardLayout
-      navItems={navItems}
-      aiItems={aiItems}
-      bottomNavItems={bottomNavItems}
-      user={user}
-      currentPath={pathname}
-      onNavigate={handleNavigate}
-      onCreateAI={handleCreateAI}
-      onUpgrade={handleUpgrade}
-      onSignOut={handleSignOut}
-      logo={<LanguageSwitcher />}
-      labels={{
-        myAIs: t('myAIs'),
-        createAI: t('createAI'),
-        signOut: t('signOut'),
-        planLabels: {
-          FREE: t('planFree'),
-          CREATOR: 'Creator',
-          PRO: 'Pro',
-          ENTERPRISE: 'Enterprise',
-        },
-      }}
-    >
-      {children}
-    </DashboardLayout>
+    <>
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+      >
+        {ta('skipToMain')}
+      </a>
+      <DashboardLayout
+        navItems={navItems}
+        aiItems={aiItems}
+        bottomNavItems={bottomNavItems}
+        user={user}
+        currentPath={pathname}
+        onNavigate={handleNavigate}
+        onCreateAI={handleCreateAI}
+        onUpgrade={handleUpgrade}
+        onSignOut={handleSignOut}
+        logo={<LanguageSwitcher />}
+        labels={{
+          myAIs: t('myAIs'),
+          createAI: t('createAI'),
+          signOut: t('signOut'),
+          planLabels: {
+            FREE: t('planFree'),
+            CREATOR: 'Creator',
+            PRO: 'Pro',
+            ENTERPRISE: 'Enterprise',
+          },
+        }}
+      >
+        {children}
+      </DashboardLayout>
+    </>
   );
 }

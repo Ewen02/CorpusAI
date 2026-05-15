@@ -70,13 +70,17 @@ export function InviteCollaboratorModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md" closeLabel={t('cancel')}>
         <DialogHeader>
           <DialogTitle>{t('inviteTitle')}</DialogTitle>
           <DialogDescription>{t('inviteDescription')}</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4"
+          aria-describedby={error ? 'invite-form-error' : undefined}
+        >
           <div className="space-y-1.5">
             <Label htmlFor="email" className="text-[13px] font-medium text-tx-secondary">
               {t('email')}
@@ -90,6 +94,8 @@ export function InviteCollaboratorModal({
               onChange={(e) => setEmail(e.target.value)}
               placeholder={t('emailPlaceholder')}
               className="h-9 border-[hsl(var(--border-default))] bg-[hsl(var(--surface-1))] text-[13px]"
+              aria-invalid={error ? 'true' : undefined}
+              aria-describedby={error ? 'invite-form-error' : undefined}
             />
           </div>
 
@@ -116,7 +122,15 @@ export function InviteCollaboratorModal({
             </Select>
           </div>
 
-          {error && <p className="text-[12px] text-[hsl(var(--danger))]">{error}</p>}
+          {error && (
+            <p
+              id="invite-form-error"
+              role="alert"
+              className="text-[12px] text-[hsl(var(--danger))]"
+            >
+              {error}
+            </p>
+          )}
 
           <DialogFooter className="flex gap-2 sm:gap-2">
             <Button
