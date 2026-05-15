@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type Redis from 'ioredis';
 
 vi.mock('@corpusai/queue', () => ({
   REDIS_CHANNELS: {
@@ -26,7 +27,7 @@ describe('RedisEventBusAdapter', () => {
       on: vi.fn(),
       quit: vi.fn().mockResolvedValue(undefined),
     };
-    const adapter = new RedisEventBusAdapter(subscriber as any);
+    const adapter = new RedisEventBusAdapter(subscriber as unknown as Redis);
 
     await adapter.onModuleInit();
 
@@ -47,7 +48,7 @@ describe('RedisEventBusAdapter', () => {
       }),
       quit: vi.fn().mockResolvedValue(undefined),
     };
-    const adapter = new RedisEventBusAdapter(subscriber as any);
+    const adapter = new RedisEventBusAdapter(subscriber as unknown as Redis);
     await adapter.onModuleInit();
 
     const listener = vi.fn();
@@ -68,7 +69,7 @@ describe('RedisEventBusAdapter', () => {
       }),
       quit: vi.fn().mockResolvedValue(undefined),
     };
-    const adapter = new RedisEventBusAdapter(subscriber as any);
+    const adapter = new RedisEventBusAdapter(subscriber as unknown as Redis);
     await adapter.onModuleInit();
 
     const listener = vi.fn();
@@ -89,7 +90,7 @@ describe('RedisEventBusAdapter', () => {
       }),
       quit: vi.fn().mockResolvedValue(undefined),
     };
-    const adapter = new RedisEventBusAdapter(subscriber as any);
+    const adapter = new RedisEventBusAdapter(subscriber as unknown as Redis);
     await adapter.onModuleInit();
 
     const listener = vi.fn();
@@ -103,7 +104,7 @@ describe('RedisEventBusAdapter', () => {
     const subscriber = {
       quit: vi.fn().mockResolvedValue(undefined),
     };
-    const adapter = new RedisEventBusAdapter(subscriber as any);
+    const adapter = new RedisEventBusAdapter(subscriber as unknown as Redis);
 
     const listener = vi.fn();
     adapter.getEmitter().on('progress', listener);

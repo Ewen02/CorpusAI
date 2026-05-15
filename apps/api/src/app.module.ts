@@ -53,6 +53,7 @@ import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middle
         RESEND_WEBHOOK_SECRET: Joi.string().optional().allow(''),
         API_KEY_RATE_LIMIT: Joi.number().default(60),
         BILLING_BLOCKED_STATUSES: Joi.string().default('CANCELED,PAST_DUE'),
+        SSE_TIMEOUT_MS: Joi.number().default(600_000),
         NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
         PORT: Joi.number().default(3001),
       }),

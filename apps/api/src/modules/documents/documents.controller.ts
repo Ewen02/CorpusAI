@@ -30,6 +30,7 @@ import {
   ApiResponse,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { ConfigService } from '@nestjs/config';
 import { Observable } from 'rxjs';
 import type { EventEmitter } from 'node:events';
 import { EVENT_BUS, type IEventBus } from '../../infrastructure/redis';
@@ -46,12 +47,15 @@ import { CreateTextDocumentDto } from './dto/create-text-document.dto';
 @Controller('ais/:aiId/documents')
 export class DocumentsController {
   private readonly progressEmitter: EventEmitter;
+  private readonly sseTimeoutMs: number;
 
   constructor(
     private readonly documentsService: DocumentsService,
-    @Inject(EVENT_BUS) eventBus: IEventBus
+    @Inject(EVENT_BUS) eventBus: IEventBus,
+    config: ConfigService
   ) {
     this.progressEmitter = eventBus.getEmitter();
+    this.sseTimeoutMs = Number(config.get<string>('SSE_TIMEOUT_MS')) || 10 * 60_000;
   }
 
   @Get()
@@ -321,7 +325,7 @@ export class DocumentsController {
           const timeout = setTimeout(() => {
             this.progressEmitter.removeListener('progress', onProgress);
             subscriber.complete();
-          }, 10 * 60_000);
+          }, this.sseTimeoutMs);
 
           subscriber.add(() => {
             clearTimeout(timeout);
