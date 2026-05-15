@@ -25,10 +25,23 @@ const instrumentSerif = Instrument_Serif({
   variable: '--font-display',
 });
 
+const appUrl =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) ||
+  'http://localhost:3000';
+
 export const metadata: Metadata = {
+  metadataBase: new URL(appUrl),
   title: 'CorpusAI - Transform Your Knowledge Into AI',
   description:
     'Create expert AI assistants from your own content. Upload your documents, train your AI, and share your knowledge.',
+  openGraph: {
+    siteName: 'CorpusAI',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+  },
 };
 
 export default function RootLayout({

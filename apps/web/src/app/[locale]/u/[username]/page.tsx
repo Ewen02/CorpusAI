@@ -1,48 +1,60 @@
 import type { Metadata } from 'next';
 import ProfilePage from './profile-page';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+import { DEFAULT_OG_IMAGE, canonicalUrl, fetchPublicJSON } from '@/lib/seo';
 
 interface Props {
-  params: Promise<{ username: string }>;
+  params: Promise<{ locale: string; username: string }>;
 }
 
-async function fetchCreator(username: string) {
-  try {
-    const res = await fetch(`${API_URL}/explore/creators/${username}`, {
-      next: { revalidate: 120 },
-    });
-    if (!res.ok) return null;
-    return res.json() as Promise<{ name: string | null; bio: string | null; image: string | null }>;
-  } catch {
-    return null;
-  }
+interface CreatorProfile {
+  name: string | null;
+  username: string | null;
+  bio: string | null;
+  image: string | null;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { username } = await params;
-  const creator = await fetchCreator(username);
+  const { locale, username } = await params;
+  const creator = await fetchPublicJSON<CreatorProfile>(`/explore/creators/${username}`, 120);
 
   if (!creator) {
-    return { title: `@${username} — CorpusAI` };
+    return {
+      title: `@${username} — CorpusAI`,
+      robots: { index: false, follow: false },
+    };
   }
 
+  const displayName = creator.name || creator.username || username;
+  const title = `${displayName} — CorpusAI`;
+  const description =
+    creator.bio ||
+    (locale === 'en'
+      ? `Discover AI assistants created by ${displayName} on CorpusAI.`
+      : `Découvrez les assistants IA créés par ${displayName} sur CorpusAI.`);
+  const url = canonicalUrl(`/u/${username}`, locale);
+
+  const images = creator.image
+    ? [{ url: creator.image, alt: displayName }]
+    : [{ url: DEFAULT_OG_IMAGE, width: 1200, height: 630, alt: displayName }];
+
   return {
-    title: `${creator.name || username} — CorpusAI`,
-    description:
-      creator.bio ||
-      `Découvrez les assistants IA créés par ${creator.name || username} sur CorpusAI.`,
+    title,
+    description,
+    alternates: { canonical: url },
     openGraph: {
-      title: `${creator.name || username} — CorpusAI`,
-      description: creator.bio || `Assistants IA de ${creator.name || username}`,
-      images: creator.image ? [{ url: creator.image }] : [],
+      title,
+      description,
       type: 'profile',
+      siteName: 'CorpusAI',
+      url,
+      images,
+      locale: locale === 'en' ? 'en_US' : 'fr_FR',
     },
     twitter: {
-      card: 'summary',
-      title: `${creator.name || username} — CorpusAI`,
-      description:
-        creator.bio || `Découvrez les assistants IA de ${creator.name || username} sur CorpusAI.`,
+      card: 'summary_large_image',
+      title,
+      description,
+      images: images.map((i) => i.url),
     },
   };
 }

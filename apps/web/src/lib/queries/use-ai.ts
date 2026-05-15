@@ -78,24 +78,97 @@ interface UpdateAIInput {
   data: UpdateAIData;
 }
 
+interface UpdateAIContext {
+  previousDetail: AI | undefined;
+  previousLists: Array<[readonly unknown[], AI[] | undefined]>;
+}
+
 export function useUpdateAI() {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<AI, Error, UpdateAIInput, UpdateAIContext>({
     mutationFn: ({ id, data }: UpdateAIInput) => apiClient.patch<AI>(`/ais/${id}`, data),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: aiKeys.detail(data.id) });
+    onMutate: async ({ id, data }) => {
+      // Cancel in-flight queries so they don't overwrite our optimistic update
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: aiKeys.detail(id) }),
+        queryClient.cancelQueries({ queryKey: aiKeys.lists() }),
+      ]);
+
+      // Snapshot detail
+      const previousDetail = queryClient.getQueryData<AI>(aiKeys.detail(id));
+
+      // Snapshot every cached list (different filters → different keys)
+      const previousLists = queryClient.getQueriesData<AI[]>({ queryKey: aiKeys.lists() });
+
+      // Optimistically patch detail
+      if (previousDetail) {
+        queryClient.setQueryData<AI>(aiKeys.detail(id), {
+          ...previousDetail,
+          ...data,
+        });
+      }
+
+      // Optimistically patch every list cache that contains this AI
+      previousLists.forEach(([key, list]) => {
+        if (!list) return;
+        queryClient.setQueryData<AI[]>(
+          key,
+          list.map((ai) => (ai.id === id ? { ...ai, ...data } : ai))
+        );
+      });
+
+      return { previousDetail, previousLists };
+    },
+    onError: (_err, { id }, context) => {
+      // Rollback detail
+      if (context?.previousDetail) {
+        queryClient.setQueryData(aiKeys.detail(id), context.previousDetail);
+      }
+      // Rollback every list snapshot
+      context?.previousLists.forEach(([key, list]) => {
+        queryClient.setQueryData(key, list);
+      });
+    },
+    onSettled: (_data, _error, { id }) => {
+      // Final sync with server (handles server-side derived fields)
+      queryClient.invalidateQueries({ queryKey: aiKeys.detail(id) });
       queryClient.invalidateQueries({ queryKey: aiKeys.lists() });
     },
   });
 }
 
+interface DeleteAIContext {
+  previousLists: Array<[readonly unknown[], AI[] | undefined]>;
+}
+
 export function useDeleteAI() {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<unknown, Error, string, DeleteAIContext>({
     mutationFn: (id: string) => apiClient.delete(`/ais/${id}`),
-    onSuccess: () => {
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: aiKeys.lists() });
+
+      const previousLists = queryClient.getQueriesData<AI[]>({ queryKey: aiKeys.lists() });
+
+      // Optimistically remove the AI from every list cache
+      previousLists.forEach(([key, list]) => {
+        if (!list) return;
+        queryClient.setQueryData<AI[]>(
+          key,
+          list.filter((ai) => ai.id !== id)
+        );
+      });
+
+      return { previousLists };
+    },
+    onError: (_err, _id, context) => {
+      context?.previousLists.forEach(([key, list]) => {
+        queryClient.setQueryData(key, list);
+      });
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: aiKeys.lists() });
     },
   });

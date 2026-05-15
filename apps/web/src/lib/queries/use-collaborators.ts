@@ -63,12 +63,40 @@ export function useInviteCollaborator(aiId: string) {
   });
 }
 
+interface UpdateCollaboratorVariables {
+  id: string;
+  role: CollaboratorRole;
+}
+
+interface CollaboratorListContext {
+  previousList: Collaborator[] | undefined;
+}
+
 export function useUpdateCollaborator(aiId: string) {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, role }: { id: string; role: CollaboratorRole }) =>
+  return useMutation<Collaborator, Error, UpdateCollaboratorVariables, CollaboratorListContext>({
+    mutationFn: ({ id, role }) =>
       apiClient.patch<Collaborator>(`/ais/${aiId}/collaborators/${id}`, { role }),
-    onSuccess: () => {
+    onMutate: async ({ id, role }) => {
+      await queryClient.cancelQueries({ queryKey: collaboratorKeys.list(aiId) });
+
+      const previousList = queryClient.getQueryData<Collaborator[]>(collaboratorKeys.list(aiId));
+
+      if (previousList) {
+        queryClient.setQueryData<Collaborator[]>(
+          collaboratorKeys.list(aiId),
+          previousList.map((c) => (c.id === id ? { ...c, role } : c))
+        );
+      }
+
+      return { previousList };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousList) {
+        queryClient.setQueryData(collaboratorKeys.list(aiId), context.previousList);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: collaboratorKeys.list(aiId) });
     },
   });
@@ -76,10 +104,29 @@ export function useUpdateCollaborator(aiId: string) {
 
 export function useRevokeCollaborator(aiId: string) {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useMutation<{ success: boolean }, Error, string, CollaboratorListContext>({
     mutationFn: (id: string) =>
       apiClient.delete<{ success: boolean }>(`/ais/${aiId}/collaborators/${id}`),
-    onSuccess: () => {
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: collaboratorKeys.list(aiId) });
+
+      const previousList = queryClient.getQueryData<Collaborator[]>(collaboratorKeys.list(aiId));
+
+      if (previousList) {
+        queryClient.setQueryData<Collaborator[]>(
+          collaboratorKeys.list(aiId),
+          previousList.filter((c) => c.id !== id)
+        );
+      }
+
+      return { previousList };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previousList) {
+        queryClient.setQueryData(collaboratorKeys.list(aiId), context.previousList);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: collaboratorKeys.list(aiId) });
     },
   });

@@ -1,12 +1,12 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "../api-client";
-import type { Document } from "./types";
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '../api-client';
+import type { Document } from './types';
 
 export const documentKeys = {
-  all: ["documents"] as const,
-  lists: () => [...documentKeys.all, "list"] as const,
+  all: ['documents'] as const,
+  lists: () => [...documentKeys.all, 'list'] as const,
   listByAI: (aiId: string) => [...documentKeys.lists(), { aiId }] as const,
-  details: () => [...documentKeys.all, "detail"] as const,
+  details: () => [...documentKeys.all, 'detail'] as const,
   detail: (id: string) => [...documentKeys.details(), id] as const,
 };
 
@@ -68,15 +68,44 @@ export function useCreateTextDocument() {
   });
 }
 
+interface DeleteDocumentVariables {
+  aiId: string;
+  id: string;
+}
+
+interface DeleteDocumentContext {
+  previousList: Document[] | undefined;
+}
+
 export function useDeleteDocument() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({ aiId, id }: { aiId: string; id: string }) =>
-      apiClient.delete(`/ais/${aiId}/documents/${id}`),
-    onSuccess: (_, variables) => {
+  return useMutation<unknown, Error, DeleteDocumentVariables, DeleteDocumentContext>({
+    mutationFn: ({ aiId, id }) => apiClient.delete(`/ais/${aiId}/documents/${id}`),
+    onMutate: async ({ aiId, id }) => {
+      await queryClient.cancelQueries({
+        queryKey: documentKeys.listByAI(aiId),
+      });
+
+      const previousList = queryClient.getQueryData<Document[]>(documentKeys.listByAI(aiId));
+
+      if (previousList) {
+        queryClient.setQueryData<Document[]>(
+          documentKeys.listByAI(aiId),
+          previousList.filter((doc) => doc.id !== id)
+        );
+      }
+
+      return { previousList };
+    },
+    onError: (_err, { aiId }, context) => {
+      if (context?.previousList) {
+        queryClient.setQueryData(documentKeys.listByAI(aiId), context.previousList);
+      }
+    },
+    onSettled: (_data, _error, { aiId }) => {
       queryClient.invalidateQueries({
-        queryKey: documentKeys.listByAI(variables.aiId),
+        queryKey: documentKeys.listByAI(aiId),
       });
     },
   });

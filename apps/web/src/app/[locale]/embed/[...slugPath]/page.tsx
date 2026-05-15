@@ -1,10 +1,15 @@
 import type { Metadata } from 'next';
 import EmbedWidget from './embed-widget';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+import { fetchPublicJSON } from '@/lib/seo';
 
 interface EmbedPageProps {
   params: Promise<{ slugPath: string[] }>;
+}
+
+interface PublicAIInfo {
+  name: string;
+  description?: string | null;
+  avatar?: string | null;
 }
 
 function parseSlugPath(slugPath: string[]): { username: string; slug: string } | null {
@@ -23,40 +28,26 @@ function parseSlugPath(slugPath: string[]): { username: string; slug: string } |
   return { username, slug };
 }
 
-async function fetchAIInfo(username: string, slug: string) {
-  try {
-    const res = await fetch(`${API_URL}/chat/${username}/${slug}/info`, {
-      next: { revalidate: 300 },
-    });
-    if (!res.ok) return null;
-    return res.json() as Promise<{ name: string; description?: string; logo?: string }>;
-  } catch {
-    return null;
-  }
-}
-
+// Embed routes are noindex via the embed layout (see ../layout.tsx).
+// We still set a useful <title> so the iframe host can read it programmatically.
 export async function generateMetadata({ params }: EmbedPageProps): Promise<Metadata> {
   const { slugPath } = await params;
   const parsed = parseSlugPath(slugPath);
 
   if (!parsed) {
-    return { title: 'CorpusAI Widget' };
+    return { title: 'CorpusAI Widget', robots: { index: false, follow: false } };
   }
 
-  const ai = await fetchAIInfo(parsed.username, parsed.slug);
+  const ai = await fetchPublicJSON<PublicAIInfo>(`/chat/${parsed.username}/${parsed.slug}/info`);
 
   if (!ai) {
-    return { title: 'CorpusAI Widget' };
+    return { title: 'CorpusAI Widget', robots: { index: false, follow: false } };
   }
 
   return {
     title: `${ai.name} — CorpusAI`,
     description: ai.description || `Chat with ${ai.name}, powered by CorpusAI`,
-    openGraph: {
-      title: `${ai.name} — CorpusAI`,
-      description: ai.description || `Chat with ${ai.name}, powered by CorpusAI`,
-      type: 'website',
-    },
+    robots: { index: false, follow: false },
   };
 }
 
