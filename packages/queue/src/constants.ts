@@ -37,5 +37,5 @@ export const REDIS_CHANNELS = {
  * indexing.
  */
 export function buildDocumentJobId(documentId: string): string {
-  return `doc:${documentId}`;
+  return `doc__${documentId}`;
 }

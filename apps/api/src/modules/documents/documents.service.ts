@@ -61,7 +61,7 @@ export class DocumentsService {
     const baseId = buildDocumentJobId(documentId);
     return {
       ...JOB_RETRY_CONFIG,
-      jobId: suffix ? `${baseId}:${suffix}:${Date.now()}` : baseId,
+      jobId: suffix ? `${baseId}__${suffix}__${Date.now()}` : baseId,
     };
   }
 
@@ -429,7 +429,7 @@ export class DocumentsService {
         mimeType: document.mimeType,
         url: document.url ?? undefined,
       },
-      { ...JOB_RETRY_CONFIG, jobId: `${buildDocumentJobId(document.id)}:retry:${Date.now()}` }
+      { ...JOB_RETRY_CONFIG, jobId: `${buildDocumentJobId(document.id)}__retry__${Date.now()}` }
     );
 
     this.logger.log(`Document ${documentId} re-queued for processing`);
