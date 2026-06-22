@@ -42,6 +42,10 @@ COPY --from=build --chown=node:node /app/apps/web/.next/static ./apps/web/.next/
 COPY --from=build --chown=node:node /app/apps/web/public ./apps/web/public
 
 ENV NODE_ENV=production
+# Bind to all interfaces (not localhost) so Railway's proxy can reach the
+# server; PORT is injected by Railway at runtime, default 3000 locally.
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
