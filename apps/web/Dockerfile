@@ -3,14 +3,26 @@ RUN corepack enable && corepack prepare pnpm@9 --activate
 WORKDIR /app
 
 # ── Dependencies ──────────────────────────────────────────────
+# Copy every workspace manifest so `--frozen-lockfile` can validate the
+# lockfile against the whole workspace (pnpm needs all package.json files,
+# not just web's), then install only the web subgraph.
 FROM base AS deps
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/web/package.json ./apps/web/
+COPY apps/api/package.json ./apps/api/
+COPY apps/ai-worker/package.json ./apps/ai-worker/
+COPY packages/ai-rules/package.json ./packages/ai-rules/
+COPY packages/corpus/package.json ./packages/corpus/
+COPY packages/database/package.json ./packages/database/
+COPY packages/email/package.json ./packages/email/
+COPY packages/queue/package.json ./packages/queue/
+COPY packages/sdk/package.json ./packages/sdk/
+COPY packages/subscription/package.json ./packages/subscription/
 COPY packages/types/package.json ./packages/types/
 COPY packages/ui/package.json ./packages/ui/
-COPY packages/subscription/package.json ./packages/subscription/
+COPY tooling/eslint-config/package.json ./tooling/eslint-config/
 COPY tooling/typescript-config/package.json ./tooling/typescript-config/
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --filter @corpusai/web...
 
 # ── Build ─────────────────────────────────────────────────────
 FROM base AS build
