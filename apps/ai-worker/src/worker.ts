@@ -1,13 +1,11 @@
 import { Worker } from 'bullmq';
-import { QUEUE_NAMES, type DocumentProcessingJobData } from '@corpusai/queue';
+import { QUEUE_NAMES, parseRedisUrl, type DocumentProcessingJobData } from '@corpusai/queue';
 import { logger } from './lib/logger';
 import { Sentry } from './lib/sentry';
 import { processDocument } from './processors/document-processor';
 import { getProgressService } from './services/progress.service';
 
 export function createWorker(redisUrl: string): Worker<DocumentProcessingJobData> {
-  const url = new URL(redisUrl);
-
   const worker = new Worker<DocumentProcessingJobData>(
     QUEUE_NAMES.DOCUMENT_PROCESSING,
     async (job) => {
@@ -19,13 +17,8 @@ export function createWorker(redisUrl: string): Worker<DocumentProcessingJobData
       logger.info({ jobId: job.id, documentId: job.data.documentId }, 'Completed document');
     },
     {
-      connection: {
-        host: url.hostname,
-        port: Number(url.port) || 6379,
-        password: url.password || undefined,
-        maxRetriesPerRequest: null,
-        ...(url.protocol === 'rediss:' ? { tls: { rejectUnauthorized: true } } : {}),
-      },
+      // parseRedisUrl handles TLS + Railway's IPv6-only private network.
+      connection: parseRedisUrl(redisUrl),
       concurrency: 3,
     }
   );

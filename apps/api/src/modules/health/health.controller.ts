@@ -10,6 +10,7 @@ import {
 } from '@nestjs/terminus';
 import { SkipThrottle } from '@nestjs/throttler';
 import Redis from 'ioredis';
+import { parseRedisUrl } from '@corpusai/queue';
 import { PrismaService } from '../../infrastructure/database';
 
 @ApiTags('health')
@@ -26,7 +27,8 @@ export class HealthController {
   ) {
     const redisUrl = this.config.get<string>('REDIS_URL');
     if (redisUrl) {
-      this.redis = new Redis(redisUrl, {
+      this.redis = new Redis({
+        ...parseRedisUrl(redisUrl),
         maxRetriesPerRequest: 1,
         connectTimeout: 3000,
         lazyConnect: true,

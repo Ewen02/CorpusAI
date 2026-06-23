@@ -12,6 +12,7 @@ import {
   type CacheService,
   type AsyncReranker,
 } from '@corpusai/corpus';
+import { parseRedisUrl } from '@corpusai/queue';
 
 let embeddingService: EmbeddingService;
 let sparseGenerator: SparseVectorGenerator;
@@ -37,7 +38,8 @@ function init(): void {
   // Redis cache (optional)
   const redisUrl = process.env.REDIS_URL;
   if (redisUrl) {
-    redisClient = new Redis(redisUrl, {
+    redisClient = new Redis({
+      ...parseRedisUrl(redisUrl),
       maxRetriesPerRequest: 3,
       retryStrategy: (times: number) => Math.min(times * 100, 3000),
     });

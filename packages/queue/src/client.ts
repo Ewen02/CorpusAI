@@ -3,7 +3,7 @@ import type { RedisOptions } from 'ioredis';
 import { QUEUE_NAMES } from './constants';
 import type { DocumentProcessingJobData } from './types';
 
-function parseRedisUrl(url: string): RedisOptions {
+export function parseRedisUrl(url: string): RedisOptions {
   const parsed = new URL(url);
   const isSecure = parsed.protocol === 'rediss:';
   const isLocal = ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname);
@@ -25,6 +25,9 @@ function parseRedisUrl(url: string): RedisOptions {
     port: Number(parsed.port) || 6379,
     password,
     maxRetriesPerRequest: null,
+    // Railway's private network (*.railway.internal) is IPv6-only; ioredis
+    // defaults to IPv4 DNS resolution and would fail with ENOTFOUND.
+    ...(isPrivateNetwork ? { family: 6 } : {}),
     ...(isSecure ? { tls: { rejectUnauthorized: true } } : {}),
   };
 }

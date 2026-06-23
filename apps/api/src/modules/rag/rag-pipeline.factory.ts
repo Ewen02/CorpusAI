@@ -17,6 +17,7 @@ import {
   type CacheMetrics,
   type AsyncReranker,
 } from '@corpusai/corpus';
+import { parseRedisUrl } from '@corpusai/queue';
 import { LLMProviderFactory, type LLMProvider } from '../../infrastructure/llm';
 
 /**
@@ -67,7 +68,8 @@ export class RagPipelineFactory implements OnModuleDestroy {
     const redisUrl = this.configService.get<string>('REDIS_URL');
     if (redisUrl) {
       this.logger.log('Redis configured, enabling embedding cache');
-      this.redis = new Redis(redisUrl, {
+      this.redis = new Redis({
+        ...parseRedisUrl(redisUrl),
         maxRetriesPerRequest: 3,
         retryStrategy: (times: number) => Math.min(times * 100, 3000),
       });

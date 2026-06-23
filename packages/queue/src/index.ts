@@ -1,4 +1,4 @@
-export { createDocumentQueue, createDocumentDLQ } from './client';
+export { createDocumentQueue, createDocumentDLQ, parseRedisUrl } from './client';
 export {
   QUEUE_NAMES,
   JOB_RETRY_CONFIG,

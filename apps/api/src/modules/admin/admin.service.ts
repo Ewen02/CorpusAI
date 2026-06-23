@@ -1,5 +1,6 @@
 import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { parseRedisUrl } from '@corpusai/queue';
 import { DOCUMENT_QUEUE_PORT, type IDocumentQueue } from '../../infrastructure/queue';
 import { AdminRepository } from './admin.repository';
 
@@ -200,7 +201,8 @@ export class AdminService {
     }
     try {
       const Redis = (await import('ioredis')).default;
-      const client = new Redis(redisUrl, {
+      const client = new Redis({
+        ...parseRedisUrl(redisUrl),
         maxRetriesPerRequest: 1,
         connectTimeout: 3000,
         lazyConnect: true,

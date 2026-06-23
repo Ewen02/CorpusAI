@@ -1,6 +1,7 @@
 import Redis from 'ioredis';
 import {
   REDIS_CHANNELS,
+  parseRedisUrl,
   type DocumentProgressEvent,
   type DocumentFinalFailureEvent,
 } from '@corpusai/queue';
@@ -10,7 +11,7 @@ export class ProgressService {
   private redis: Redis;
 
   constructor(redisUrl: string) {
-    this.redis = new Redis(redisUrl, { maxRetriesPerRequest: null });
+    this.redis = new Redis({ ...parseRedisUrl(redisUrl), maxRetriesPerRequest: null });
   }
 
   async publish(event: DocumentProgressEvent): Promise<void> {
