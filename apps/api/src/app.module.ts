@@ -41,6 +41,9 @@ import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middle
         BETTER_AUTH_SECRET: Joi.string().min(32).required(),
         BETTER_AUTH_URL: Joi.string().uri().required(),
         FRONTEND_URL: Joi.string().uri().required(),
+        // Comma-separated list of additional allowed CORS origins (Railway,
+        // Vercel, custom domains). Falls back to FRONTEND_URL when unset.
+        CORS_ORIGINS: Joi.string().optional().allow(''),
         OPENAI_API_KEY: Joi.string().required(),
         QDRANT_URL: Joi.string().uri().required(),
         REDIS_URL: Joi.string().optional().allow(''),

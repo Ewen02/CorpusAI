@@ -20,6 +20,16 @@ async function bootstrap() {
   const frontendUrl = config.get<string>('FRONTEND_URL')!;
   const port = config.get<number>('PORT') || 3001;
 
+  // Allowed CORS origins: the canonical frontend plus any extra origins
+  // (Railway/Vercel/custom domains) from CORS_ORIGINS, deduplicated.
+  const corsOrigins = Array.from(
+    new Set(
+      [frontendUrl, ...(config.get<string>('CORS_ORIGINS') ?? '').split(',')]
+        .map((o) => o.trim())
+        .filter(Boolean)
+    )
+  );
+
   // Security headers
   app.use(
     helmet({
@@ -57,7 +67,7 @@ async function bootstrap() {
 
   // CORS
   app.enableCors({
-    origin: frontendUrl,
+    origin: corsOrigins,
     credentials: true,
   });
 

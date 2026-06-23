@@ -106,7 +106,13 @@ export const auth = betterAuth({
     },
   },
   plugins: [twoFactor({ issuer: 'CorpusAI' })],
-  trustedOrigins: [process.env.FRONTEND_URL!],
+  trustedOrigins: Array.from(
+    new Set(
+      [process.env.FRONTEND_URL!, ...(process.env.CORS_ORIGINS ?? '').split(',')]
+        .map((o) => o.trim())
+        .filter(Boolean)
+    )
+  ),
   hooks: {
     after: async (ctx) => {
       const rawCtx = ctx as unknown as {
