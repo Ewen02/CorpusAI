@@ -1,5 +1,10 @@
 import { Worker } from 'bullmq';
-import { QUEUE_NAMES, parseRedisUrl, type DocumentProcessingJobData } from '@corpusai/queue';
+import {
+  JOB_RETRY_CONFIG,
+  QUEUE_NAMES,
+  parseRedisUrl,
+  type DocumentProcessingJobData,
+} from '@corpusai/queue';
 import { logger } from './lib/logger';
 import { Sentry } from './lib/sentry';
 import { processDocument } from './processors/document-processor';
@@ -19,7 +24,7 @@ export function createWorker(redisUrl: string): Worker<DocumentProcessingJobData
     {
       // parseRedisUrl handles TLS + Railway's IPv6-only private network.
       connection: parseRedisUrl(redisUrl),
-      concurrency: 3,
+      concurrency: Number(process.env.WORKER_CONCURRENCY) || 3,
     }
   );
 
@@ -29,7 +34,7 @@ export function createWorker(redisUrl: string): Worker<DocumentProcessingJobData
       'Failed document processing'
     );
     // Capture and notify only after all retries are exhausted
-    const maxAttempts = job?.opts?.attempts ?? 3;
+    const maxAttempts = job?.opts?.attempts ?? JOB_RETRY_CONFIG.attempts;
     if (job && job.attemptsMade >= maxAttempts) {
       Sentry.withScope((scope) => {
         scope.setTag('jobId', job.id ?? 'unknown');

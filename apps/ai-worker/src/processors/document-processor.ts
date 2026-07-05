@@ -23,6 +23,19 @@ function mapStageToStep(stage: ProcessingStage): ProcessingStep {
   }
 }
 
+// Per-document throttle state for the DB fallback write. Redis is the source of
+// truth for SSE, so processingProgress in Postgres is only a fallback and does
+// not need a row write on every embedding-batch tick.
+const PROGRESS_DB_WRITE_THRESHOLD = 10;
+
+interface LastDbWrite {
+  status: DocumentStatus;
+  step: ProcessingStep | null;
+  progress: number;
+}
+
+const lastDbWrite = new Map<string, LastDbWrite>();
+
 async function publishProgress(
   documentId: string,
   status: DocumentStatus,
@@ -31,28 +44,45 @@ async function publishProgress(
   errorMessage?: string
 ): Promise<void> {
   const progressService = getProgressService();
+  const clampedProgress = Math.min(100, Math.max(0, progress));
 
-  // Update database
-  await prisma.document.update({
-    where: { id: documentId },
-    data: {
-      status,
-      processingProgress: Math.min(100, Math.max(0, progress)),
-      processingStep: step,
-      ...(status === DocumentStatus.INDEXED || status === DocumentStatus.FAILED
-        ? { processingCompletedAt: new Date() }
-        : {}),
-      ...(status === DocumentStatus.INDEXED ? { processingStep: null } : {}),
-      ...(errorMessage ? { errorMessage } : {}),
-    },
-  });
+  // Decide whether this tick warrants a Postgres write. Status transitions
+  // (PROCESSING/INDEXED/FAILED) and step changes always write; otherwise only
+  // write once progress has advanced by the threshold since the last DB write.
+  const previous = lastDbWrite.get(documentId);
+  const isTerminal = status === DocumentStatus.INDEXED || status === DocumentStatus.FAILED;
+  const statusChanged = previous?.status !== status;
+  const stepChanged = previous?.step !== step;
+  const progressAdvanced =
+    previous === undefined || clampedProgress - previous.progress >= PROGRESS_DB_WRITE_THRESHOLD;
+  const shouldWriteDb = isTerminal || statusChanged || stepChanged || progressAdvanced;
 
-  // Publish to Redis for SSE
+  if (shouldWriteDb) {
+    await prisma.document.update({
+      where: { id: documentId },
+      data: {
+        status,
+        processingProgress: clampedProgress,
+        processingStep: step,
+        ...(isTerminal ? { processingCompletedAt: new Date() } : {}),
+        ...(status === DocumentStatus.INDEXED ? { processingStep: null } : {}),
+        ...(errorMessage ? { errorMessage } : {}),
+      },
+    });
+
+    if (isTerminal) {
+      lastDbWrite.delete(documentId);
+    } else {
+      lastDbWrite.set(documentId, { status, step, progress: clampedProgress });
+    }
+  }
+
+  // Publish to Redis for SSE — every tick, unconditionally.
   // Map Prisma enums to queue event string literals (same values, different types)
   await progressService.publish({
     documentId,
     status: status as DocumentProgressEvent['status'],
-    progress: Math.min(100, Math.max(0, progress)),
+    progress: clampedProgress,
     step: step as DocumentProgressEvent['step'],
     errorMessage,
   });
@@ -71,23 +101,27 @@ export async function processDocument(data: DocumentProcessingJobData): Promise<
     filePath,
   } = data;
 
-  // Mark as processing
-  await prisma.document.update({
-    where: { id: documentId },
-    data: {
-      status: DocumentStatus.PROCESSING,
-      processingStartedAt: new Date(),
-      processingProgress: 0,
-      processingStep: ProcessingStep.PARSING,
-    },
-  });
-
-  if (documentVersionId) {
-    await prisma.documentVersion.update({
-      where: { id: documentVersionId },
-      data: { status: DocumentStatus.PROCESSING },
-    });
-  }
+  // Mark as processing — document + version in one transaction so the version
+  // can't be left PENDING while the document flips to PROCESSING.
+  await prisma.$transaction([
+    prisma.document.update({
+      where: { id: documentId },
+      data: {
+        status: DocumentStatus.PROCESSING,
+        processingStartedAt: new Date(),
+        processingProgress: 0,
+        processingStep: ProcessingStep.PARSING,
+      },
+    }),
+    ...(documentVersionId
+      ? [
+          prisma.documentVersion.update({
+            where: { id: documentVersionId },
+            data: { status: DocumentStatus.PROCESSING },
+          }),
+        ]
+      : []),
+  ]);
 
   try {
     await publishProgress(documentId, DocumentStatus.PROCESSING, 2, ProcessingStep.PARSING);
@@ -182,57 +216,64 @@ export async function processDocument(data: DocumentProcessingJobData): Promise<
     const wordCount =
       metadata.wordCount ?? parsedContent.split(/\s+/).filter((w) => w.length > 0).length;
 
-    // Persist chunks to DB for analytics and text-based features (e.g. AI suggestions).
-    // Tag with documentVersionId so rollback can re-upsert past chunks without re-parsing.
-    if (result.chunks.length > 0) {
-      await prisma.chunk.createMany({
-        data: result.chunks.map((c) => ({
-          id: c.id,
-          documentId,
-          documentVersionId: documentVersionId ?? null,
-          content: c.text,
-          position: c.position,
-          pageNumber: c.pageNumber ?? null,
-          qdrantPointId: c.id,
-        })),
-        skipDuplicates: true,
-      });
-    }
-
-    // Mark as indexed
-    await prisma.document.update({
-      where: { id: documentId },
-      data: {
-        status: DocumentStatus.INDEXED,
-        chunkCount: result.chunksCreated,
-        processingCompletedAt: new Date(),
-        processingProgress: 100,
-        processingStep: null,
-        wordCount,
-        pageCount: metadata.pageCount,
-        title: metadata.title,
-        author: metadata.author,
-        language: metadata.language,
-      },
-    });
-
-    // Keep the DocumentVersion snapshot in sync.
-    if (documentVersionId) {
-      await prisma.documentVersion.update({
-        where: { id: documentVersionId },
+    // Persist chunks, mark the document INDEXED, and sync the version snapshot
+    // atomically so a crash between them can't leave Document=INDEXED with a
+    // stale PENDING/PROCESSING DocumentVersion or orphaned chunks.
+    await prisma.$transaction([
+      // Persist chunks to DB for analytics and text-based features (e.g. AI suggestions).
+      // Tag with documentVersionId so rollback can re-upsert past chunks without re-parsing.
+      ...(result.chunks.length > 0
+        ? [
+            prisma.chunk.createMany({
+              data: result.chunks.map((c) => ({
+                id: c.id,
+                documentId,
+                documentVersionId: documentVersionId ?? null,
+                content: c.text,
+                position: c.position,
+                pageNumber: c.pageNumber ?? null,
+                qdrantPointId: c.id,
+              })),
+              skipDuplicates: true,
+            }),
+          ]
+        : []),
+      // Mark as indexed
+      prisma.document.update({
+        where: { id: documentId },
         data: {
           status: DocumentStatus.INDEXED,
           chunkCount: result.chunksCreated,
+          processingCompletedAt: new Date(),
+          processingProgress: 100,
+          processingStep: null,
           wordCount,
           pageCount: metadata.pageCount,
-          metadata: {
-            ...(metadata.title ? { title: metadata.title } : {}),
-            ...(metadata.author ? { author: metadata.author } : {}),
-            ...(metadata.language ? { language: metadata.language } : {}),
-          },
+          title: metadata.title,
+          author: metadata.author,
+          language: metadata.language,
         },
-      });
-    }
+      }),
+      // Keep the DocumentVersion snapshot in sync.
+      ...(documentVersionId
+        ? [
+            prisma.documentVersion.update({
+              where: { id: documentVersionId },
+              data: {
+                status: DocumentStatus.INDEXED,
+                chunkCount: result.chunksCreated,
+                wordCount,
+                pageCount: metadata.pageCount,
+                metadata: {
+                  ...(metadata.title ? { title: metadata.title } : {}),
+                  ...(metadata.author ? { author: metadata.author } : {}),
+                  ...(metadata.language ? { language: metadata.language } : {}),
+                },
+              },
+            }),
+          ]
+        : []),
+    ]);
 
     await publishProgress(documentId, DocumentStatus.INDEXED, 100, null);
 
@@ -250,25 +291,29 @@ export async function processDocument(data: DocumentProcessingJobData): Promise<
       logger.warn({ documentId, aiId, err: cleanupError }, 'Failed to cleanup orphaned vectors');
     }
 
-    await prisma.document.update({
-      where: { id: documentId },
-      data: {
-        status: DocumentStatus.FAILED,
-        errorMessage,
-        processingCompletedAt: new Date(),
-        chunkCount: 0,
-      },
-    });
-
-    if (documentVersionId) {
-      await prisma.documentVersion.update({
-        where: { id: documentVersionId },
+    // Flip document + version to FAILED atomically so they can't diverge.
+    await prisma.$transaction([
+      prisma.document.update({
+        where: { id: documentId },
         data: {
           status: DocumentStatus.FAILED,
+          errorMessage,
+          processingCompletedAt: new Date(),
           chunkCount: 0,
         },
-      });
-    }
+      }),
+      ...(documentVersionId
+        ? [
+            prisma.documentVersion.update({
+              where: { id: documentVersionId },
+              data: {
+                status: DocumentStatus.FAILED,
+                chunkCount: 0,
+              },
+            }),
+          ]
+        : []),
+    ]);
 
     await publishProgress(documentId, DocumentStatus.FAILED, 0, null, errorMessage);
 
