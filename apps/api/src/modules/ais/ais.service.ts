@@ -19,15 +19,11 @@ import {
   getDaysForPeriod,
   type AnalyticsPeriod,
 } from '../../shared/date-utils';
+import type { PaginationDto } from '../../shared/pagination.dto';
 import { CreateAIDto } from './dto/create-ai.dto';
 import { UpdateAIDto } from './dto/update-ai.dto';
 import { RagService, TextGenerationService } from '../rag';
 import { AIsRepository } from './ais.repository';
-
-export interface PaginationOptions {
-  skip?: number;
-  take?: number;
-}
 
 @Injectable()
 export class AIsService {
@@ -40,7 +36,7 @@ export class AIsService {
     private readonly repo: AIsRepository
   ) {}
 
-  async findAll(userId: string, options?: PaginationOptions) {
+  async findAll(userId: string, options?: Pick<PaginationDto, 'skip' | 'take'>) {
     const { skip = 0, take = 50 } = options ?? {};
     return this.repo.findAllByUser(userId, skip, take);
   }
@@ -208,29 +204,37 @@ export class AIsService {
       return { value: Math.abs(change), isPositive: change >= 0 };
     };
 
-    const [confidenceStats] = await this.repo.getConfidenceStats(aiId, startDate);
+    // These reads are independent — run them concurrently to cut latency.
+    const [
+      [confidenceStats],
+      [feedbackStats],
+      avgMessages,
+      [uniqueUsersResult],
+      knowledgeBase,
+      topQuestions,
+      retention,
+      [funnelData],
+      rawDocUsage,
+    ] = await Promise.all([
+      this.repo.getConfidenceStats(aiId, startDate),
+      this.repo.getFeedbackStats(aiId, startDate),
+      this.repo.getAvgMessagesPerConversation(aiId, startDate),
+      this.repo.getUniqueUsers(aiId, startDate),
+      this.repo.getKnowledgeBase(aiId),
+      this.repo.getTopQuestions(aiId, startDate),
+      this.repo.getRetention(aiId, startDate),
+      this.repo.getFunnelData(aiId, startDate),
+      this.repo.getDocumentUsage(aiId, startDate),
+    ]);
+
     const high = Number(confidenceStats?.high ?? 0);
     const medium = Number(confidenceStats?.medium ?? 0);
     const low = Number(confidenceStats?.low ?? 0);
     const totalResponses = high + medium + low;
 
-    const [feedbackStats] = await this.repo.getFeedbackStats(aiId, startDate);
     const feedbackPositive = Number(feedbackStats?.positive ?? 0);
     const feedbackNegative = Number(feedbackStats?.negative ?? 0);
     const feedbackTotal = feedbackPositive + feedbackNegative;
-
-    const avgMessages = await this.repo.getAvgMessagesPerConversation(aiId, startDate);
-    const [uniqueUsersResult] = await this.repo.getUniqueUsers(aiId, startDate);
-
-    const knowledgeBase = await this.repo.getKnowledgeBase(aiId);
-
-    const topQuestions = await this.repo.getTopQuestions(aiId, startDate);
-
-    const retention = await this.repo.getRetention(aiId, startDate);
-
-    const [funnelData] = await this.repo.getFunnelData(aiId, startDate);
-
-    const rawDocUsage = await this.repo.getDocumentUsage(aiId, startDate);
 
     return {
       daily,

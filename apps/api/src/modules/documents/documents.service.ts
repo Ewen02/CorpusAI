@@ -8,7 +8,12 @@ import {
   type SubscriptionPlanType,
 } from '@corpusai/subscription';
 import { SUPPORTED_DOCUMENT_TYPES, type SupportedDocumentType } from '@corpusai/types';
-import { JOB_RETRY_CONFIG, buildDocumentJobId } from '@corpusai/queue';
+import {
+  JOB_RETRY_CONFIG,
+  buildDocumentJobId,
+  buildRetryJobId,
+  type DocumentProcessingJobData,
+} from '@corpusai/queue';
 import { DOCUMENT_QUEUE_PORT, type IDocumentQueue } from '../../infrastructure/queue';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { CreateTextDocumentDto } from './dto/create-text-document.dto';
@@ -18,11 +23,7 @@ import {
   DocumentVersionsRepository,
   type CreateVersionInput,
 } from './document-versions.repository';
-
-export interface PaginationOptions {
-  skip?: number;
-  take?: number;
-}
+import type { PaginationDto } from '../../shared/pagination.dto';
 
 @Injectable()
 export class DocumentsService {
@@ -65,7 +66,7 @@ export class DocumentsService {
     };
   }
 
-  async findAllByAI(userId: string, aiId: string, options?: PaginationOptions) {
+  async findAllByAI(userId: string, aiId: string, options?: Pick<PaginationDto, 'skip' | 'take'>) {
     const { skip = 0, take = 50 } = options ?? {};
 
     const ai = await this.repo.findAIByIdAndUser(aiId, userId);
@@ -86,36 +87,81 @@ export class DocumentsService {
     return document;
   }
 
-  async create(userId: string, aiId: string, dto: CreateDocumentDto) {
+  /**
+   * Single ingestion flow shared by every document-creation entrypoint.
+   *
+   * Steps (identical to the previous per-method duplication):
+   *  1. resolve owning AI (plan + current document count)
+   *  2. upload-size check
+   *  3. mime-type check (conditional — {@link createFromText} skips it because
+   *     it hard-codes `text/plain`, which is always supported; keeping it
+   *     conditional preserves that exact behavior)
+   *  4. upsert Document / new version (quota is only charged for fresh docs)
+   *  5. enqueue the processing job with the caller-supplied content payload
+   *     (`url` | `content` | `buffer`) plus the common fields
+   *  6. log
+   */
+  private async ingest(
+    userId: string,
+    aiId: string,
+    data: CreateVersionInput,
+    options: {
+      /** Content payload merged into the queue job: url / content / buffer. */
+      payload: Pick<DocumentProcessingJobData, 'url' | 'content' | 'buffer'>;
+      /** When true, reject unsupported mime types before enqueueing. */
+      checkMimeType: boolean;
+    }
+  ) {
     const ai = await this.repo.findAIWithPlanAndDocCount(aiId, userId);
 
     if (!ai) {
       throw new NotFoundException('AI not found');
     }
 
-    const sizeMB = dto.size / (1024 * 1024);
+    const sizeMB = data.size / (1024 * 1024);
     assertCanUploadDocument(ai.user.subscriptionPlan, sizeMB);
 
-    const isSupported = SUPPORTED_DOCUMENT_TYPES.includes(dto.mimeType as SupportedDocumentType);
-    if (!isSupported) {
-      throw new BadRequestException(
-        `Unsupported file type. Supported types: ${SUPPORTED_DOCUMENT_TYPES.join(', ')}`
-      );
+    if (options.checkMimeType) {
+      const isSupported = SUPPORTED_DOCUMENT_TYPES.includes(data.mimeType as SupportedDocumentType);
+      if (!isSupported) {
+        throw new BadRequestException(
+          `Unsupported file type: ${data.mimeType}. Supported types: ${SUPPORTED_DOCUMENT_TYPES.join(', ')}`
+        );
+      }
     }
 
-    const versionInput: CreateVersionInput = {
-      filename: dto.filename,
-      mimeType: dto.mimeType,
-      size: dto.size,
-      url: dto.url,
-    };
-
-    const result = await this.upsertDocumentOrVersion(
+    const result = await this.upsertAndEnqueue(
       ai.user.subscriptionPlan,
       ai._count.documents,
       aiId,
       userId,
-      versionInput
+      data,
+      options.payload
+    );
+
+    return result.document;
+  }
+
+  /**
+   * Upsert the Document/version and enqueue its processing job. This is the
+   * single place the queue payload is constructed; both {@link ingest} and the
+   * bulk-upload loop go through it. Callers own quota accounting: `ingest`
+   * charges per call, bulk pre-checks the batch (see {@link createFromBulkUpload}).
+   */
+  private async upsertAndEnqueue(
+    plan: SubscriptionPlanType,
+    currentDocumentCount: number,
+    aiId: string,
+    userId: string,
+    data: CreateVersionInput,
+    payload: Pick<DocumentProcessingJobData, 'url' | 'content' | 'buffer'>
+  ) {
+    const result = await this.upsertDocumentOrVersion(
+      plan,
+      currentDocumentCount,
+      aiId,
+      userId,
+      data
     );
 
     await this.documentQueue.add(
@@ -124,9 +170,9 @@ export class DocumentsService {
         documentId: result.documentId,
         documentVersionId: result.versionId,
         aiId,
-        filename: dto.filename,
-        mimeType: dto.mimeType,
-        url: dto.url,
+        filename: data.filename,
+        mimeType: data.mimeType,
+        ...payload,
       },
       this.buildJobOptions(
         result.documentId,
@@ -137,7 +183,16 @@ export class DocumentsService {
     this.logger.log(
       `Document ${result.documentId} queued for processing (v${result.version}, new=${result.isNewVersion})`
     );
-    return result.document;
+    return result;
+  }
+
+  async create(userId: string, aiId: string, dto: CreateDocumentDto) {
+    return this.ingest(
+      userId,
+      aiId,
+      { filename: dto.filename, mimeType: dto.mimeType, size: dto.size, url: dto.url },
+      { payload: { url: dto.url }, checkMimeType: true }
+    );
   }
 
   /**
@@ -187,98 +242,23 @@ export class DocumentsService {
   }
 
   async createFromText(userId: string, aiId: string, dto: CreateTextDocumentDto) {
-    const ai = await this.repo.findAIWithPlanAndDocCount(aiId, userId);
-
-    if (!ai) {
-      throw new NotFoundException('AI not found');
-    }
-
-    const sizeMB = Buffer.byteLength(dto.content, 'utf8') / (1024 * 1024);
-    assertCanUploadDocument(ai.user.subscriptionPlan, sizeMB);
-
-    const result = await this.upsertDocumentOrVersion(
-      ai.user.subscriptionPlan,
-      ai._count.documents,
-      aiId,
+    const size = Buffer.byteLength(dto.content, 'utf8');
+    return this.ingest(
       userId,
-      {
-        filename: dto.filename,
-        mimeType: 'text/plain',
-        size: Buffer.byteLength(dto.content, 'utf8'),
-      }
+      aiId,
+      { filename: dto.filename, mimeType: 'text/plain', size },
+      // Mime check is skipped: text/plain is hard-coded and always supported.
+      { payload: { content: dto.content }, checkMimeType: false }
     );
-
-    await this.documentQueue.add(
-      'process',
-      {
-        documentId: result.documentId,
-        documentVersionId: result.versionId,
-        aiId,
-        filename: dto.filename,
-        mimeType: 'text/plain',
-        content: dto.content,
-      },
-      this.buildJobOptions(
-        result.documentId,
-        result.isNewVersion ? `v${result.version}` : undefined
-      )
-    );
-
-    this.logger.log(
-      `Text document ${result.documentId} queued for processing (v${result.version}, new=${result.isNewVersion})`
-    );
-    return result.document;
   }
 
   async createFromUpload(userId: string, aiId: string, file: Express.Multer.File) {
-    const ai = await this.repo.findAIWithPlanAndDocCount(aiId, userId);
-
-    if (!ai) {
-      throw new NotFoundException('AI not found');
-    }
-
-    const sizeMB = file.size / (1024 * 1024);
-    assertCanUploadDocument(ai.user.subscriptionPlan, sizeMB);
-
-    const isSupported = SUPPORTED_DOCUMENT_TYPES.includes(file.mimetype as SupportedDocumentType);
-    if (!isSupported) {
-      throw new BadRequestException(
-        `Unsupported file type: ${file.mimetype}. Supported types: ${SUPPORTED_DOCUMENT_TYPES.join(', ')}`
-      );
-    }
-
-    const result = await this.upsertDocumentOrVersion(
-      ai.user.subscriptionPlan,
-      ai._count.documents,
-      aiId,
+    return this.ingest(
       userId,
-      {
-        filename: file.originalname,
-        mimeType: file.mimetype,
-        size: file.size,
-      }
+      aiId,
+      { filename: file.originalname, mimeType: file.mimetype, size: file.size },
+      { payload: { buffer: file.buffer.toString('base64') }, checkMimeType: true }
     );
-
-    await this.documentQueue.add(
-      'process',
-      {
-        documentId: result.documentId,
-        documentVersionId: result.versionId,
-        aiId,
-        filename: file.originalname,
-        mimeType: file.mimetype,
-        buffer: file.buffer.toString('base64'),
-      },
-      this.buildJobOptions(
-        result.documentId,
-        result.isNewVersion ? `v${result.version}` : undefined
-      )
-    );
-
-    this.logger.log(
-      `Uploaded document ${result.documentId} queued for processing (v${result.version}, new=${result.isNewVersion})`
-    );
-    return result.document;
   }
 
   async createFromBulkUpload(userId: string, aiId: string, files: Express.Multer.File[]) {
@@ -331,28 +311,17 @@ export class DocumentsService {
       );
     }
 
+    // Size + mime were pre-validated above and the batch quota was checked; the
+    // shared helper handles upsert + enqueue (with the same queue payload shape).
     const queued: Array<{ id: string; filename: string }> = [];
     for (const { file, existing } of fileResolutions) {
-      const result = await this.upsertDocumentOrVersion(plan, ai._count.documents, aiId, userId, {
-        filename: file.originalname,
-        mimeType: file.mimetype,
-        size: file.size,
-      });
-
-      await this.documentQueue.add(
-        'process',
-        {
-          documentId: result.documentId,
-          documentVersionId: result.versionId,
-          aiId,
-          filename: file.originalname,
-          mimeType: file.mimetype,
-          buffer: file.buffer.toString('base64'),
-        },
-        this.buildJobOptions(
-          result.documentId,
-          result.isNewVersion ? `v${result.version}` : undefined
-        )
+      const result = await this.upsertAndEnqueue(
+        plan,
+        ai._count.documents,
+        aiId,
+        userId,
+        { filename: file.originalname, mimeType: file.mimetype, size: file.size },
+        { buffer: file.buffer.toString('base64') }
       );
 
       queued.push({ id: result.documentId, filename: file.originalname });
@@ -429,7 +398,7 @@ export class DocumentsService {
         mimeType: document.mimeType,
         url: document.url ?? undefined,
       },
-      { ...JOB_RETRY_CONFIG, jobId: `${buildDocumentJobId(document.id)}__retry__${Date.now()}` }
+      { ...JOB_RETRY_CONFIG, jobId: buildRetryJobId(document.id, activeVersion?.id) }
     );
 
     this.logger.log(`Document ${documentId} re-queued for processing`);

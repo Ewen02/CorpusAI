@@ -5,6 +5,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   Inject,
   Sse,
   UseGuards,
@@ -35,6 +36,7 @@ import { Observable } from 'rxjs';
 import type { EventEmitter } from 'node:events';
 import { EVENT_BUS, type IEventBus } from '../../infrastructure/redis';
 import type { DocumentProgressEvent } from '@corpusai/queue';
+import { PaginationDto } from '../../shared';
 import { DocumentsService } from './documents.service';
 import { AuthGuard, CurrentUser, type CurrentUserData } from '../auth';
 import { CreateDocumentDto } from './dto/create-document.dto';
@@ -64,8 +66,12 @@ export class DocumentsController {
   @ApiResponse({ status: 200, description: 'List of documents returned' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'AI not found' })
-  async findAll(@CurrentUser() user: CurrentUserData, @Param('aiId') aiId: string) {
-    return this.documentsService.findAllByAI(user.id, aiId);
+  async findAll(
+    @CurrentUser() user: CurrentUserData,
+    @Param('aiId') aiId: string,
+    @Query() pagination: PaginationDto
+  ) {
+    return this.documentsService.findAllByAI(user.id, aiId, pagination);
   }
 
   @Get('export')

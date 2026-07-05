@@ -93,7 +93,7 @@ describe('ConversationsService', () => {
   // Mock repository delegating to prisma mocks
   const mockRepo = {
     findAccessGrant: vi.fn(),
-    countTodayQuestions: vi.fn().mockResolvedValue([{ count: BigInt(0) }]),
+    getTodayQuestionCount: vi.fn().mockResolvedValue(0),
     findConversationHistory: vi.fn().mockResolvedValue([]),
     findAIPublicInfo: vi.fn((...args: unknown[]) =>
       mockAI.findFirst({ where: { slug: args[1], user: { username: args[0] } } })
@@ -148,7 +148,7 @@ describe('ConversationsService', () => {
     (canAskQuestion as ReturnType<typeof vi.fn>).mockReturnValue(true);
 
     // Re-apply delegates after clearAllMocks
-    mockRepo.countTodayQuestions.mockResolvedValue([{ count: BigInt(0) }]);
+    mockRepo.getTodayQuestionCount.mockResolvedValue(0);
     mockRepo.findConversationHistory.mockResolvedValue([]);
     mockRepo.findAIPublicInfo.mockImplementation((...args: unknown[]) =>
       mockAI.findFirst({ where: { slug: args[1], user: { username: args[0] } } })
@@ -285,7 +285,7 @@ describe('ConversationsService', () => {
 
     it('should throw ForbiddenException when daily limit reached', async () => {
       mockConversation.findUnique.mockResolvedValue(conversation);
-      mockRepo.countTodayQuestions.mockResolvedValue([{ count: BigInt(100) }]);
+      mockRepo.getTodayQuestionCount.mockResolvedValue(100);
       (canAskQuestion as ReturnType<typeof vi.fn>).mockReturnValue(false);
 
       await expect(service.sendMessage('conv-1', 'hello')).rejects.toThrow(ForbiddenException);

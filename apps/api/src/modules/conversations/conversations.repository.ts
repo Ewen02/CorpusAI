@@ -71,15 +71,24 @@ export class ConversationsRepository {
     });
   }
 
-  async countTodayQuestions(aiId: string, todayStart: Date) {
-    return this.db.client.$queryRaw<[{ count: bigint }]>`
-      SELECT COUNT(*) as count
-      FROM "Message" m
-      JOIN "Conversation" c ON c.id = m."conversationId"
-      WHERE c."aiId" = ${aiId}
-        AND m.role = 'USER'
-        AND m."createdAt" >= ${todayStart}
-    `;
+  /**
+   * Reads today's question count for the (owner, AI) pair from the
+   * denormalized `DailyStats` row. This value is incremented in the same flow
+   * (see `updateConversationAndQuestionCount` → `incrementDailyStats`), so it
+   * is authoritative for the daily rate limit and replaces the previous
+   * `COUNT(*)` JOIN over "Message". Uses the `@@unique([userId, aiId, date])`
+   * index for a point read. Returns 0 when the row does not exist yet.
+   */
+  async getTodayQuestionCount(
+    ownerUserId: string,
+    aiId: string,
+    todayStart: Date
+  ): Promise<number> {
+    const row = await this.db.client.dailyStats.findUnique({
+      where: { userId_aiId_date: { userId: ownerUserId, aiId, date: todayStart } },
+      select: { questionCount: true },
+    });
+    return row?.questionCount ?? 0;
   }
 
   async findConversationHistory(conversationId: string, limit: number) {

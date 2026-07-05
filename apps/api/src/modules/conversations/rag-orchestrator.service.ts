@@ -88,7 +88,7 @@ export class RagOrchestratorService {
         role: MessageRole.ASSISTANT,
         content: ans.slice(0, 500),
       })
-      .catch(() => {});
+      .catch((err) => this.logger.warn(`webhook emit failed: ${err}`));
 
     if (c.ai.memoryEnabled && c.endUserId && c.messageCount + 2 >= 4) {
       this.memoryService

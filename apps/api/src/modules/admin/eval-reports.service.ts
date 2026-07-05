@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { spawn } from 'node:child_process';
-import { InternalServerErrorException, BadRequestException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 
 export interface EvalMetrics {
   faithfulness: number | null;
@@ -49,6 +49,7 @@ export interface EvalReportSummary {
   createdAt: string;
 }
 
+@Injectable()
 export class EvalReportsService {
   private get isProduction(): boolean {
     return process.env.NODE_ENV === 'production';

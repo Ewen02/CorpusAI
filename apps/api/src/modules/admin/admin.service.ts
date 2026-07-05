@@ -25,16 +25,17 @@ export class AdminService {
     const [userCount, aiCount, documentCount, conversationCount, messageCount] =
       await this.repo.getCounts();
 
-    const usersByPlan = await this.repo.getUsersByPlan();
-    const documentsByStatus = await this.repo.getDocumentsByStatus();
-
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const recentSignups = await this.repo.countRecentSignups(sevenDaysAgo);
 
-    const topAIs = await this.repo.getTopAIs(5);
-
-    const failedDocs = documentCount > 0 ? await this.repo.countFailedDocs() : 0;
+    // These reads are independent — run them concurrently.
+    const [usersByPlan, documentsByStatus, recentSignups, topAIs, failedDocs] = await Promise.all([
+      this.repo.getUsersByPlan(),
+      this.repo.getDocumentsByStatus(),
+      this.repo.countRecentSignups(sevenDaysAgo),
+      this.repo.getTopAIs(5),
+      documentCount > 0 ? this.repo.countFailedDocs() : Promise.resolve(0),
+    ]);
 
     const result = {
       totals: {

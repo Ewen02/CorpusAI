@@ -24,6 +24,7 @@ import { SkipThrottle } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
 import { AIsService } from './ais.service';
 import { MAIL_SERVICE, type IMailService } from '../../infrastructure/mail';
+import { PaginationDto } from '../../shared';
 import { AuthGuard, CurrentUser, type CurrentUserData } from '../auth';
 import { CreateAIDto } from './dto/create-ai.dto';
 import { UpdateAIDto } from './dto/update-ai.dto';
@@ -50,8 +51,8 @@ export class AIsController {
   @ApiOperation({ summary: 'List all AIs for current user' })
   @ApiResponse({ status: 200, description: 'List of AIs returned' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async findAll(@CurrentUser() user: CurrentUserData) {
-    return this.aisService.findAll(user.id);
+  async findAll(@CurrentUser() user: CurrentUserData, @Query() pagination: PaginationDto) {
+    return this.aisService.findAll(user.id, pagination);
   }
 
   @Get(':id')

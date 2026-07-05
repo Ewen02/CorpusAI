@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { AIStatus, ConversationSource } from '@corpusai/database';
 import { canAskQuestion, type SubscriptionPlanType } from '@corpusai/subscription';
 import { WebhooksService } from '../webhooks';
@@ -20,6 +20,8 @@ import { RagOrchestratorService, type StreamEvent } from './rag-orchestrator.ser
  */
 @Injectable()
 export class ConversationsService {
+  private readonly logger = new Logger(ConversationsService.name);
+
   constructor(
     private readonly webhooksService: WebhooksService,
     private readonly repo: ConversationsRepository,
@@ -32,13 +34,19 @@ export class ConversationsService {
   // Rate limiting
   // ============================================================================
 
-  private async checkDailyRateLimit(aiId: string, plan: SubscriptionPlanType): Promise<void> {
+  private async checkDailyRateLimit(
+    ownerUserId: string,
+    aiId: string,
+    plan: SubscriptionPlanType
+  ): Promise<void> {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    const [{ count }] = await this.repo.countTodayQuestions(aiId, todayStart);
+    // Point read of the denormalized DailyStats.questionCount (written in the
+    // same flow via incrementDailyStats) instead of a COUNT(*) JOIN per message.
+    const count = await this.repo.getTodayQuestionCount(ownerUserId, aiId, todayStart);
 
-    if (!canAskQuestion(plan, Number(count))) {
+    if (!canAskQuestion(plan, count)) {
       throw new ForbiddenException('Daily question limit reached for this AI');
     }
   }
@@ -138,7 +146,7 @@ export class ConversationsService {
         aiId: ai.id,
         source,
       })
-      .catch(() => {});
+      .catch((err) => this.logger.warn(`webhook emit failed: ${err}`));
 
     return conversation;
   }
@@ -165,7 +173,11 @@ export class ConversationsService {
       throw new NotFoundException('Conversation not found');
     }
 
-    await this.checkDailyRateLimit(conversation.aiId, conversation.ai.user.subscriptionPlan);
+    await this.checkDailyRateLimit(
+      conversation.ai.userId,
+      conversation.aiId,
+      conversation.ai.user.subscriptionPlan
+    );
 
     return this.ragOrchestrator.runSync(conversation, content);
   }
@@ -186,7 +198,11 @@ export class ConversationsService {
     }
 
     try {
-      await this.checkDailyRateLimit(conversation.aiId, conversation.ai.user.subscriptionPlan);
+      await this.checkDailyRateLimit(
+        conversation.ai.userId,
+        conversation.aiId,
+        conversation.ai.user.subscriptionPlan
+      );
     } catch {
       yield { type: 'error', data: { message: 'Daily question limit reached for this AI' } };
       return;

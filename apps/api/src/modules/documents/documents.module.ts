@@ -79,7 +79,7 @@ export class DocumentsModule implements OnModuleInit {
         filename: event.filename,
         errorMessage: event.errorMessage,
       })
-      .catch(() => {});
+      .catch((err) => this.logger.warn(`webhook emit failed: ${err}`));
   }
 
   private async handleDocumentIndexed(event: DocumentProgressEvent): Promise<void> {
@@ -110,6 +110,6 @@ export class DocumentsModule implements OnModuleInit {
         aiId: document.ai.id,
         filename: document.filename,
       })
-      .catch(() => {});
+      .catch((err) => this.logger.warn(`webhook emit failed: ${err}`));
   }
 }

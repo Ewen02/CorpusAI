@@ -19,42 +19,39 @@ export class SLARepository {
    * in-database (millions of rows ok).
    */
   async getLatencyAggregate(since: Date): Promise<LatencyAggregate> {
+    // Single scan of "Message": `total` + percentiles are restricted to rows
+    // with a non-null latency (matching the original percentile query), while
+    // the error count uses a FILTER over LOW-confidence rows (independent of
+    // latencyMs, matching the original error query). Semantics are identical
+    // to the previous two-query version, in one round trip.
     const rows = await this.db.client.$queryRaw<
       Array<{
         total: bigint;
         p50: number | null;
         p95: number | null;
         p99: number | null;
+        errorCount: bigint;
       }>
     >`
       SELECT
-        COUNT(*)::bigint AS total,
+        COUNT(*) FILTER (WHERE "latencyMs" IS NOT NULL)::bigint AS total,
         PERCENTILE_CONT(0.5)  WITHIN GROUP (ORDER BY "latencyMs") AS p50,
         PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY "latencyMs") AS p95,
-        PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY "latencyMs") AS p99
+        PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY "latencyMs") AS p99,
+        COUNT(*) FILTER (WHERE "confidence" = 'LOW')::bigint AS "errorCount"
       FROM "Message"
       WHERE "role" = 'ASSISTANT'
-        AND "latencyMs" IS NOT NULL
-        AND "createdAt" >= ${since};
-    `;
-
-    const errorRows = await this.db.client.$queryRaw<Array<{ count: bigint }>>`
-      SELECT COUNT(*)::bigint AS count
-      FROM "Message"
-      WHERE "role" = 'ASSISTANT'
-        AND "confidence" = 'LOW'
         AND "createdAt" >= ${since};
     `;
 
     const row = rows[0];
-    const errorRow = errorRows[0];
 
     return {
       totalMessages: row ? Number(row.total) : 0,
       p50: row?.p50 ?? 0,
       p95: row?.p95 ?? 0,
       p99: row?.p99 ?? 0,
-      errorCount: errorRow ? Number(errorRow.count) : 0,
+      errorCount: row ? Number(row.errorCount) : 0,
     };
   }
 }

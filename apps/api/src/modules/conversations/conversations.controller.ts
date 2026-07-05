@@ -11,6 +11,8 @@ import {
   UseGuards,
   Headers,
   Res,
+  Logger,
+  BadRequestException,
 } from '@nestjs/common';
 import { ConversationSource } from '@corpusai/database';
 import {
@@ -27,10 +29,13 @@ import { ConversationsService } from './conversations.service';
 import { AuthGuard, CurrentUser, type CurrentUserData } from '../auth';
 import { SendMessageDto } from './dto/send-message.dto';
 import { UpdateFeedbackDto } from './dto/update-feedback.dto';
+import { ListConversationsQueryDto } from './dto/list-conversations-query.dto';
 
 @ApiTags('conversations')
 @Controller()
 export class ConversationsController {
+  private readonly logger = new Logger(ConversationsController.name);
+
   constructor(private readonly conversationsService: ConversationsService) {}
 
   // ============================================
@@ -48,10 +53,9 @@ export class ConversationsController {
   async findAllByAI(
     @CurrentUser() user: CurrentUserData,
     @Param('aiId') aiId: string,
-    @Query('source') source?: string
+    @Query() query: ListConversationsQueryDto
   ) {
-    const conversationSource = source ? (source as ConversationSource) : undefined;
-    return this.conversationsService.findAllByAI(user.id, aiId, conversationSource);
+    return this.conversationsService.findAllByAI(user.id, aiId, query.source);
   }
 
   @Delete('conversations/:id')
@@ -102,6 +106,14 @@ export class ConversationsController {
     @Headers('x-access-code') accessCode?: string,
     @Headers('x-conversation-source') source?: string
   ) {
+    // Validate the header value against the enum so an invalid source returns
+    // 400 rather than leaking through as a bad cast (500) downstream.
+    const validSources = Object.values(ConversationSource) as string[];
+    if (source && !validSources.includes(source)) {
+      throw new BadRequestException(
+        `Invalid x-conversation-source. Allowed: ${validSources.join(', ')}`
+      );
+    }
     const conversationSource = (source as ConversationSource) ?? ConversationSource.DASHBOARD;
     const euSession = (req as Request & { cookies?: Record<string, string> }).cookies?.[
       'eu_session'
@@ -185,6 +197,7 @@ export class ConversationsController {
         res.write(`data: ${JSON.stringify(event)}\n\n`);
       }
     } catch (error) {
+      this.logger.error(`SSE stream failed for conversation ${id}: ${error}`);
       if (!clientDisconnected) {
         res.write(
           `data: ${JSON.stringify({ type: 'error', data: { message: 'Internal server error' } })}\n\n`
