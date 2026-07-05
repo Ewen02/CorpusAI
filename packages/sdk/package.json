@@ -20,6 +20,7 @@
   },
   "homepage": "https://corpusai.io",
   "bugs": "https://github.com/ewenlq/corpusai/issues",
+  "sideEffects": false,
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",

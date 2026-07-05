@@ -15,6 +15,7 @@ export {
   AICategory,
   AccessType,
   DocumentStatus,
+  ProcessingStep,
   MessageRole,
   ConfidenceLevel,
   AccessStatus,
@@ -37,33 +38,14 @@ export type {
 
 // API types
 export type {
-  // AI
-  CreateAIRequest,
-  UpdateAIRequest,
-  AIResponse,
-  AIListResponse,
-  // Document
-  CreateTextDocumentRequest,
-  DocumentResponse,
-  DocumentListResponse,
   // Conversation
-  StartConversationRequest,
   StartConversationResponse,
-  ConversationResponse,
-  ConversationListResponse,
   // Message
-  SendMessageRequest,
   SendMessageResponse,
-  MessageListResponse,
   // Streaming
   StreamTokenEvent,
   StreamSourcesEvent,
   StreamDoneEvent,
   StreamErrorEvent,
   StreamEvent,
-  // Access control
-  MagicLinkRequest,
-  AccessTokenResponse,
-  InviteMemberRequest,
-  SetAccessCodeRequest,
 } from './api';

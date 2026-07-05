@@ -1,3 +1,5 @@
+import type { DocumentStatus, ProcessingStep } from '@corpusai/types';
+
 export interface DocumentProcessingJobData {
   documentId: string;
   aiId: string;
@@ -28,8 +30,8 @@ export interface DocumentFinalFailureEvent {
 
 export interface DocumentProgressEvent {
   documentId: string;
-  status: 'PENDING' | 'PROCESSING' | 'INDEXED' | 'FAILED';
+  status: DocumentStatus;
   progress: number;
-  step: 'PARSING' | 'CHUNKING' | 'EMBEDDING' | 'STORING' | null;
+  step: ProcessingStep | null;
   errorMessage?: string;
 }

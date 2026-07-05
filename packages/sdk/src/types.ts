@@ -1,8 +1,20 @@
 export interface CorpusAIOptions {
   /** Base URL for the API. Defaults to 'https://api.corpusai.io' */
   baseUrl?: string;
-  /** Request timeout in milliseconds. Defaults to 30000 */
+  /**
+   * Request timeout in milliseconds. Defaults to 30000.
+   *
+   * For `queryStream` this covers connection / first-byte only — it is cleared
+   * once response headers arrive so a long answer is never aborted mid-token.
+   */
   timeout?: number;
+  /**
+   * Idle timeout for streaming, in milliseconds. Applies to `queryStream`
+   * only: it re-arms after every received chunk and aborts the stream if no
+   * data arrives within the window (a stalled connection). Defaults to
+   * `timeout`. Set to `0` to disable idle timeouts entirely.
+   */
+  idleTimeout?: number;
   /** Optional custom fetch implementation (e.g. node-fetch, undici). */
   fetch?: typeof fetch;
 }

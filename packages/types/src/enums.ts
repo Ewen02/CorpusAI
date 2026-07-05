@@ -72,6 +72,15 @@ export const DocumentStatus = {
 
 export type DocumentStatus = (typeof DocumentStatus)[keyof typeof DocumentStatus];
 
+export const ProcessingStep = {
+  PARSING: 'PARSING',
+  CHUNKING: 'CHUNKING',
+  EMBEDDING: 'EMBEDDING',
+  STORING: 'STORING',
+} as const;
+
+export type ProcessingStep = (typeof ProcessingStep)[keyof typeof ProcessingStep];
+
 // ============================================
 // MESSAGE
 // ============================================

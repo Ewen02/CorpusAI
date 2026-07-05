@@ -7,6 +7,7 @@ import type {
   AIStatus,
   AICategory,
   AccessType,
+  AccessStatus,
   DocumentStatus,
   MessageRole,
   ConfidenceLevel,
@@ -174,7 +175,7 @@ export interface AIAccessGrant {
   id: string;
   aiId: string;
   endUserId: string;
-  status: 'ACTIVE' | 'REVOKED' | 'EXPIRED';
+  status: AccessStatus;
   expiresAt?: string | null;
   createdAt: string;
   endUser?: EndUser;

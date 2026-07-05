@@ -16,6 +16,7 @@ export class CorpusAI {
   private readonly apiKey: string;
   private readonly baseUrl: string;
   private readonly timeout: number;
+  private readonly idleTimeout: number;
   private readonly fetchImpl: typeof fetch;
 
   constructor(apiKey: string, options: CorpusAIOptions = {}) {
@@ -26,6 +27,7 @@ export class CorpusAI {
     this.apiKey = apiKey;
     this.baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, '');
     this.timeout = options.timeout ?? DEFAULT_TIMEOUT;
+    this.idleTimeout = options.idleTimeout ?? this.timeout;
     this.fetchImpl = options.fetch ?? globalThis.fetch;
   }
 
@@ -61,7 +63,29 @@ export class CorpusAI {
   async *queryStream(slug: string, question: string): AsyncGenerator<QueryStreamEvent> {
     const url = `${this.baseUrl}/v1/query/stream`;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+
+    // The connection timeout covers only connection / first-byte; it is
+    // cleared once response headers arrive. After that an optional idle
+    // timeout (re-armed per chunk) guards against a stalled stream without
+    // ever aborting a healthy, long-running answer.
+    let timeoutId: ReturnType<typeof setTimeout> | undefined = setTimeout(
+      () => controller.abort(),
+      this.timeout
+    );
+    const clearActiveTimeout = (): void => {
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+        timeoutId = undefined;
+      }
+    };
+    const armIdleTimeout = (): void => {
+      clearActiveTimeout();
+      if (this.idleTimeout > 0) {
+        timeoutId = setTimeout(() => controller.abort(), this.idleTimeout);
+      }
+    };
+
+    let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
 
     try {
       const response = await this.fetchImpl(url, {
@@ -75,6 +99,9 @@ export class CorpusAI {
         body: JSON.stringify({ slug, question }),
       });
 
+      // Headers arrived: the connection succeeded. Stop the connection timeout.
+      clearActiveTimeout();
+
       if (!response.ok) {
         throw await this.parseErrorResponse(response);
       }
@@ -86,13 +113,18 @@ export class CorpusAI {
         });
       }
 
-      const reader = response.body.getReader();
+      reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+
+      // Arm the idle timeout for the first chunk.
+      armIdleTimeout();
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+        // Data flowed — reset the idle window for the next chunk.
+        armIdleTimeout();
         buffer += decoder.decode(value, { stream: true });
 
         // Parse SSE: each event is `data: <json>\n\n`
@@ -104,16 +136,41 @@ export class CorpusAI {
             if (!line.startsWith('data: ')) continue;
             const payload = line.slice(6).trim();
             if (!payload) continue;
+            let event: QueryStreamEvent;
             try {
-              yield JSON.parse(payload) as QueryStreamEvent;
+              event = JSON.parse(payload) as QueryStreamEvent;
             } catch {
               // Skip malformed event lines silently — best-effort streaming.
+              continue;
             }
+            if (event.type === 'error') {
+              throw new CorpusAIError(500, {
+                statusCode: 500,
+                message: event.error ?? 'Streaming error',
+                error: 'StreamError',
+              });
+            }
+            yield event;
           }
         }
       }
+    } catch (error) {
+      if (error instanceof CorpusAIError) throw error;
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new CorpusAIError(408, {
+          statusCode: 408,
+          message: `Request timed out after ${this.timeout}ms`,
+          error: 'Timeout',
+        });
+      }
+      throw error;
     } finally {
-      clearTimeout(timeoutId);
+      clearActiveTimeout();
+      // Cancel the reader so an early consumer `break` doesn't leak the
+      // underlying connection. Ignore errors from an already-closed stream.
+      if (reader) {
+        await reader.cancel().catch(() => undefined);
+      }
     }
   }
 
@@ -130,6 +187,27 @@ export class CorpusAI {
     const take = Math.min(MAX_TAKE, Math.max(1, options.take ?? 50));
     const query = `?skip=${skip}&take=${take}`;
     return this.request<AIInfo[]>(`/v1/ais${query}`, { method: 'GET' });
+  }
+
+  /**
+   * Async-iterate over every accessible AI, transparently paginating in
+   * batches of {@link MAX_TAKE} until a short page signals the end.
+   *
+   * @example
+   * ```typescript
+   * for await (const ai of client.listAIsAll()) {
+   *   console.log(ai.slug);
+   * }
+   * ```
+   */
+  async *listAIsAll(): AsyncGenerator<AIInfo> {
+    for (let skip = 0; ; skip += MAX_TAKE) {
+      const page = await this.listAIs({ skip, take: MAX_TAKE });
+      for (const ai of page) {
+        yield ai;
+      }
+      if (page.length < MAX_TAKE) break;
+    }
   }
 
   private async request<T>(path: string, init: RequestInit): Promise<T> {

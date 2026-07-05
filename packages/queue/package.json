@@ -2,6 +2,7 @@
   "name": "@corpusai/queue",
   "version": "0.0.1",
   "private": true,
+  "sideEffects": false,
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -15,9 +16,12 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@corpusai/types": "workspace:*",
     "bullmq": "^5.34.0",
     "ioredis": "^5.4.1"
   },

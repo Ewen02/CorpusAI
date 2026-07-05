@@ -2,52 +2,11 @@
  * API request/response types shared between backend and frontend.
  */
 
-import type { AI, Conversation, Document, Message, MessageSource } from './entities';
-
-// ============================================
-// AI API
-// ============================================
-
-export interface CreateAIRequest {
-  name: string;
-  slug?: string;
-  description?: string;
-}
-
-export interface UpdateAIRequest {
-  name?: string;
-  description?: string;
-  systemPrompt?: string;
-  welcomeMessage?: string;
-  primaryColor?: string;
-  maxTokens?: number;
-  temperature?: number;
-}
-
-export type AIResponse = AI;
-
-export type AIListResponse = AI[];
-
-// ============================================
-// DOCUMENT API
-// ============================================
-
-export interface CreateTextDocumentRequest {
-  filename: string;
-  content: string;
-}
-
-export type DocumentResponse = Document;
-
-export type DocumentListResponse = Document[];
+import type { Message, MessageSource } from './entities';
 
 // ============================================
 // CONVERSATION API
 // ============================================
-
-export interface StartConversationRequest {
-  sessionId?: string;
-}
 
 export interface StartConversationResponse {
   id: string;
@@ -55,21 +14,9 @@ export interface StartConversationResponse {
   createdAt: string;
 }
 
-export type ConversationResponse = Conversation & {
-  messages?: Message[];
-};
-
-export type ConversationListResponse = (Conversation & {
-  lastMessage?: string;
-})[];
-
 // ============================================
 // MESSAGE API
 // ============================================
-
-export interface SendMessageRequest {
-  content: string;
-}
 
 export interface SendMessageResponse {
   userMessage: Message;
@@ -77,8 +24,6 @@ export interface SendMessageResponse {
     sources: MessageSource[];
   };
 }
-
-export type MessageListResponse = Message[];
 
 // ============================================
 // STREAMING API
@@ -125,26 +70,3 @@ export type StreamEvent =
   | StreamSourcesEvent
   | StreamDoneEvent
   | StreamErrorEvent;
-
-// ============================================
-// ACCESS CONTROL API
-// ============================================
-
-export interface MagicLinkRequest {
-  email: string;
-  aiSlug?: string;
-}
-
-export interface AccessTokenResponse {
-  token: string;
-  url: string;
-}
-
-export interface InviteMemberRequest {
-  email: string;
-  name?: string;
-}
-
-export interface SetAccessCodeRequest {
-  code: string;
-}

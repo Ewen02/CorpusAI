@@ -1,10 +1,11 @@
-export { createDocumentQueue, createDocumentDLQ, parseRedisUrl } from './client';
+export { createDocumentQueue, parseRedisUrl } from './client';
 export {
   QUEUE_NAMES,
   JOB_RETRY_CONFIG,
   JOB_RETENTION,
   REDIS_CHANNELS,
   buildDocumentJobId,
+  buildRetryJobId,
 } from './constants';
 export type {
   DocumentProcessingJobData,
