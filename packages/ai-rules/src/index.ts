@@ -200,10 +200,15 @@ export interface ChunkContext {
   documentSource: string;
   text: string;
   score: number;
+  /** Page d'origine du chunk (PDF) — incluse dans l'en-tête de source si présente */
+  pageNumber?: number;
 }
 
 /**
  * Construit la section contexte à partir des chunks récupérés.
+ * L'en-tête de chaque chunk inclut la page quand elle est connue
+ * (« [Source: doc.pdf, page 12] ») — le LLM reprend ce format dans ses
+ * citations inline, ce qui rend les réponses vérifiables page par page.
  */
 export function buildContextSection(chunks: ChunkContext[], maxChars = 16_000): string {
   if (chunks.length === 0) {
@@ -214,7 +219,11 @@ export function buildContextSection(chunks: ChunkContext[], maxChars = 16_000): 
   let totalLength = 0;
 
   for (const chunk of chunks) {
-    const part = `[Source: ${chunk.documentSource}]\n${chunk.text}`;
+    const sourceLabel =
+      typeof chunk.pageNumber === 'number'
+        ? `${chunk.documentSource}, page ${chunk.pageNumber}`
+        : chunk.documentSource;
+    const part = `[Source: ${sourceLabel}]\n${chunk.text}`;
     if (totalLength + part.length > maxChars && parts.length > 0) break;
     parts.push(part);
     totalLength += part.length;
