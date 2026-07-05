@@ -1,18 +1,41 @@
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
+import { APIError } from 'openai';
 import { RAGPipelineImpl } from './pipeline';
 import { CohereReranker } from '../reranking/cohere-reranker';
 import type { EmbeddingService } from '../embeddings/types';
 import type { SparseVectorGenerator } from '../embeddings/sparse';
 import type { VectorStoreService, SearchResult } from '../vector-store/types';
 import type { ChunkingService, Chunk, ChunkMetadata } from '../chunking/types';
-import type { ScoredResult } from '../reranking/types';
 import type { Document, LLMConfig, ProgressCallback, ProcessingStage } from './types';
 
 // Shared mock for OpenAI create function
 const mockOpenAICreate = vi.fn();
 
-// Mock OpenAI module
+// Mock OpenAI module — inclut les classes d'erreur utilisées par le pipeline
+// (isRetryableLLMError / isNonRetryableError font des instanceof dessus).
 vi.mock('openai', () => {
+  class MockAPIError extends Error {
+    status?: number;
+    constructor(status?: number, message = 'api error') {
+      super(message);
+      this.status = status;
+    }
+  }
+  class MockAPIConnectionError extends MockAPIError {
+    constructor(message = 'Connection error.') {
+      super(undefined, message);
+    }
+  }
+  class MockRateLimitError extends MockAPIError {
+    constructor(message = 'Rate limit exceeded.') {
+      super(429, message);
+    }
+  }
+  class MockInternalServerError extends MockAPIError {
+    constructor(message = 'Internal server error.') {
+      super(500, message);
+    }
+  }
   return {
     default: vi.fn().mockImplementation(() => ({
       chat: {
@@ -21,6 +44,10 @@ vi.mock('openai', () => {
         },
       },
     })),
+    APIError: MockAPIError,
+    APIConnectionError: MockAPIConnectionError,
+    RateLimitError: MockRateLimitError,
+    InternalServerError: MockInternalServerError,
   };
 });
 
@@ -451,7 +478,7 @@ describe('RAGPipelineImpl', () => {
         'test-ai-id',
         expect.objectContaining({
           limit: 5,
-          scoreThreshold: 0.6,
+          scoreThreshold: 0.4,
           withPayload: true,
         })
       );
@@ -1168,6 +1195,371 @@ describe('RAGPipelineImpl', () => {
 
       expect(response.metrics?.hydeMs).toBeDefined();
       expect(response.metrics?.hydeMs).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should NOT activate HyDE for short English question with keyword', async () => {
+      // "What is TypeScript" = 3 mots MAIS keyword EN "what" → pas de HyDE
+      await pipeline.query('What is TypeScript');
+
+      expect(mockEmbeddingService.embed).toHaveBeenCalledTimes(1);
+      expect(mockVectorStore.hybridSearch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should NOT activate HyDE for short French question with « où »', async () => {
+      // Régression : \b ASCII ne matche jamais après « ù » — l'ancienne regex
+      // laissait cette question (5 mots) déclencher HyDE à tort.
+      await pipeline.query('où se trouve le siège');
+
+      expect(mockEmbeddingService.embed).toHaveBeenCalledTimes(1);
+      expect(mockVectorStore.hybridSearch).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ==========================================================================
+  // PARENT DEDUPLICATION TESTS
+  // ==========================================================================
+  describe('parent context deduplication', () => {
+    it('should deduplicate results sharing the same parent content', async () => {
+      const sharedParent = 'Parent block content shared by two children';
+      const results: SearchResult[] = [
+        {
+          id: 'c1',
+          score: 0.9,
+          payload: {
+            text: 'child 1',
+            parent_content: sharedParent,
+            source: 'doc.pdf',
+            documentId: 'd1',
+          },
+        },
+        {
+          id: 'c2',
+          score: 0.8,
+          payload: {
+            text: 'child 2',
+            parent_content: sharedParent,
+            source: 'doc.pdf',
+            documentId: 'd1',
+          },
+        },
+        {
+          id: 'c3',
+          score: 0.7,
+          payload: {
+            text: 'child 3',
+            parent_content: 'Another distinct parent block',
+            source: 'doc.pdf',
+            documentId: 'd1',
+          },
+        },
+        {
+          id: 'c4',
+          score: 0.6,
+          payload: {
+            text: 'child 4',
+            parent_content: 'Third distinct parent block',
+            source: 'doc.pdf',
+            documentId: 'd1',
+          },
+        },
+      ];
+      (mockVectorStore.hybridSearch as Mock).mockResolvedValue(results);
+
+      const response = await pipeline.query('Test', { useHyde: false, topN: 3 });
+
+      // c2 (même parent que c1) est écarté, c4 remonte pour compléter le topN
+      expect(response.sources.map((s) => s.chunkId)).toEqual(['c1', 'c3', 'c4']);
+      // Le parent partagé n'apparaît qu'UNE fois dans le contexte LLM
+      const occurrences = response.context.split(sharedParent).length - 1;
+      expect(occurrences).toBe(1);
+    });
+
+    it('should keep all results when parents are distinct', async () => {
+      const results: SearchResult[] = ['A', 'B', 'C'].map((p, i) => ({
+        id: `c${i}`,
+        score: 0.9 - i * 0.1,
+        payload: {
+          text: `child ${i}`,
+          parent_content: `Parent ${p}`,
+          source: 'doc.pdf',
+          documentId: 'd1',
+        },
+      }));
+      (mockVectorStore.hybridSearch as Mock).mockResolvedValue(results);
+
+      const response = await pipeline.query('Test', { useHyde: false, topN: 3 });
+
+      expect(response.sources).toHaveLength(3);
+    });
+  });
+
+  // ==========================================================================
+  // FOLLOW-UP CONDENSATION TESTS
+  // ==========================================================================
+  // ==========================================================================
+  // MULTI-QUERY TESTS
+  // ==========================================================================
+  describe('multi-query (composite questions)', () => {
+    it('decomposes a composite question and merges parallel searches', async () => {
+      mockOpenAICreate
+        .mockResolvedValueOnce({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  queries: [
+                    'Quelle est la procédure de la rupture conventionnelle ?',
+                    'Quelle est la procédure du licenciement ?',
+                  ],
+                }),
+              },
+            },
+          ],
+        }) // décomposition
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: 'This is a mocked LLM response.' } }],
+        }); // réponse finale
+
+      await pipeline.query('Compare la rupture conventionnelle et le licenciement');
+
+      // 3 recherches : question originale + 2 sous-questions
+      expect(mockEmbeddingService.embed).toHaveBeenCalledTimes(3);
+      expect(mockVectorStore.hybridSearch).toHaveBeenCalledTimes(3);
+      // 2 appels LLM : décomposition + génération
+      expect(mockOpenAICreate).toHaveBeenCalledTimes(2);
+    });
+
+    it('deduplicates merged results keeping the best score', async () => {
+      mockOpenAICreate
+        .mockResolvedValueOnce({
+          choices: [
+            { message: { content: JSON.stringify({ queries: ['sous-q 1', 'sous-q 2'] }) } },
+          ],
+        })
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: 'This is a mocked LLM response.' } }],
+        });
+
+      // Textes distincts pour que la dédup par contexte parent ne les fusionne pas
+      const payloadA = { text: 'texte du chunk a', source: 'doc.pdf', documentId: 'd1' };
+      const payloadB = { text: 'texte du chunk b', source: 'doc.pdf', documentId: 'd1' };
+      (mockVectorStore.hybridSearch as Mock)
+        .mockResolvedValueOnce([{ id: 'a', score: 0.5, payload: payloadA }])
+        .mockResolvedValueOnce([{ id: 'a', score: 0.9, payload: payloadA }])
+        .mockResolvedValueOnce([{ id: 'b', score: 0.7, payload: payloadB }]);
+
+      const response = await pipeline.query('Différence entre CDD et CDI ?', { topN: 3 });
+
+      // a gardé au meilleur score (0.9), trié avant b (0.7)
+      expect(response.sources.map((s) => s.chunkId)).toEqual(['a', 'b']);
+      expect(response.sources[0]?.score).toBeCloseTo(0.9);
+    });
+
+    it('falls back to standard search when decomposition returns bad JSON', async () => {
+      mockOpenAICreate
+        .mockResolvedValueOnce({ choices: [{ message: { content: 'pas du JSON' } }] })
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: 'This is a mocked LLM response.' } }],
+        });
+
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const response = await pipeline.query('Compare A et B');
+
+      expect(mockVectorStore.hybridSearch).toHaveBeenCalledTimes(1);
+      expect(response.answer).toBe('This is a mocked LLM response.');
+      consoleSpy.mockRestore();
+    });
+
+    it('falls back to standard search when fewer than 2 sub-queries', async () => {
+      mockOpenAICreate
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: JSON.stringify({ queries: ['une seule'] }) } }],
+        })
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: 'This is a mocked LLM response.' } }],
+        });
+
+      await pipeline.query('Compare A et B');
+
+      expect(mockVectorStore.hybridSearch).toHaveBeenCalledTimes(1);
+    });
+
+    it('does NOT trigger on a simple question', async () => {
+      await pipeline.query('Quel est le montant du SMIC ?');
+
+      // Pas de décomposition : 1 seul appel LLM (génération), 1 recherche
+      expect(mockOpenAICreate).toHaveBeenCalledTimes(1);
+      expect(mockVectorStore.hybridSearch).toHaveBeenCalledTimes(1);
+    });
+
+    it('respects multiQuery: false override on a composite question', async () => {
+      await pipeline.query('Compare la rupture conventionnelle et le licenciement', {
+        multiQuery: false,
+        useHyde: false,
+      });
+
+      expect(mockOpenAICreate).toHaveBeenCalledTimes(1);
+      expect(mockVectorStore.hybridSearch).toHaveBeenCalledTimes(1);
+    });
+
+    it('sets multiQueryMs in metrics when multi-query runs', async () => {
+      mockOpenAICreate
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: JSON.stringify({ queries: ['q1', 'q2'] }) } }],
+        })
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: 'answer' } }],
+        });
+
+      const response = await pipeline.query('versus : A ou B ?');
+
+      expect(response.metrics?.multiQueryMs).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe('follow-up condensation', () => {
+    const history = [
+      { role: 'user' as const, content: 'Parle-moi du SMIC 2025' },
+      { role: 'assistant' as const, content: 'Le SMIC horaire brut est de 11,88 €.' },
+    ];
+
+    it('should condense follow-up for retrieval but send the ORIGINAL question to the LLM', async () => {
+      mockOpenAICreate
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: 'Quel est le montant du SMIC 2025 ?' } }],
+        }) // condensation
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: 'This is a mocked LLM response.' } }],
+        }); // réponse finale
+
+      await pipeline.query("dis-m'en plus", { useHyde: false, conversationHistory: history });
+
+      // Le retrieval utilise la question CONDENSÉE
+      expect(mockEmbeddingService.embed).toHaveBeenCalledWith('Quel est le montant du SMIC 2025 ?');
+      // 2 appels LLM : condensation + génération
+      expect(mockOpenAICreate).toHaveBeenCalledTimes(2);
+      // Le message user final envoyé au LLM reste la question ORIGINALE
+      const finalCall = mockOpenAICreate.mock.calls[1]![0];
+      const lastMessage = finalCall.messages[finalCall.messages.length - 1];
+      expect(lastMessage).toEqual({ role: 'user', content: "dis-m'en plus" });
+    });
+
+    it('should skip condensation when history is empty', async () => {
+      await pipeline.query("dis-m'en plus", { useHyde: false });
+
+      expect(mockOpenAICreate).toHaveBeenCalledTimes(1); // uniquement la génération
+      expect(mockEmbeddingService.embed).toHaveBeenCalledWith("dis-m'en plus");
+    });
+
+    it('should skip condensation when condenseFollowUp is false', async () => {
+      await pipeline.query("dis-m'en plus", {
+        useHyde: false,
+        conversationHistory: history,
+        condenseFollowUp: false,
+      });
+
+      expect(mockOpenAICreate).toHaveBeenCalledTimes(1);
+      expect(mockEmbeddingService.embed).toHaveBeenCalledWith("dis-m'en plus");
+    });
+
+    it('should fall back to the original question when condensation fails', async () => {
+      mockOpenAICreate.mockRejectedValueOnce(new Error('LLM down')).mockResolvedValueOnce({
+        choices: [{ message: { content: 'This is a mocked LLM response.' } }],
+      });
+
+      const response = await pipeline.query("dis-m'en plus", {
+        useHyde: false,
+        conversationHistory: history,
+      });
+
+      // Fallback : la question brute est embedée, la query aboutit quand même
+      expect(mockEmbeddingService.embed).toHaveBeenCalledWith("dis-m'en plus");
+      expect(response.answer).toBe('This is a mocked LLM response.');
+    });
+
+    it('should record condenseMs in metrics', async () => {
+      mockOpenAICreate
+        .mockResolvedValueOnce({ choices: [{ message: { content: 'standalone question' } }] })
+        .mockResolvedValueOnce({ choices: [{ message: { content: 'answer' } }] });
+
+      const response = await pipeline.query('more?', {
+        useHyde: false,
+        conversationHistory: history,
+      });
+
+      expect(response.metrics?.condenseMs).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  // ==========================================================================
+  // PER-DOCUMENT ENRICHMENT TESTS
+  // ==========================================================================
+  describe('per-document enrichment', () => {
+    it('should enrich each document against its OWN content', async () => {
+      mockOpenAICreate.mockResolvedValue({
+        choices: [{ message: { content: JSON.stringify({ '0': 'ctx', '1': 'ctx', '2': 'ctx' }) } }],
+      });
+
+      const docs: Document[] = [
+        { id: 'doc1', content: 'UNIQUE_CONTENT_ONE', source: 'one.pdf' },
+        { id: 'doc2', content: 'UNIQUE_CONTENT_TWO', source: 'two.pdf' },
+      ];
+
+      await pipeline.index(docs, { enableContextEnrichment: true });
+
+      // Un batch d'enrichissement par document (3 chunks < ENRICHMENT_BATCH_SIZE)
+      expect(mockOpenAICreate).toHaveBeenCalledTimes(2);
+      const prompts = mockOpenAICreate.mock.calls.map(
+        (c) => (c[0] as { messages: Array<{ content: string }> }).messages[0]!.content
+      );
+      // Chaque prompt contient le contenu de SON document, pas celui de l'autre
+      expect(prompts[0]).toContain('UNIQUE_CONTENT_ONE');
+      expect(prompts[0]).not.toContain('UNIQUE_CONTENT_TWO');
+      expect(prompts[1]).toContain('UNIQUE_CONTENT_TWO');
+      expect(prompts[1]).not.toContain('UNIQUE_CONTENT_ONE');
+    });
+  });
+
+  // ==========================================================================
+  // TYPED EMBEDDING RETRY TESTS
+  // ==========================================================================
+  describe('embedding retry with typed errors', () => {
+    const ApiErr = APIError as unknown as new (
+      status?: number,
+      message?: string
+    ) => Error & { status?: number };
+
+    const testDocuments: Document[] = [
+      { id: 'doc1', content: 'Document 1 content', source: 'doc1.pdf' },
+    ];
+
+    it('should NOT retry embedBatch on a 4xx APIError (fail fast)', async () => {
+      (mockEmbeddingService.embedBatch as Mock).mockRejectedValue(
+        new ApiErr(401, 'Incorrect API key provided')
+      );
+
+      await expect(pipeline.index(testDocuments)).rejects.toThrow('Incorrect API key provided');
+      expect(mockEmbeddingService.embedBatch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should retry embedBatch on a 429 APIError', async () => {
+      vi.useFakeTimers();
+      try {
+        (mockEmbeddingService.embedBatch as Mock)
+          .mockRejectedValueOnce(new ApiErr(429, 'Rate limit exceeded'))
+          .mockImplementation((texts: string[]) =>
+            Promise.resolve(texts.map((_, i) => createMockEmbedding(i)))
+          );
+
+        const promise = pipeline.index(testDocuments);
+        await vi.advanceTimersByTimeAsync(1500); // backoff 1s
+        const result = await promise;
+
+        expect(result.chunksCreated).toBe(3);
+        expect(mockEmbeddingService.embedBatch).toHaveBeenCalledTimes(2);
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 });

@@ -34,13 +34,10 @@ declare module 'pdf-parse' {
   interface PDFOptions {
     max?: number;
     version?: string;
-    pagerender?: (pageData: unknown) => string;
+    pagerender?: (pageData: unknown) => string | Promise<string>;
   }
 
-  function pdfParse(
-    dataBuffer: Buffer,
-    options?: PDFOptions
-  ): Promise<PDFData>;
+  function pdfParse(dataBuffer: Buffer, options?: PDFOptions): Promise<PDFData>;
 
   export = pdfParse;
 }

@@ -68,49 +68,66 @@ export class QdrantVectorStore implements VectorStoreService {
     const collections = await this.client.getCollections();
     const exists = collections.collections.some((c) => c.name === this.collectionName);
 
-    if (!exists) {
-      await this.client.createCollection(this.collectionName, {
-        vectors: {
-          dense: {
-            size: this.vectorSize,
-            distance: 'Cosine',
-            on_disk: true,
-          },
-        },
-        sparse_vectors: {
-          sparse: {
-            index: { on_disk: false },
-            modifier: 'idf',
-          },
-        },
-        hnsw_config: {
-          m: 0,
-          payload_m: 16,
-          ef_construct: 128,
-        },
-        quantization_config: {
-          scalar: {
-            type: 'int8',
-            quantile: 0.99,
-            always_ram: true,
-          },
-        },
-      });
-
-      // Payload indexes — created immediately after collection for best performance
-      await this.client.createPayloadIndex(this.collectionName, {
-        field_name: 'ai_id',
-        field_schema: {
-          type: 'keyword',
-          is_tenant: true,
-        },
-      });
-
-      await this.client.createPayloadIndex(this.collectionName, {
-        field_name: 'documentId',
-        field_schema: 'keyword',
-      });
+    if (exists) {
+      // Garde-fou dérive de config : une collection existante avec une autre taille
+      // de vecteur dense échouerait à l'upsert avec une erreur Qdrant obscure en
+      // plein job d'indexation. On échoue explicitement au démarrage à la place.
+      const info = await this.client.getCollection(this.collectionName);
+      const vectors = info.config?.params?.vectors as
+        | Record<string, { size?: number } | undefined>
+        | undefined;
+      const denseSize = vectors?.dense?.size;
+      if (typeof denseSize === 'number' && denseSize !== this.vectorSize) {
+        throw new Error(
+          `Qdrant collection "${this.collectionName}" stores ${denseSize}d dense vectors ` +
+            `but this service is configured for ${this.vectorSize}d. ` +
+            `Align QdrantConfig.vectorSize or migrate the collection.`
+        );
+      }
+      return;
     }
+
+    await this.client.createCollection(this.collectionName, {
+      vectors: {
+        dense: {
+          size: this.vectorSize,
+          distance: 'Cosine',
+          on_disk: true,
+        },
+      },
+      sparse_vectors: {
+        sparse: {
+          index: { on_disk: false },
+          modifier: 'idf',
+        },
+      },
+      hnsw_config: {
+        m: 0,
+        payload_m: 16,
+        ef_construct: 128,
+      },
+      quantization_config: {
+        scalar: {
+          type: 'int8',
+          quantile: 0.99,
+          always_ram: true,
+        },
+      },
+    });
+
+    // Payload indexes — created immediately after collection for best performance
+    await this.client.createPayloadIndex(this.collectionName, {
+      field_name: 'ai_id',
+      field_schema: {
+        type: 'keyword',
+        is_tenant: true,
+      },
+    });
+
+    await this.client.createPayloadIndex(this.collectionName, {
+      field_name: 'documentId',
+      field_schema: 'keyword',
+    });
   }
 
   /**

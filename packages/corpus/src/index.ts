@@ -3,7 +3,11 @@
 // =============================================================================
 
 // Embeddings
-export type { EmbeddingService, OpenAIEmbeddingConfig } from './embeddings';
+export type {
+  EmbeddingService,
+  OpenAIEmbeddingConfig,
+  SparseVectorGeneratorOptions,
+} from './embeddings';
 export { OpenAIEmbeddingService, SparseVectorGenerator } from './embeddings';
 
 // Vector Store
@@ -54,7 +58,21 @@ export type {
   Source,
   LLMConfig,
 } from './rag';
-export { RAGPipelineImpl, LLMUnavailableError } from './rag';
+export {
+  RAGPipelineImpl,
+  LLMUnavailableError,
+  RAG_QUERY_DEFAULTS,
+  OpenAILLMClient,
+  LLMTransientError,
+} from './rag';
+export type {
+  LLMClient,
+  LLMChatMessage,
+  LLMCompletionOptions,
+  LLMCompletion,
+  LLMUsage,
+  OpenAILLMClientConfig,
+} from './rag';
 
 // Parsers
 export type {
@@ -89,3 +107,21 @@ export { CachedEmbeddingService } from './cache';
 // Models
 export type { ModelConfig } from './rag/models';
 export { AVAILABLE_MODELS, getModelConfig, resolveModelConfig } from './rag/models';
+
+// Eval (golden set → métriques retrieval/réponse)
+export type {
+  GoldenCase,
+  RetrievedChunk,
+  RetrievalCaseResult,
+  AnswerCaseResult,
+  CaseResult,
+  EvalSummary,
+  EvaluatorOptions,
+} from './eval';
+export {
+  normalizeForMatch,
+  evaluateRetrieval,
+  evaluateAnswer,
+  evaluateCase,
+  aggregateResults,
+} from './eval';

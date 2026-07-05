@@ -1,5 +1,7 @@
 import type { FilterCondition } from '../vector-store/types';
 import type { RerankerConfig } from '../reranking/types';
+import type { PageRange } from '../chunking/page-mapper';
+import type { LLMClient } from './llm-client';
 
 /**
  * Types pour le pipeline RAG.
@@ -17,6 +19,12 @@ export interface Document {
   source: string;
   /** Métadonnées additionnelles (workspaceId, userId, etc.) */
   metadata?: Record<string, unknown>;
+  /**
+   * Offsets des pages dans `content` (fournis par le parser PDF).
+   * Permet d'assigner un pageNumber à chaque chunk pour les citations.
+   * Volontairement hors de `metadata` : ne doit PAS finir dans le payload Qdrant.
+   */
+  pages?: PageRange[];
 }
 
 /**
@@ -103,7 +111,7 @@ export interface QueryOptions {
   topK?: number;
   /** Nombre de résultats à garder après reranking Cohere. Défaut: 3 */
   topN?: number;
-  /** Score minimum de similarité */
+  /** Score minimum de similarité (prefetch dense, échelle cosinus). Défaut: RAG_QUERY_DEFAULTS.scoreThreshold */
   scoreThreshold?: number;
   /** Filtres sur les métadonnées */
   filter?: FilterCondition;
@@ -117,6 +125,20 @@ export interface QueryOptions {
   maxContextChars?: number;
   /** Active HyDE (Hypothetical Document Embeddings). Si absent : heuristique automatique (question < 8 mots sans mot-clé spécifique) */
   useHyde?: boolean;
+  /**
+   * Condense les questions de suivi en question autonome AVANT le retrieval
+   * ("dis-m'en plus" → question complète avec son référent). N'a d'effet que si
+   * `conversationHistory` est non vide. La question originale reste celle envoyée
+   * au LLM pour la génération. Défaut: true
+   */
+  condenseFollowUp?: boolean;
+  /**
+   * Active la recherche multi-requêtes pour les questions composées
+   * ("compare X et Y") : décomposition LLM en sous-questions, recherches en
+   * parallèle, fusion des résultats. Si absent : heuristique automatique
+   * (mots-clés compare/différence/versus). Prioritaire sur HyDE quand actif.
+   */
+  multiQuery?: boolean;
 }
 
 /**
@@ -131,6 +153,8 @@ export interface Source {
   score: number;
   /** Extrait du texte */
   text: string;
+  /** Numéro de page d'origine du chunk (PDF avec carte de pages) */
+  pageNumber?: number;
 }
 
 /**
@@ -155,6 +179,10 @@ export interface QueryMetrics {
   totalTokens?: number;
   /** Temps de génération HyDE (ms). Absent si HyDE non utilisé */
   hydeMs?: number;
+  /** Temps de condensation de la question de suivi (ms). Absent si pas de condensation */
+  condenseMs?: number;
+  /** Temps total de la recherche multi-requêtes (ms). Absent si non utilisée */
+  multiQueryMs?: number;
 }
 
 /**
@@ -197,6 +225,14 @@ export interface LLMConfig {
   systemPrompt?: string;
   /** Active les logs de debug (désactivé par défaut) */
   debug?: boolean;
+  /**
+   * Client LLM injecté (port `LLMClient`). Si présent, remplace le client
+   * OpenAI par défaut pour TOUS les appels de génération du pipeline (réponse,
+   * streaming, HyDE, condensation, multi-query) — utilisé par apps/api pour
+   * brancher Anthropic Messages API. L'enrichissement d'indexation garde son
+   * client OpenAI dédié (configuré séparément).
+   */
+  client?: LLMClient;
 }
 
 /**

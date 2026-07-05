@@ -3,6 +3,19 @@
  */
 
 /**
+ * Position d'une page dans le contenu extrait — permet de retrouver la page
+ * d'origine d'un chunk pour les citations (« doc.pdf, p. 12 »).
+ */
+export interface PageOffset {
+  /** Numéro de page (1-indexé) */
+  pageNumber: number;
+  /** Offset de début (inclus) dans `content` */
+  startOffset: number;
+  /** Offset de fin (exclus) dans `content` */
+  endOffset: number;
+}
+
+/**
  * Document parsé avec son contenu et métadonnées extraites
  */
 export interface ParsedDocument {
@@ -14,6 +27,12 @@ export interface ParsedDocument {
   pageCount?: number;
   /** Nombre de mots */
   wordCount: number;
+  /**
+   * Offsets de chaque page dans `content` (PDF uniquement).
+   * Absent si le format ne connaît pas la notion de page ou si
+   * l'extraction par page a échoué (fallback texte global).
+   */
+  pages?: PageOffset[];
 }
 
 /**
@@ -82,5 +101,4 @@ export const SUPPORTED_MIME_TYPES = {
   CSV: 'text/csv',
 } as const;
 
-export type SupportedMimeType =
-  (typeof SUPPORTED_MIME_TYPES)[keyof typeof SUPPORTED_MIME_TYPES];
+export type SupportedMimeType = (typeof SUPPORTED_MIME_TYPES)[keyof typeof SUPPORTED_MIME_TYPES];

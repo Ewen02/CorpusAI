@@ -8,6 +8,7 @@ export type {
   ParserInput,
   ParsedDocument,
   DocumentMetadata,
+  PageOffset,
   SupportedMimeType,
 } from './types';
 
@@ -52,8 +53,7 @@ export class DocumentParserService {
     if (!parser) {
       const supported = this.getSupportedTypes().join(', ');
       throw new Error(
-        `Unsupported document type: ${input.mimeType}. ` +
-          `Supported types: ${supported}`
+        `Unsupported document type: ${input.mimeType}. ` + `Supported types: ${supported}`
       );
     }
 
