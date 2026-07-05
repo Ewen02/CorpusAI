@@ -60,9 +60,16 @@ export function parseRedisUrl(url: string): RedisOptions {
     // reach Redis should reject in seconds, not leave the HTTP handler pending
     // until the client times out (observed as 300s/HTTP 499 on Railway).
     connectTimeout: 10_000,
-    // Survive transient drops (Railway's TCP proxy resets idle connections with
-    // ECONNRESET): keep reconnecting with capped backoff instead of surfacing an
-    // unhandled error event that can take the process down.
+    // Railway's TCP proxy drops idle connections after a few seconds, which
+    // surfaced as ECONNRESET every ~7s on the worker's blocking BRPOPLPUSH.
+    // A short TCP keepAlive keeps the socket active so the proxy doesn't reap it.
+    keepAlive: 5_000,
+    // Do not let ioredis stop after the initial handshake fails, and drop the
+    // offline command queue so a producer .add() rejects fast (garde-fou 503)
+    // rather than buffering forever while disconnected.
+    enableReadyCheck: true,
+    // Survive transient drops: keep reconnecting with capped backoff instead of
+    // surfacing an unhandled error event that can take the process down.
     retryStrategy: (times: number) => Math.min(times * 200, 5_000),
     reconnectOnError: () => true,
     // IP family selection. Railway's private network (*.railway.internal) is

@@ -1,4 +1,4 @@
-import { Global, Module } from '@nestjs/common';
+import { Global, Logger, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import { parseRedisUrl } from '@corpusai/queue';
@@ -6,6 +6,8 @@ import { RATE_LIMITER } from './rate-limiter.port';
 import { RATE_LIMIT_REDIS, RedisRateLimiterAdapter } from './redis-rate-limiter.adapter';
 import { EVENT_BUS } from './event-bus.port';
 import { EVENT_BUS_SUBSCRIBER, RedisEventBusAdapter } from './redis-event-bus.adapter';
+
+const logger = new Logger('RedisModule');
 
 @Global()
 @Module({
@@ -17,11 +19,15 @@ import { EVENT_BUS_SUBSCRIBER, RedisEventBusAdapter } from './redis-event-bus.ad
       useFactory: (config: ConfigService) => {
         const redisUrl = config.get<string>('REDIS_URL');
         if (!redisUrl) return null;
-        return new Redis({
+        const client = new Redis({
           ...parseRedisUrl(redisUrl),
           maxRetriesPerRequest: 3,
           lazyConnect: true,
         });
+        // Without an error listener, an ioredis connection error is an
+        // "unhandled error event" that can crash the process.
+        client.on('error', (err) => logger.warn(`rate-limit Redis error: ${err.message}`));
+        return client;
       },
     },
     {
@@ -30,11 +36,13 @@ import { EVENT_BUS_SUBSCRIBER, RedisEventBusAdapter } from './redis-event-bus.ad
       useFactory: (config: ConfigService) => {
         const redisUrl = config.get<string>('REDIS_URL');
         if (!redisUrl) return null;
-        return new Redis({
+        const client = new Redis({
           ...parseRedisUrl(redisUrl),
           maxRetriesPerRequest: null,
           lazyConnect: true,
         });
+        client.on('error', (err) => logger.warn(`event-bus Redis error: ${err.message}`));
+        return client;
       },
     },
     {

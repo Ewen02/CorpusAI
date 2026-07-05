@@ -13,6 +13,7 @@ import {
   type AsyncReranker,
 } from '@corpusai/corpus';
 import { parseRedisUrl } from '@corpusai/queue';
+import { logger } from '../lib/logger';
 
 let embeddingService: EmbeddingService;
 let sparseGenerator: SparseVectorGenerator;
@@ -43,6 +44,9 @@ function init(): void {
       maxRetriesPerRequest: 3,
       retryStrategy: (times: number) => Math.min(times * 100, 3000),
     });
+    // Prevent unhandled 'error' events from crashing the worker; the embedding
+    // cache is best-effort, so a Redis blip must not take the process down.
+    redisClient.on('error', (err) => logger.warn({ err }, 'cache Redis error'));
 
     const cache: CacheService = {
       get: (key: string) => redisClient!.get(key),

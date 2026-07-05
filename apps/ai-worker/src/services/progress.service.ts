@@ -12,6 +12,9 @@ export class ProgressService {
 
   constructor(redisUrl: string) {
     this.redis = new Redis({ ...parseRedisUrl(redisUrl), maxRetriesPerRequest: null });
+    // Prevent unhandled 'error' events (e.g. Railway proxy ECONNRESET) from
+    // crashing the worker; ioredis reconnects on its own.
+    this.redis.on('error', (err) => logger.warn({ err }, 'progress Redis error'));
   }
 
   async publish(event: DocumentProgressEvent): Promise<void> {
