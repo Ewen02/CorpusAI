@@ -15,6 +15,8 @@ export type MessageSource = {
   documentSource: string;
   score: number;
   excerpt: string;
+  /** Page d'origine du chunk (PDF avec carte de pages) */
+  pageNumber?: number;
 };
 
 export type RagOutcome = {
@@ -93,6 +95,7 @@ export class MessageHistoryService {
       documentSource: s.documentSource,
       score: s.score,
       excerpt: s.text.slice(0, 200),
+      ...(typeof s.pageNumber === 'number' && { pageNumber: s.pageNumber }),
     }));
     return { sources, confidence };
   }

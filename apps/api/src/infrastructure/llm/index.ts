@@ -7,6 +7,7 @@ export type {
 } from './llm.port';
 export { OpenAILLMAdapter } from './openai.adapter';
 export { AnthropicLLMAdapter } from './anthropic.adapter';
+export { AnthropicRagLLMClient } from './anthropic-rag-client';
 export { GroqLLMAdapter } from './groq.adapter';
 export {
   LLMProviderFactory,

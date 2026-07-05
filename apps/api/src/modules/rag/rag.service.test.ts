@@ -3,6 +3,11 @@ import { RagService } from './rag.service';
 
 describe('RagService', () => {
   let service: RagService;
+  let mockAnswerCache: {
+    invalidate: ReturnType<typeof vi.fn>;
+    lookup: ReturnType<typeof vi.fn>;
+    store: ReturnType<typeof vi.fn>;
+  };
 
   const mockPipeline = {
     index: vi.fn(),
@@ -24,7 +29,12 @@ describe('RagService', () => {
   };
 
   beforeEach(() => {
-    service = new RagService(mockFactory as any);
+    mockAnswerCache = {
+      invalidate: vi.fn().mockResolvedValue(undefined),
+      lookup: vi.fn().mockResolvedValue(null),
+      store: vi.fn().mockResolvedValue(undefined),
+    };
+    service = new RagService(mockFactory as any, mockAnswerCache as any);
     vi.clearAllMocks();
     // Restore defaults after clearAllMocks
     mockFactory.createForAI.mockReturnValue(mockPipeline);

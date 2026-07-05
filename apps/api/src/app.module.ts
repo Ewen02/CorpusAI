@@ -21,6 +21,7 @@ import { SLAModule } from './modules/sla';
 import { PublicApiModule } from './modules/public-api';
 import { ExploreModule } from './modules/explore';
 import { MailInfrastructureModule } from './infrastructure/mail';
+import { TelemetryModule } from './infrastructure/telemetry';
 import { EndUserAuthModule } from './modules/end-user-auth';
 import { PortalModule } from './modules/portal';
 import { WebhooksModule } from './modules/webhooks';
@@ -50,7 +51,11 @@ import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middle
         STRIPE_SECRET_KEY: Joi.string().optional().allow(''),
         STRIPE_WEBHOOK_SECRET: Joi.string().optional().allow(''),
         MISTRAL_API_KEY: Joi.string().optional().allow(''),
+        ANTHROPIC_API_KEY: Joi.string().optional().allow(''),
+        ANTHROPIC_MODEL: Joi.string().optional(),
         SENTRY_DSN: Joi.string().optional().allow(''),
+        POSTHOG_API_KEY: Joi.string().optional().allow(''),
+        POSTHOG_HOST: Joi.string().uri().optional(),
         RESEND_API_KEY: Joi.string().optional().allow(''),
         RESEND_FROM_EMAIL: Joi.string().optional().allow(''),
         RESEND_WEBHOOK_SECRET: Joi.string().optional().allow(''),
@@ -96,6 +101,7 @@ import { CORRELATION_ID_HEADER } from './common/middleware/correlation-id.middle
     DatabaseModule,
     LLMModule,
     MailInfrastructureModule,
+    TelemetryModule,
     QueueModule,
     RedisModule,
     SharedModule,

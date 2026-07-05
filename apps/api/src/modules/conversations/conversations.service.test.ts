@@ -135,7 +135,13 @@ describe('ConversationsService', () => {
       mockWebhooksService as any,
       mockMemoryService as any,
       mockRepo as any,
-      messageHistoryService
+      messageHistoryService,
+      {
+        lookup: vi.fn().mockResolvedValue(null),
+        store: vi.fn().mockResolvedValue(undefined),
+        invalidate: vi.fn().mockResolvedValue(undefined),
+      } as any,
+      { captureRagGeneration: vi.fn() } as any
     );
     service = new ConversationsService(
       mockWebhooksService as any,

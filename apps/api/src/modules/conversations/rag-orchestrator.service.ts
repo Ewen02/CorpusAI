@@ -1,12 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { MessageRole } from '@corpusai/database';
+import { MessageRole, type ConfidenceLevel } from '@corpusai/database';
 import { buildSystemPrompt } from '@corpusai/ai-rules';
-import type { RAGResponse } from '@corpusai/corpus';
-import { RagService } from '../rag';
+import { RAG_QUERY_DEFAULTS, type RAGResponse } from '@corpusai/corpus';
+import { RagService, SemanticAnswerCacheService } from '../rag';
 import { WebhooksService } from '../webhooks';
+import { TelemetryService } from '../../infrastructure/telemetry';
 import { EndUserMemoryService } from './memory.service';
 import { ConversationsRepository } from './conversations.repository';
-import { MessageHistoryService } from './message-history.service';
+import {
+  MessageHistoryService,
+  type MessageSource,
+  type RagOutcome,
+} from './message-history.service';
 
 type ConversationWithAI = NonNullable<
   Awaited<ReturnType<ConversationsRepository['findConversationWithAI']>>
@@ -30,12 +35,17 @@ export class RagOrchestratorService {
     private readonly webhooksService: WebhooksService,
     private readonly memoryService: EndUserMemoryService,
     private readonly repo: ConversationsRepository,
-    private readonly messageHistory: MessageHistoryService
+    private readonly messageHistory: MessageHistoryService,
+    private readonly answerCache: SemanticAnswerCacheService,
+    private readonly telemetry: TelemetryService
   ) {}
 
   private async prepareContext(conversation: ConversationWithAI, content: string) {
-    const userMessage = await this.messageHistory.saveUserMessage(conversation.id, content);
+    // Historique AVANT la sauvegarde du message courant : sinon la question apparaît
+    // deux fois dans les messages LLM (dernier item d'historique + message user final
+    // ajouté par le pipeline) — tokens gaspillés et un slot d'historique perdu sur 6.
     const conversationHistory = await this.messageHistory.getConversationHistory(conversation.id);
+    const userMessage = await this.messageHistory.saveUserMessage(conversation.id, content);
 
     let memoryContext: string | undefined;
     if (conversation.ai.memoryEnabled && conversation.endUserId) {
@@ -46,6 +56,10 @@ export class RagOrchestratorService {
 
     return {
       userMessage,
+      // Le cache sémantique n'est éligible que pour une question d'ouverture
+      // impersonnelle : les follow-ups dépendent de l'historique, et une
+      // mémoire end-user active rend les réponses personnalisées.
+      cacheEligible: conversationHistory.length === 0 && !memoryContext,
       llmOptions: {
         model: conversation.ai.llmModel,
         // `llmProvider` selects between openai / anthropic / groq adapters.
@@ -61,7 +75,7 @@ export class RagOrchestratorService {
         maxTokens: conversation.ai.maxTokens,
       },
       queryContext: {
-        scoreThreshold: conversation.ai.scoreThreshold ?? 0.4,
+        scoreThreshold: conversation.ai.scoreThreshold ?? RAG_QUERY_DEFAULTS.scoreThreshold,
         conversationHistory,
       },
     };
@@ -97,12 +111,94 @@ export class RagOrchestratorService {
     }
   }
 
+  /**
+   * Tente de servir la réponse depuis le cache sémantique.
+   * Retourne le message assistant persisté sur hit, null sur miss.
+   */
+  private async tryServeFromCache(conversation: ConversationWithAI, content: string) {
+    const cached = await this.answerCache.lookup(conversation.aiId, content);
+    if (!cached) return null;
+
+    const outcome: RagOutcome = {
+      sources: cached.sources as MessageSource[],
+      confidence: cached.confidence as ConfidenceLevel,
+    };
+    // Pas d'appel LLM : tokens/coût nuls, seul le temps de lookup est facturé
+    const syntheticRag: RAGResponse = {
+      answer: cached.answer,
+      sources: [],
+      context: '',
+    };
+    return { cached, outcome, syntheticRag };
+  }
+
+  /** Met la réponse en cache si elle est fiable (HIGH confidence + sources). */
+  private storeInCacheIfReliable(
+    conversation: ConversationWithAI,
+    content: string,
+    answer: string,
+    outcome: RagOutcome
+  ): void {
+    if (outcome.confidence !== 'HIGH' || outcome.sources.length === 0) return;
+    void this.answerCache.store(
+      conversation.aiId,
+      content,
+      answer,
+      outcome.sources,
+      outcome.confidence
+    );
+  }
+
+  private captureTelemetry(
+    conversation: ConversationWithAI,
+    outcome: RagOutcome | null,
+    latencyMs: number,
+    rag?: RAGResponse,
+    flags?: { cacheHit?: boolean; isError?: boolean }
+  ): void {
+    this.telemetry.captureRagGeneration({
+      aiId: conversation.aiId,
+      conversationId: conversation.id,
+      endUserId: conversation.endUserId,
+      model: conversation.ai.llmModel,
+      confidence: outcome?.confidence ?? null,
+      sourcesCount: outcome?.sources.length ?? 0,
+      latencyMs,
+      tokensIn: rag?.metrics?.promptTokens ?? null,
+      tokensOut: rag?.metrics?.completionTokens ?? null,
+      metrics: rag?.metrics as Record<string, number | undefined> | undefined,
+      cacheHit: flags?.cacheHit ?? false,
+      isError: flags?.isError ?? false,
+    });
+  }
+
   async runSync(conversation: ConversationWithAI, content: string) {
-    const { userMessage, llmOptions, queryContext } = await this.prepareContext(
+    const { userMessage, llmOptions, queryContext, cacheEligible } = await this.prepareContext(
       conversation,
       content
     );
     const startTime = Date.now();
+
+    // Cache sémantique : question d'ouverture déjà répondue → réponse immédiate
+    if (cacheEligible) {
+      const hit = await this.tryServeFromCache(conversation, content);
+      if (hit) {
+        const latencyMs = Date.now() - startTime;
+        const assistantMessage = await this.messageHistory.saveAssistantMessage(
+          conversation.id,
+          hit.syntheticRag,
+          hit.outcome,
+          latencyMs,
+          conversation.ai.llmModel
+        );
+        this.logger.log(
+          `Semantic cache hit for conversation ${conversation.id} (${latencyMs}ms, no LLM call)`
+        );
+        await this.afterAssistant(conversation, assistantMessage.id, content, hit.cached.answer);
+        this.captureTelemetry(conversation, hit.outcome, latencyMs, undefined, { cacheHit: true });
+        return { userMessage, assistantMessage, isError: false, errorType: undefined };
+      }
+    }
 
     try {
       const rag = await this.ragService.query(conversation.aiId, content, llmOptions, queryContext);
@@ -119,6 +215,10 @@ export class RagOrchestratorService {
         `RAG response for conversation ${conversation.id}: ${rag.sources.length} sources, ${latencyMs}ms, ${rag.metrics?.totalTokens ?? '?'} tokens`
       );
       await this.afterAssistant(conversation, assistantMessage.id, content, rag.answer);
+      if (cacheEligible) {
+        this.storeInCacheIfReliable(conversation, content, rag.answer, outcome);
+      }
+      this.captureTelemetry(conversation, outcome, latencyMs, rag);
       return { userMessage, assistantMessage, isError: false, errorType: undefined };
     } catch (error) {
       this.logger.error(`RAG query failed: ${error}`);
@@ -127,16 +227,56 @@ export class RagOrchestratorService {
         conversation.ai.language
       );
       await this.updateCounters(conversation, content);
+      this.captureTelemetry(conversation, null, Date.now() - startTime, undefined, {
+        isError: true,
+      });
       return { userMessage, assistantMessage, isError: true, errorType: 'rag_failure' as const };
     }
   }
 
   async *runStream(conversation: ConversationWithAI, content: string): AsyncGenerator<StreamEvent> {
-    const { userMessage, llmOptions, queryContext } = await this.prepareContext(
+    const { userMessage, llmOptions, queryContext, cacheEligible } = await this.prepareContext(
       conversation,
       content
     );
     const startTime = Date.now();
+
+    // Cache sémantique : la réponse complète est servie en un seul token
+    if (cacheEligible) {
+      const hit = await this.tryServeFromCache(conversation, content);
+      if (hit) {
+        const latencyMs = Date.now() - startTime;
+        yield { type: 'token', data: { token: hit.cached.answer } };
+        yield { type: 'sources', data: { sources: hit.outcome.sources } };
+
+        const assistantMessage = await this.messageHistory.saveAssistantMessage(
+          conversation.id,
+          hit.syntheticRag,
+          hit.outcome,
+          latencyMs,
+          conversation.ai.llmModel
+        );
+        this.logger.log(
+          `Semantic cache hit (stream) for conversation ${conversation.id} (${latencyMs}ms)`
+        );
+        await this.afterAssistant(conversation, assistantMessage.id, content, hit.cached.answer);
+        this.captureTelemetry(conversation, hit.outcome, latencyMs, undefined, { cacheHit: true });
+
+        yield {
+          type: 'done',
+          data: {
+            userMessage: pickMsg(userMessage),
+            assistantMessage: {
+              ...pickMsg(assistantMessage),
+              sources: hit.outcome.sources,
+              confidence: hit.outcome.confidence,
+              feedback: null,
+            },
+          },
+        };
+        return;
+      }
+    }
 
     try {
       const generator = this.ragService.queryStream(
@@ -168,6 +308,10 @@ export class RagOrchestratorService {
         `RAG stream for conversation ${conversation.id}: ${rag.sources.length} sources, ${latencyMs}ms`
       );
       await this.afterAssistant(conversation, assistantMessage.id, content, rag.answer);
+      if (cacheEligible) {
+        this.storeInCacheIfReliable(conversation, content, rag.answer, outcome);
+      }
+      this.captureTelemetry(conversation, outcome, latencyMs, rag);
 
       yield {
         type: 'done',
@@ -183,6 +327,9 @@ export class RagOrchestratorService {
       };
     } catch (error) {
       this.logger.error(`RAG stream failed: ${error}`);
+      this.captureTelemetry(conversation, null, Date.now() - startTime, undefined, {
+        isError: true,
+      });
       const assistantMessage = await this.messageHistory.saveFallbackAssistantMessage(
         conversation.id,
         conversation.ai.language

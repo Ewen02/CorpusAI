@@ -1,12 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RagPipelineFactory } from './rag-pipeline.factory';
+import { SemanticAnswerCacheService } from './semantic-answer-cache.service';
 import { trace } from '../../lib/tracing';
-import type {
-  LLMConfig,
-  RAGResponse,
-  IndexResult,
-  ProgressCallback,
-  CacheMetrics,
+import {
+  RAG_QUERY_DEFAULTS,
+  type LLMConfig,
+  type RAGResponse,
+  type IndexResult,
+  type ProgressCallback,
+  type CacheMetrics,
 } from '@corpusai/corpus';
 
 export interface DocumentToIndex {
@@ -54,7 +56,10 @@ export interface IndexDocumentOptions {
 export class RagService {
   private readonly logger = new Logger(RagService.name);
 
-  constructor(private factory: RagPipelineFactory) {}
+  constructor(
+    private factory: RagPipelineFactory,
+    private readonly answerCache: SemanticAnswerCacheService
+  ) {}
 
   /**
    * Indexe un document dans le vector store de l'AI.
@@ -89,6 +94,9 @@ export class RagService {
     );
 
     this.logger.log(`Indexed document ${document.id}: ${result.chunksCreated} chunks created`);
+
+    // Corpus modifié → les réponses en cache ne sont plus fiables
+    await this.answerCache.invalidate(aiId);
 
     return result;
   }
@@ -171,6 +179,7 @@ export class RagService {
 
     const vectorStore = this.factory.getVectorStore();
     await vectorStore.deleteByDocument(aiId, documentId);
+    await this.answerCache.invalidate(aiId);
 
     this.logger.log(`Vectors deleted for document ${documentId}`);
   }
@@ -235,6 +244,8 @@ export class RagService {
     }
 
     this.logger.log(`Re-upserted ${chunks.length} chunks for document ${documentId}`);
+
+    await this.answerCache.invalidate(aiId);
   }
 
   /**
@@ -247,6 +258,7 @@ export class RagService {
 
     try {
       await vectorStore.deleteByAI(aiId);
+      await this.answerCache.invalidate(aiId);
       this.logger.log(`Vectors deleted for AI ${aiId}`);
     } catch (error) {
       this.logger.warn(`Could not delete vectors for AI ${aiId}: ${error}`);
@@ -278,7 +290,7 @@ export class RagService {
   ): Promise<DebugQueryResult> {
     this.logger.log(`Debug query for AI ${aiId}: "${question.slice(0, 50)}..."`);
 
-    const threshold = options?.scoreThreshold ?? 0.6;
+    const threshold = options?.scoreThreshold ?? RAG_QUERY_DEFAULTS.scoreThreshold;
     const topK = options?.topK ?? 5;
 
     // Embed the question + generate sparse vector

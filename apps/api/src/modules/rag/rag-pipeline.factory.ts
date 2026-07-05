@@ -12,13 +12,18 @@ import {
   CachedEmbeddingService,
   resolveModelConfig,
   type LLMConfig,
+  type LLMClient,
   type EmbeddingService,
   type CacheService,
   type CacheMetrics,
   type AsyncReranker,
 } from '@corpusai/corpus';
 import { parseRedisUrl } from '@corpusai/queue';
-import { LLMProviderFactory, type LLMProvider } from '../../infrastructure/llm';
+import {
+  LLMProviderFactory,
+  AnthropicRagLLMClient,
+  type LLMProvider,
+} from '../../infrastructure/llm';
 
 /**
  * Factory pour créer des pipelines RAG par AI.
@@ -89,8 +94,15 @@ export class RagPipelineFactory implements OnModuleDestroy {
       this.embeddingService = baseEmbeddingService;
     }
 
-    // Sparse vector generator for BM25 hybrid search (Qdrant applies IDF server-side)
-    this.sparseGenerator = new SparseVectorGenerator();
+    // Sparse vector generator for BM25 hybrid search (Qdrant applies IDF server-side).
+    // SPARSE_NORMALIZE=true active minuscules + dé-accentuation + stopwords FR/EN.
+    // ⚠️ Nécessite une ré-indexation des corpus existants (les vecteurs indexés et
+    // les requêtes doivent partager le même mode) — même flag côté ai-worker.
+    const sparseNormalize = this.configService.get<string>('SPARSE_NORMALIZE') === 'true';
+    this.sparseGenerator = new SparseVectorGenerator({ normalize: sparseNormalize });
+    if (sparseNormalize) {
+      this.logger.log('Sparse vector normalization enabled (FR/EN stopwords + accent folding)');
+    }
 
     // Global vector store (single collection, multi-tenant)
     const qdrantUrl = this.configService.get<string>('QDRANT_URL');
@@ -173,12 +185,9 @@ export class RagPipelineFactory implements OnModuleDestroy {
    * - `openai` (default): uses the OpenAI SDK with the configured base URL.
    * - `groq`: OpenAI-compatible — switches `baseURL` to Groq and reuses
    *   `GROQ_API_KEY`. The model identifier is forwarded as-is.
-   * - `anthropic`: not natively wired into the corpus pipeline because the
-   *   OpenAI SDK cannot speak the Messages API. The factory falls back to
-   *   OpenAI for retrieval-augmented chat and emits a one-time warning;
-   *   tasks that do not require streaming (suggestions, summaries) still
-   *   route through `LLMProviderFactory.resolve()` and use the Anthropic
-   *   adapter directly.
+   * - `anthropic`: injecte `AnthropicRagLLMClient` (Messages API, streaming
+   *   inclus) via le port `LLMClient` du pipeline. Fallback OpenAI uniquement
+   *   si `ANTHROPIC_API_KEY` est absente.
    */
   createForAI(aiId: string, llmConfig?: Partial<LLMConfig>): RAGPipelineImpl {
     this.validateAiId(aiId);
@@ -201,6 +210,7 @@ export class RagPipelineFactory implements OnModuleDestroy {
         temperature: llmConfig?.temperature ?? 0.2,
         maxTokens: llmConfig?.maxTokens ?? 1000,
         systemPrompt: llmConfig?.systemPrompt,
+        client: providerConfig.client,
       },
       this.reranker
     );
@@ -214,7 +224,13 @@ export class RagPipelineFactory implements OnModuleDestroy {
   private resolveProviderConfig(
     provider: LLMProvider,
     requestedModel: string
-  ): { apiKey: string; baseURL?: string; model: string; provider: LLMProvider } {
+  ): {
+    apiKey: string;
+    baseURL?: string;
+    model: string;
+    provider: LLMProvider;
+    client?: LLMClient;
+  } {
     if (provider === 'groq') {
       const groqKey = this.configService.get<string>('GROQ_API_KEY');
       if (groqKey) {
@@ -232,12 +248,21 @@ export class RagPipelineFactory implements OnModuleDestroy {
     }
 
     if (provider === 'anthropic') {
-      // The corpus pipeline talks OpenAI Chat Completions wire format.
-      // For Anthropic chat we'd need a parallel `AnthropicRAGPipeline`; until
-      // then, route to OpenAI to keep the user-facing flow working.
+      const anthropicKey = this.configService.get<string>('ANTHROPIC_API_KEY');
+      if (anthropicKey) {
+        const model =
+          requestedModel || this.configService.get<string>('ANTHROPIC_MODEL') || 'claude-haiku-4-5';
+        return {
+          // apiKey conservée pour l'OpenAI interne du pipeline (enrichissement) —
+          // la génération passe intégralement par le client Anthropic injecté.
+          apiKey: this.llmApiKey,
+          model,
+          provider: 'anthropic',
+          client: new AnthropicRagLLMClient({ apiKey: anthropicKey, model }),
+        };
+      }
       this.logger.warn(
-        `Anthropic streaming RAG is not yet wired into the corpus pipeline ` +
-          `(model "${requestedModel}"). Falling back to OpenAI for this call.`
+        `ANTHROPIC_API_KEY missing — RAG pipeline for model "${requestedModel}" falls back to OpenAI.`
       );
     }
 
@@ -285,6 +310,14 @@ export class RagPipelineFactory implements OnModuleDestroy {
 
   get isCacheEnabled(): boolean {
     return !!this.redis;
+  }
+
+  /**
+   * Connexion Redis partagée (null si REDIS_URL absent).
+   * Réutilisée par le cache sémantique de réponses pour éviter une seconde connexion.
+   */
+  getRedis(): Redis | null {
+    return this.redis ?? null;
   }
 
   getCacheMetrics(): CacheMetrics | null {
