@@ -3,6 +3,25 @@ import type { RedisOptions } from 'ioredis';
 import { QUEUE_NAMES } from './constants';
 import type { DocumentProcessingJobData } from './types';
 
+/**
+ * Resolve ioredis' `family` option. An explicit REDIS_IP_FAMILY env var wins
+ * (0 = dual-stack, 4 = IPv4, 6 = IPv6) so the transport can be flipped from the
+ * Railway dashboard without a rebuild; otherwise default to IPv6 on the private
+ * network (its egress is IPv6-only) and ioredis' default elsewhere.
+ */
+function resolveFamily(
+  override: string | undefined,
+  isRailwayInternal: boolean
+): { family?: number } {
+  if (override !== undefined && override !== '') {
+    const parsed = Number(override);
+    if (parsed === 0 || parsed === 4 || parsed === 6) {
+      return parsed === 0 ? {} : { family: parsed };
+    }
+  }
+  return isRailwayInternal ? { family: 6 } : {};
+}
+
 export function parseRedisUrl(url: string): RedisOptions {
   const parsed = new URL(url);
   const isSecure = parsed.protocol === 'rediss:';
@@ -46,12 +65,12 @@ export function parseRedisUrl(url: string): RedisOptions {
     // unhandled error event that can take the process down.
     retryStrategy: (times: number) => Math.min(times * 200, 5_000),
     reconnectOnError: () => true,
-    // Railway's private network resolves *.railway.internal on both IPv4 and
-    // IPv6 depending on the service. family: 0 lets ioredis try both (dual
-    // stack) instead of forcing IPv6-only (family: 6), which hangs when Redis
-    // only answers on IPv4. The public proxy uses ordinary IPv4, so leave it
-    // to ioredis' default.
-    ...(isRailwayInternal ? { family: 0 } : {}),
+    // IP family selection. Railway's private network (*.railway.internal) is
+    // IPv6-only for egress and needs family: 6 (plus "Enable Outbound IPv6" on
+    // the service); the public TCP proxy is plain IPv4. REDIS_IP_FAMILY overrides
+    // the heuristic (0 = dual-stack, 4 = IPv4, 6 = IPv6) so the transport can be
+    // switched from the dashboard without a rebuild.
+    ...resolveFamily(process.env.REDIS_IP_FAMILY, isRailwayInternal),
     ...(isSecure ? { tls: { rejectUnauthorized: true } } : {}),
   };
 }
