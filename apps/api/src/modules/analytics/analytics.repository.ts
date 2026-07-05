@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { ConfidenceLevel } from '@corpusai/database';
 import { PrismaService } from '../../infrastructure/database';
 
 /**
@@ -26,6 +27,33 @@ export interface TotalsRow {
   totalTokensIn: bigint | null;
   totalTokensOut: bigint | null;
   totalCostUsd: number | null;
+}
+
+/** Quality counters over the period (BigInt because Postgres COUNT returns bigint). */
+export interface QualityTotalsRow {
+  assistantMessages: bigint | null;
+  negativeFeedback: bigint | null;
+  positiveFeedback: bigint | null;
+  lowConfidence: bigint | null;
+}
+
+/** Assistant message flagged as failing (negative feedback OR low confidence). */
+export interface FlaggedMessageRow {
+  id: string;
+  conversationId: string;
+  createdAt: Date;
+  content: string;
+  feedback: string | null;
+  confidence: ConfidenceLevel | null;
+  /** Raw Json column — callers must narrow (array check) before use. */
+  sources: unknown;
+}
+
+/** USER message used to reconstruct the question preceding an assistant answer. */
+export interface UserQuestionRow {
+  conversationId: string;
+  createdAt: Date;
+  content: string;
 }
 
 @Injectable()
@@ -124,5 +152,91 @@ export class AnalyticsRepository {
       GROUP BY m.model
       ORDER BY cost DESC NULLS LAST
     `;
+  }
+
+  /**
+   * Returns the quality counters for a single AI over the period.
+   *
+   * Scoping to the AI happens through the Conversation join; the caller is
+   * responsible for verifying ownership of `aiId` beforehand.
+   */
+  async getQualityTotals(aiId: string, startDate: Date, endDate: Date): Promise<QualityTotalsRow> {
+    const rows = await this.db.client.$queryRaw<QualityTotalsRow[]>`
+      SELECT
+        COUNT(*)::bigint                                          AS "assistantMessages",
+        COUNT(*) FILTER (WHERE m.feedback = 'negative')::bigint   AS "negativeFeedback",
+        COUNT(*) FILTER (WHERE m.feedback = 'positive')::bigint   AS "positiveFeedback",
+        COUNT(*) FILTER (WHERE m.confidence = 'LOW')::bigint      AS "lowConfidence"
+      FROM "Message" m
+      JOIN "Conversation" c ON c.id = m."conversationId"
+      WHERE c."aiId" = ${aiId}
+        AND m.role = 'ASSISTANT'
+        AND m."createdAt" >= ${startDate}
+        AND m."createdAt" <  ${endDate}
+    `;
+    return (
+      rows[0] ?? {
+        assistantMessages: 0n,
+        negativeFeedback: 0n,
+        positiveFeedback: 0n,
+        lowConfidence: 0n,
+      }
+    );
+  }
+
+  /**
+   * Returns assistant messages flagged as failing (negative feedback OR low
+   * confidence), most recent first, capped at `limit` rows.
+   */
+  async findFlaggedAssistantMessages(
+    aiId: string,
+    startDate: Date,
+    endDate: Date,
+    limit: number
+  ): Promise<FlaggedMessageRow[]> {
+    return this.db.client.message.findMany({
+      where: {
+        conversation: { aiId },
+        role: 'ASSISTANT',
+        createdAt: { gte: startDate, lt: endDate },
+        OR: [{ feedback: 'negative' }, { confidence: 'LOW' }],
+      },
+      select: {
+        id: true,
+        conversationId: true,
+        createdAt: true,
+        content: true,
+        feedback: true,
+        confidence: true,
+        sources: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+  }
+
+  /**
+   * Returns all USER messages of the given conversations (oldest first) so the
+   * service can pair each flagged answer with the question that preceded it.
+   * Single query — avoids one lookup per flagged message (N+1).
+   */
+  async findUserMessagesForConversations(
+    conversationIds: string[],
+    endDate: Date
+  ): Promise<UserQuestionRow[]> {
+    if (conversationIds.length === 0) return [];
+    return this.db.client.message.findMany({
+      where: {
+        conversationId: { in: conversationIds },
+        role: 'USER',
+        createdAt: { lt: endDate },
+      },
+      select: {
+        conversationId: true,
+        createdAt: true,
+        content: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
   }
 }
