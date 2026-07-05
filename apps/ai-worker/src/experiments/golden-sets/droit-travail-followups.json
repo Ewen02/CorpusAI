@@ -1,0 +1,107 @@
+{
+  "name": "droit-travail-followups",
+  "description": "Questions de suivi conversationnelles — testent la condensation. La question seule est ambiguë ; seul l'historique donne le référent. Sans condensation, le retrieval échoue.",
+  "cases": [
+    {
+      "id": "followup-conges-cadres",
+      "history": [
+        { "role": "user", "content": "Combien de jours de congés payés par an ?" },
+        {
+          "role": "assistant",
+          "content": "Tout salarié acquiert 2,5 jours ouvrables par mois, soit 30 jours ouvrables (5 semaines) par an."
+        }
+      ],
+      "question": "Et pour un forfait jours ?",
+      "expectedContextKeywords": ["218 jours"],
+      "expectedAnswerKeywords": ["218"]
+    },
+    {
+      "id": "followup-cdd-renouvellement",
+      "history": [
+        { "role": "user", "content": "Quelle est la durée maximale d'un CDD ?" },
+        {
+          "role": "assistant",
+          "content": "La durée maximale d'un CDD est de 18 mois, renouvellements inclus."
+        }
+      ],
+      "question": "Combien de fois peut-on le renouveler ?",
+      "expectedContextKeywords": ["2 fois"],
+      "expectedAnswerKeywords": ["2"]
+    },
+    {
+      "id": "followup-essai-renouvellement",
+      "history": [
+        { "role": "user", "content": "Quelle est la période d'essai d'un cadre ?" },
+        {
+          "role": "assistant",
+          "content": "Pour un cadre en CDI, la période d'essai initiale est de 4 mois."
+        }
+      ],
+      "question": "Et si on la renouvelle ?",
+      "expectedContextKeywords": ["8 mois"],
+      "expectedAnswerKeywords": ["8 mois"]
+    },
+    {
+      "id": "followup-licenciement-preavis",
+      "history": [
+        { "role": "user", "content": "Quelles sont les étapes d'un licenciement ?" },
+        {
+          "role": "assistant",
+          "content": "Convocation à l'entretien préalable, entretien, notification par lettre recommandée, puis préavis."
+        }
+      ],
+      "question": "Combien de temps dure le préavis pour plus de 2 ans d'ancienneté ?",
+      "expectedContextKeywords": ["2 mois"],
+      "expectedAnswerKeywords": ["2 mois"]
+    },
+    {
+      "id": "followup-rupture-delai",
+      "history": [
+        { "role": "user", "content": "Comment fonctionne la rupture conventionnelle ?" },
+        {
+          "role": "assistant",
+          "content": "C'est un accord amiable entre l'employeur et le salarié, homologué par la DREETS."
+        }
+      ],
+      "question": "Quel est le délai de rétractation ?",
+      "expectedContextKeywords": ["15 jours"],
+      "expectedAnswerKeywords": ["15 jours"]
+    },
+    {
+      "id": "followup-smic-net",
+      "history": [
+        { "role": "user", "content": "Quel est le SMIC horaire brut en 2025 ?" },
+        { "role": "assistant", "content": "Le SMIC horaire brut est de 11,88 € en 2025." }
+      ],
+      "question": "Et en net mensuel pour 35h ?",
+      "expectedContextKeywords": ["1 426,30"],
+      "expectedAnswerKeywords": ["1 426"]
+    },
+    {
+      "id": "followup-heures-sup-au-dela",
+      "history": [
+        { "role": "user", "content": "Comment sont majorées les heures supplémentaires ?" },
+        {
+          "role": "assistant",
+          "content": "Les 8 premières heures supplémentaires sont majorées de 25 %."
+        }
+      ],
+      "question": "Et au-delà de la 8e ?",
+      "expectedContextKeywords": ["50 %"],
+      "expectedAnswerKeywords": ["50"]
+    },
+    {
+      "id": "followup-develop-vague",
+      "history": [
+        { "role": "user", "content": "Parle-moi de l'indemnité légale de licenciement." },
+        {
+          "role": "assistant",
+          "content": "Elle vaut au minimum 1/4 de mois de salaire par année d'ancienneté sur les 10 premières années."
+        }
+      ],
+      "question": "Et au-delà de 10 ans ?",
+      "expectedContextKeywords": ["1/3 mois"],
+      "expectedAnswerKeywords": ["1/3"]
+    }
+  ]
+}

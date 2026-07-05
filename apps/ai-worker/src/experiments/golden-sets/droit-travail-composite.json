@@ -1,0 +1,42 @@
+{
+  "name": "droit-travail-composite",
+  "description": "Questions composées à deux sujets (compare X et Y) — déclenchent le multi-query. Une seule requête embed moyennement les deux sujets ; la décomposition doit récupérer les DEUX. Le recall keywords vérifie que les deux moitiés sont dans le contexte.",
+  "cases": [
+    {
+      "id": "compare-rupture-vs-licenciement",
+      "question": "Compare la rupture conventionnelle et le licenciement en termes de procédure.",
+      "expectedContextKeywords": ["rétractation", "entretien préalable"],
+      "expectedAnswerKeywords": ["rupture", "licenciement"]
+    },
+    {
+      "id": "compare-cdd-vs-cdi",
+      "question": "Quelle est la différence entre un CDD et un CDI sur la durée et la fin de contrat ?",
+      "expectedContextKeywords": ["18 mois", "durée indéterminée"],
+      "expectedAnswerKeywords": ["cdd", "cdi"]
+    },
+    {
+      "id": "compare-essai-cadre-vs-ouvrier",
+      "question": "Compare la durée de période d'essai entre un cadre et un ouvrier.",
+      "expectedContextKeywords": ["4 mois", "2 mois"],
+      "expectedAnswerKeywords": ["cadre"]
+    },
+    {
+      "id": "compare-cotisations-sal-vs-pat",
+      "question": "Quelle est la différence entre les cotisations salariales et patronales ?",
+      "expectedContextKeywords": ["22 %", "42 %"],
+      "expectedAnswerKeywords": ["salariale", "patronale"]
+    },
+    {
+      "id": "compare-heures-sup-tranches",
+      "question": "Compare la majoration des heures supplémentaires entre les 8 premières et les suivantes.",
+      "expectedContextKeywords": ["25 %", "50 %"],
+      "expectedAnswerKeywords": ["25", "50"]
+    },
+    {
+      "id": "compare-preavis-cadre-noncadre",
+      "question": "Quelle différence de préavis de licenciement entre un cadre et un non-cadre après 2 ans ?",
+      "expectedContextKeywords": ["2 mois", "3 mois"],
+      "expectedAnswerKeywords": ["préavis"]
+    }
+  ]
+}

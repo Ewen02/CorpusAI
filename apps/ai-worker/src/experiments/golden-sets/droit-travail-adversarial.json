@@ -1,0 +1,50 @@
+{
+  "name": "droit-travail-adversarial",
+  "description": "Robustesse hors du chemin heureux : reformulations familières, fautes de frappe, questions vagues, et pièges hors-corpus SUBTILS (dans le thème du droit du travail mais absents du document). Teste si le RAG reste fiable et ne hallucine pas sur des sujets plausibles.",
+  "cases": [
+    {
+      "id": "adv-typo-smic",
+      "question": "c koi le smik horaire en 2025 ?",
+      "expectedContextKeywords": ["11,88"],
+      "expectedAnswerKeywords": ["11,88"]
+    },
+    {
+      "id": "adv-familier-conges",
+      "question": "j'ai droit à combien de semaines de vacances par an ?",
+      "expectedContextKeywords": ["5 semaines"],
+      "expectedAnswerKeywords": ["5"]
+    },
+    {
+      "id": "adv-typo-licenciement",
+      "question": "combien de tps de préavi pour un licencieement apres 2 ans ?",
+      "expectedContextKeywords": ["2 mois"],
+      "expectedAnswerKeywords": ["2 mois"]
+    },
+    {
+      "id": "adv-indirect-cdd",
+      "question": "mon patron veut me garder en CDD indéfiniment, il peut ?",
+      "expectedContextKeywords": ["18 mois"],
+      "expectedAnswerKeywords": ["18"]
+    },
+    {
+      "id": "adv-oos-conges-parental-duree",
+      "question": "Quelle est la durée exacte du congé parental d'éducation en mois ?",
+      "outOfScope": true
+    },
+    {
+      "id": "adv-oos-teletravail",
+      "question": "Combien de jours de télétravail par semaine sont obligatoires selon la loi ?",
+      "outOfScope": true
+    },
+    {
+      "id": "adv-oos-smic-2026",
+      "question": "Quel sera le montant exact du SMIC horaire en 2026 ?",
+      "outOfScope": true
+    },
+    {
+      "id": "adv-oos-chomage-montant",
+      "question": "Quel est le montant précis de l'allocation chômage après un licenciement ?",
+      "outOfScope": true
+    }
+  ]
+}
