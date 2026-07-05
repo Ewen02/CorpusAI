@@ -1,0 +1,111 @@
+{
+  "name": "droit-travail-france",
+  "description": "Golden set pour un corpus 'Droit du travail français 2025' (cours_droit_travail_france.pdf). Vérité terrain en mots-clés — survit aux ré-indexations.",
+  "cases": [
+    {
+      "id": "smic-horaire",
+      "question": "Quel est le montant du SMIC horaire brut en 2025 ?",
+      "expectedContextKeywords": ["11,88"],
+      "expectedAnswerKeywords": ["11,88"]
+    },
+    {
+      "id": "smic-mensuel",
+      "question": "Quel est le SMIC mensuel brut pour 35 heures ?",
+      "expectedContextKeywords": ["1 801,80"],
+      "expectedAnswerKeywords": ["1 801,80"]
+    },
+    {
+      "id": "conges-payes-acquisition",
+      "question": "Combien de jours de congés payés acquiert-on par mois travaillé ?",
+      "expectedContextKeywords": ["2,5 jours"],
+      "expectedAnswerKeywords": ["2,5"]
+    },
+    {
+      "id": "cdd-duree-max",
+      "question": "Quelle est la durée maximale d'un CDD, renouvellements inclus ?",
+      "expectedContextKeywords": ["18 mois"],
+      "expectedAnswerKeywords": ["18 mois"]
+    },
+    {
+      "id": "cdd-prime-precarite",
+      "question": "Quel est le montant de la prime de précarité en fin de CDD ?",
+      "expectedContextKeywords": ["10 %", "précarité"],
+      "expectedAnswerKeywords": ["10"]
+    },
+    {
+      "id": "heures-sup-majoration",
+      "question": "Quelle est la majoration des huit premières heures supplémentaires ?",
+      "expectedContextKeywords": ["25 %"],
+      "expectedAnswerKeywords": ["25"]
+    },
+    {
+      "id": "duree-max-hebdo",
+      "question": "Quelle est la durée maximale hebdomadaire absolue de travail ?",
+      "expectedContextKeywords": ["48 h"],
+      "expectedAnswerKeywords": ["48"]
+    },
+    {
+      "id": "forfait-jours-max",
+      "question": "Combien de jours par an au maximum pour un forfait jours cadre ?",
+      "expectedContextKeywords": ["218 jours"],
+      "expectedAnswerKeywords": ["218"]
+    },
+    {
+      "id": "rupture-conventionnelle-retractation",
+      "question": "Quel est le délai de rétractation d'une rupture conventionnelle ?",
+      "expectedContextKeywords": ["15 jours calendaires"],
+      "expectedAnswerKeywords": ["15 jours"]
+    },
+    {
+      "id": "indemnite-licenciement-calcul",
+      "question": "Comment se calcule l'indemnité légale de licenciement pour moins de 10 ans d'ancienneté ?",
+      "expectedContextKeywords": ["1/4 mois"],
+      "expectedAnswerKeywords": ["1/4"]
+    },
+    {
+      "id": "indemnite-licenciement-exemple",
+      "question": "Un salarié avec 7 ans d'ancienneté et 3 000 € brut par mois : quelle indemnité légale de licenciement minimale ?",
+      "expectedContextKeywords": ["5 250"],
+      "expectedAnswerKeywords": ["5 250"]
+    },
+    {
+      "id": "periode-essai-cadre",
+      "question": "Quelle est la durée initiale de la période d'essai d'un cadre en CDI ?",
+      "expectedContextKeywords": ["4 mois"],
+      "expectedAnswerKeywords": ["4 mois"]
+    },
+    {
+      "id": "principe-faveur",
+      "question": "Qu'est-ce que le principe de faveur en droit du travail ?",
+      "expectedContextKeywords": ["plus favorable au salarié"],
+      "expectedAnswerKeywords": ["favorable"]
+    },
+    {
+      "id": "prudhommes-prescription",
+      "question": "Quel est le délai de prescription pour saisir les prud'hommes sur l'exécution du contrat ?",
+      "expectedContextKeywords": ["2 ans"],
+      "expectedAnswerKeywords": ["2 ans"]
+    },
+    {
+      "id": "cotisations-patronales",
+      "question": "Quel est le total approximatif des cotisations patronales ?",
+      "expectedContextKeywords": ["42 %"],
+      "expectedAnswerKeywords": ["42"]
+    },
+    {
+      "id": "oos-tva",
+      "question": "Quel est le taux de TVA applicable aux prestations freelance ?",
+      "outOfScope": true
+    },
+    {
+      "id": "oos-belgique",
+      "question": "Combien de jours de congé paternité en Belgique ?",
+      "outOfScope": true
+    },
+    {
+      "id": "oos-licenciement-collectif",
+      "question": "Quelle est la procédure d'un plan de sauvegarde de l'emploi (licenciement économique collectif) ?",
+      "outOfScope": true
+    }
+  ]
+}

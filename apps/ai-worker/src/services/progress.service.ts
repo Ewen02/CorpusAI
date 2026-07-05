@@ -2,6 +2,7 @@ import Redis from 'ioredis';
 import {
   REDIS_CHANNELS,
   parseRedisUrl,
+  answerCacheVersionKey,
   type DocumentProgressEvent,
   type DocumentFinalFailureEvent,
 } from '@corpusai/queue';
@@ -34,6 +35,19 @@ export class ProgressService {
         { err: error, documentId: event.documentId },
         'Failed to publish final failure event'
       );
+    }
+  }
+
+  /**
+   * Invalide le cache sémantique de réponses d'une AI (même clé versionnée que
+   * l'API) — appelé après chaque (ré)indexation réussie : les réponses en cache
+   * peuvent contredire le nouveau contenu du corpus.
+   */
+  async invalidateAnswerCache(aiId: string): Promise<void> {
+    try {
+      await this.redis.incr(answerCacheVersionKey(aiId));
+    } catch (error) {
+      logger.warn({ err: error, aiId }, 'Failed to invalidate answer cache');
     }
   }
 

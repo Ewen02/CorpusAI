@@ -77,8 +77,11 @@ function init(): void {
     embeddingService = baseEmbeddings;
   }
 
-  // Sparse vector generator for BM25 hybrid search
-  sparseGenerator = new SparseVectorGenerator();
+  // Sparse vector generator for BM25 hybrid search.
+  // SPARSE_NORMALIZE doit valoir la même chose que côté API (voir factory API).
+  sparseGenerator = new SparseVectorGenerator({
+    normalize: process.env.SPARSE_NORMALIZE === 'true',
+  });
 
   // Global vector store (single collection, multi-tenant)
   vectorStore = new QdrantVectorStore({

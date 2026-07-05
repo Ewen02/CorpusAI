@@ -127,6 +127,7 @@ export async function processDocument(data: DocumentProcessingJobData): Promise<
     await publishProgress(documentId, DocumentStatus.PROCESSING, 2, ProcessingStep.PARSING);
 
     let parsedContent: string;
+    let parsedPages: Array<{ pageNumber: number; startOffset: number; endOffset: number }> = [];
     let metadata: {
       wordCount?: number;
       pageCount?: number;
@@ -162,6 +163,9 @@ export async function processDocument(data: DocumentProcessingJobData): Promise<
       });
 
       parsedContent = parsed.content;
+      // Carte des pages (PDF) : offsets par page dans le contenu — permet au
+      // pipeline d'assigner un pageNumber à chaque chunk pour les citations.
+      parsedPages = parsed.pages ?? [];
       metadata = {
         wordCount: parsed.wordCount,
         pageCount: parsed.pageCount,
@@ -194,6 +198,8 @@ export async function processDocument(data: DocumentProcessingJobData): Promise<
           content: parsedContent,
           source: filename,
           metadata: { documentId, aiId, ...metadata },
+          // Hors metadata : ne doit pas finir dans le payload Qdrant de chaque chunk
+          ...(parsedPages.length > 0 && { pages: parsedPages }),
         },
       ],
       {
@@ -207,7 +213,10 @@ export async function processDocument(data: DocumentProcessingJobData): Promise<
           apiKey: process.env.LLM_API_KEY ?? process.env.OPENAI_API_KEY,
           baseURL: process.env.LLM_BASE_URL,
           concurrency: 3,
-          maxDocumentTokens: 500,
+          // 500 tokens de contexte document rendaient l'enrichissement quasi
+          // aveugle (le doc est tronqué avant la plupart des chunks). 4000 offre
+          // un vrai contexte ; le coût reste borné par maxCostUsd côté pipeline.
+          maxDocumentTokens: parseInt(process.env.ENRICHMENT_MAX_DOC_TOKENS ?? '4000', 10),
         },
       }
     );
@@ -276,6 +285,10 @@ export async function processDocument(data: DocumentProcessingJobData): Promise<
     ]);
 
     await publishProgress(documentId, DocumentStatus.INDEXED, 100, null);
+
+    // Le corpus vient de changer : les réponses du cache sémantique de l'API
+    // peuvent contredire le nouveau contenu — on invalide (best-effort).
+    await getProgressService().invalidateAnswerCache(aiId);
 
     logger.info({ documentId, chunks: result.chunksCreated, wordCount }, 'Document indexed');
   } catch (error) {
