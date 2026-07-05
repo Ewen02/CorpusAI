@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { SharedModule } from '../../shared';
 import { RagPipelineFactory } from './rag-pipeline.factory';
 import { RagService } from './rag.service';
 import { RagController } from './rag.controller';
@@ -8,7 +9,7 @@ import { TextGenerationRepository } from './text-generation.repository';
 import { AuthGuard } from '../auth';
 
 @Module({
-  imports: [ConfigModule],
+  imports: [ConfigModule, SharedModule],
   controllers: [RagController],
   providers: [
     RagPipelineFactory,

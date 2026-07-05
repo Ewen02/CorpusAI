@@ -8,8 +8,9 @@ import {
   ApiResponse,
 } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
+import { OwnershipService } from '../../shared';
 import { RagService } from './rag.service';
-import { AuthGuard } from '../auth';
+import { AuthGuard, CurrentUser, type CurrentUserData } from '../auth';
 
 /**
  * Controller pour les endpoints RAG globaux.
@@ -21,7 +22,10 @@ import { AuthGuard } from '../auth';
 @SkipThrottle({ short: true, medium: true, long: true })
 @Controller('rag')
 export class RagController {
-  constructor(private readonly ragService: RagService) {}
+  constructor(
+    private readonly ragService: RagService,
+    private readonly ownership: OwnershipService
+  ) {}
 
   /**
    * Retourne les métriques du système RAG.
@@ -58,8 +62,10 @@ export class RagController {
   @ApiResponse({ status: 200, description: 'Retrieved sources returned' })
   @ApiResponse({ status: 400, description: 'Query parameter "q" is required' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'AI not found' })
   async debugQuery(
     @Param('aiId') aiId: string,
+    @CurrentUser() user: CurrentUserData,
     @Query('q') question: string,
     @Query('topK') topK?: string,
     @Query('threshold') threshold?: string
@@ -67,6 +73,8 @@ export class RagController {
     if (!question || question.trim().length === 0) {
       throw new BadRequestException('Query parameter "q" is required');
     }
+
+    await this.ownership.verifyAIOwnership(aiId, user.id);
 
     return this.ragService.debugQuery(aiId, question, {
       topK: topK ? parseInt(topK, 10) : 5,
