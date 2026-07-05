@@ -19,15 +19,23 @@ export function parseRedisUrl(url: string): RedisOptions {
   }
 
   const password = parsed.password || undefined;
+  const username = parsed.username || undefined;
 
   return {
     host: parsed.hostname,
     port: Number(parsed.port) || 6379,
+    username,
     password,
     maxRetriesPerRequest: null,
-    // Railway's private network (*.railway.internal) is IPv6-only; ioredis
-    // defaults to IPv4 DNS resolution and would fail with ENOTFOUND.
-    ...(isPrivateNetwork ? { family: 6 } : {}),
+    // Fail fast on connect instead of hanging: a producer .add() that can't
+    // reach Redis should reject in seconds, not leave the HTTP handler pending
+    // until the client times out (observed as 300s/HTTP 499 on Railway).
+    connectTimeout: 10_000,
+    // Railway's private network resolves *.railway.internal on both IPv4 and
+    // IPv6 depending on the service. family: 0 lets ioredis try both (dual
+    // stack) instead of forcing IPv6-only (family: 6), which hangs when Redis
+    // only answers on IPv4.
+    ...(isPrivateNetwork ? { family: 0 } : {}),
     ...(isSecure ? { tls: { rejectUnauthorized: true } } : {}),
   };
 }
