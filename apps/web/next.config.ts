@@ -38,6 +38,9 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   output: process.env.VERCEL ? undefined : 'standalone',
   transpilePackages: ['@corpusai/types', '@corpusai/subscription', '@corpusai/ui'],
+  experimental: {
+    optimizePackageImports: ['@corpusai/ui'],
+  },
   async headers() {
     return [
       {

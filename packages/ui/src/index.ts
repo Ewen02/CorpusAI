@@ -1,9 +1,6 @@
 // Utilities
 export { cn } from './lib/utils';
 
-// Design tokens (CSS variable values mirror, chart palette, motion, shadows).
-export * from './tokens';
-
 // Atoms
 export { IconBox } from './atoms/icon-box';
 export type { IconBoxProps } from './atoms/icon-box';
@@ -134,18 +131,6 @@ export type {
 
 export { ConversationList, ConversationListSkeleton } from './organisms/conversation-list';
 export type { ConversationListProps, Conversation } from './organisms/conversation-list';
-
-export {
-  SourceCitation,
-  SourceCitationSkeleton,
-  InlineCitation,
-} from './organisms/source-citation';
-export type {
-  SourceCitationProps,
-  SourceCitationCardProps,
-  InlineCitationProps,
-  Source,
-} from './organisms/source-citation';
 
 export { ShareModal } from './organisms/share-modal';
 export type { ShareModalProps, ShareModalAI } from './organisms/share-modal';

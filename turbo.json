@@ -8,7 +8,16 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build", "db:generate"],
-      "env": ["NEXT_PUBLIC_API_URL", "NEXT_PUBLIC_SENTRY_DSN", "BETTER_AUTH_URL"],
+      "env": [
+        "NEXT_PUBLIC_API_URL",
+        "NEXT_PUBLIC_SENTRY_DSN",
+        "BETTER_AUTH_URL",
+        "NEXT_PUBLIC_POSTHOG_KEY",
+        "NEXT_PUBLIC_POSTHOG_HOST",
+        "NEXT_PUBLIC_APP_URL",
+        "SENTRY_RELEASE",
+        "SENTRY_AUTH_TOKEN"
+      ],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
     "db:generate": {
