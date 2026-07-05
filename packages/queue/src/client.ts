@@ -41,6 +41,11 @@ export function parseRedisUrl(url: string): RedisOptions {
     // reach Redis should reject in seconds, not leave the HTTP handler pending
     // until the client times out (observed as 300s/HTTP 499 on Railway).
     connectTimeout: 10_000,
+    // Survive transient drops (Railway's TCP proxy resets idle connections with
+    // ECONNRESET): keep reconnecting with capped backoff instead of surfacing an
+    // unhandled error event that can take the process down.
+    retryStrategy: (times: number) => Math.min(times * 200, 5_000),
+    reconnectOnError: () => true,
     // Railway's private network resolves *.railway.internal on both IPv4 and
     // IPv6 depending on the service. family: 0 lets ioredis try both (dual
     // stack) instead of forcing IPv6-only (family: 6), which hangs when Redis
