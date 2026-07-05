@@ -7,7 +7,7 @@ WORKDIR /app
 # lockfile against the whole workspace (pnpm needs all package.json files,
 # not just web's), then install only the web subgraph.
 FROM base AS deps
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
 COPY apps/web/package.json ./apps/web/
 COPY apps/api/package.json ./apps/api/
 COPY apps/ai-worker/package.json ./apps/ai-worker/
