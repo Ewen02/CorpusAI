@@ -27,6 +27,12 @@ export interface GoldenCase {
    * (aucune source pertinente ou phrase de refus).
    */
   outOfScope?: boolean;
+  /**
+   * Historique de conversation précédant la question (cas de suivi).
+   * Quand présent, le pipeline condense la question avant le retrieval :
+   * ce champ teste la condensation des follow-ups en conditions réelles.
+   */
+  history?: Array<{ role: 'user' | 'assistant'; content: string }>;
 }
 
 /** Chunk récupéré par le pipeline, sous la forme minimale nécessaire à l'éval */
