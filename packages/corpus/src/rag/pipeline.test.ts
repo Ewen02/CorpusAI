@@ -264,10 +264,20 @@ describe('RAGPipelineImpl', () => {
         expect(mockOpenAICreate).not.toHaveBeenCalled();
       });
 
-      it('should call enrichment API for each chunk when enableContextEnrichment is true', async () => {
-        // First call is enrichment (3 chunks), subsequent calls are for other purposes
+      it('should batch enrichment into a single LLM call for the whole batch', async () => {
+        // Batched enrichment: one call returns a JSON map keyed by chunk index.
         mockOpenAICreate.mockResolvedValue({
-          choices: [{ message: { content: 'This excerpt is in section intro.' } }],
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  '0': 'This excerpt is in section intro.',
+                  '1': 'This excerpt is in section intro.',
+                  '2': 'This excerpt is in section intro.',
+                }),
+              },
+            },
+          ],
         });
 
         await pipeline.index(singleDoc, {
@@ -275,13 +285,13 @@ describe('RAGPipelineImpl', () => {
           contextEnrichmentConfig: { concurrency: 2 },
         });
 
-        // 3 chunks → 3 enrichment API calls
-        expect(mockOpenAICreate).toHaveBeenCalledTimes(3);
+        // 3 chunks fit in a single batch (ENRICHMENT_BATCH_SIZE=12) → 1 enrichment call
+        expect(mockOpenAICreate).toHaveBeenCalledTimes(1);
         expect(mockOpenAICreate).toHaveBeenCalledWith(
           expect.objectContaining({
             model: 'gpt-4o-mini',
             temperature: 0,
-            max_tokens: 60,
+            response_format: { type: 'json_object' },
             messages: expect.arrayContaining([expect.objectContaining({ role: 'user' })]),
           })
         );
@@ -290,7 +300,17 @@ describe('RAGPipelineImpl', () => {
       it('should use enriched text for embedding but store original chunk.text in payload', async () => {
         const contextPhrase = 'This excerpt describes the introduction.';
         mockOpenAICreate.mockResolvedValue({
-          choices: [{ message: { content: contextPhrase } }],
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  '0': contextPhrase,
+                  '1': contextPhrase,
+                  '2': contextPhrase,
+                }),
+              },
+            },
+          ],
         });
 
         await pipeline.index(singleDoc, {

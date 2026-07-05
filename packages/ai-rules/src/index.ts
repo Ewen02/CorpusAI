@@ -230,7 +230,24 @@ export function buildContextSection(chunks: ChunkContext[], maxChars = 16_000): 
 export type ConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW';
 
 /**
+ * Seuil au-dessus duquel un score est considéré comme provenant d'un cross-encoder
+ * (Cohere rerank, échelle de pertinence cosinus ~0-1) plutôt que de la fusion RRF de
+ * Qdrant (échelle ~0-0.4). RRF plafonne bas : un top-1 RRF dépasse rarement 0.4.
+ */
+const RRF_SCORE_CEILING = 0.45;
+
+/**
  * Détermine le niveau de confiance basé sur les scores des sources.
+ *
+ * Deux échelles de score coexistent en amont :
+ * - Cohere rerank a tourné → `relevanceScore` = score de pertinence cosinus (~0-1),
+ *   sur lequel les seuils 0.5/0.7 sont significatifs.
+ * - Pas de reranking (fallback) → `relevanceScore` = score de fusion RRF de Qdrant
+ *   (~0-0.4). Appliquer 0.5/0.7 tel quel classerait TOUJOURS en LOW.
+ *
+ * On détecte l'échelle : si le meilleur score dépasse RRF_SCORE_CEILING on est sur
+ * l'échelle cosinus (seuils nominaux). Sinon on est sur du RRF et on rescale les seuils
+ * proportionnellement pour ne pas dégrader systématiquement en LOW.
  */
 export function determineConfidence(
   sources: SourceReference[],
@@ -241,12 +258,26 @@ export function determineConfidence(
   }
 
   const avgScore = sources.reduce((sum, s) => sum + s.relevanceScore, 0) / sources.length;
+  const maxScore = sources.reduce((max, s) => Math.max(max, s.relevanceScore), 0);
 
-  if (avgScore > rules.sourceCitation.highConfidenceThreshold) {
+  const { highConfidenceThreshold, lowConfidenceThreshold } = rules.sourceCitation;
+
+  // Si aucune source ne dépasse le plafond RRF, on interprète les scores sur l'échelle RRF
+  // et on rescale les seuils cosinus vers cette échelle (× RRF_SCORE_CEILING) pour rester
+  // discriminant au lieu de tout classer LOW.
+  const isRrfScale = maxScore <= RRF_SCORE_CEILING;
+  const highThreshold = isRrfScale
+    ? highConfidenceThreshold * RRF_SCORE_CEILING
+    : highConfidenceThreshold;
+  const lowThreshold = isRrfScale
+    ? lowConfidenceThreshold * RRF_SCORE_CEILING
+    : lowConfidenceThreshold;
+
+  if (avgScore > highThreshold) {
     return 'HIGH';
   }
 
-  if (avgScore > rules.sourceCitation.lowConfidenceThreshold) {
+  if (avgScore > lowThreshold) {
     return 'MEDIUM';
   }
 

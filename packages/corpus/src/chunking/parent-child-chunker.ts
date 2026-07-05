@@ -11,11 +11,48 @@
  * Fallback: CSV files use TokenChunker(400, 50) with no parentContent.
  */
 
+import { createHash } from 'node:crypto';
 import { get_encoding, type Tiktoken } from 'tiktoken';
 import type { ChunkingService, Chunk, ChunkMetadata, ParentChildChunkerOptions } from './types';
 
 /** Sentence boundary markers used for overlap alignment */
 const SENTENCE_BOUNDARIES = ['. ', '.\n', '? ', '?\n', '! ', '!\n', '\n\n'];
+
+/**
+ * Namespace UUID (v4, fixe) pour dériver des UUIDv5 déterministes des chunks CorpusAI.
+ * Généré une fois et gelé — ne jamais modifier sous peine de casser l'idempotence.
+ */
+const CHUNK_NAMESPACE = '6f9619ff-8b86-d011-b42d-00c04fc964ff';
+
+/**
+ * Génère un UUIDv5 (RFC 4122, basé SHA-1) déterministe à partir d'un namespace et d'un
+ * nom. `uuid` n'est pas une dépendance du package, on l'implémente donc via node:crypto.
+ * Même (namespace, name) → même UUID → upsert Qdrant idempotent au ré-indexage.
+ */
+function uuidv5(name: string, namespace: string): string {
+  const nsBytes = Buffer.from(namespace.replace(/-/g, ''), 'hex');
+  const hash = createHash('sha1').update(nsBytes).update(Buffer.from(name, 'utf8')).digest();
+
+  const bytes = hash.subarray(0, 16);
+  // Version 5 (0101) dans les 4 bits de poids fort de l'octet 6.
+  bytes[6] = (bytes[6]! & 0x0f) | 0x50;
+  // Variant RFC 4122 (10xx) dans les 2 bits de poids fort de l'octet 8.
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+
+  const hex = bytes.toString('hex');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+}
+
+/**
+ * Identifiant de chunk déterministe : dérivé de documentId + index + sha256(texte).
+ * Ré-indexer un contenu identique produit exactement le même id → upsert idempotent.
+ * NOTE: le court-circuit "content-hash" côté worker (skip complet du ré-embedding si le
+ * hash du document n'a pas changé) reste un follow-up séparé (hors de ce package).
+ */
+function deterministicChunkId(documentId: string, index: number, text: string): string {
+  const textHash = createHash('sha256').update(text, 'utf8').digest('hex');
+  return uuidv5(`${documentId}:${index}:${textHash}`, CHUNK_NAMESPACE);
+}
 
 interface Section {
   header: string;
@@ -136,15 +173,16 @@ export class ParentChildChunker implements ChunkingService {
 
       for (const childText of children) {
         if (!childText.trim()) continue;
+        const text = childText.trim();
         chunks.push({
-          id: crypto.randomUUID(),
-          text: childText.trim(),
+          id: deterministicChunkId(metadata.documentId, index, text),
+          text,
           metadata: {
             ...metadata,
             chunkIndex: index,
             parentContent: parentText.trim(),
             sectionHeader: section.header || undefined,
-            tokenCount: this.countTokens(childText.trim()),
+            tokenCount: this.countTokens(text),
           },
           index,
         });
@@ -332,16 +370,19 @@ export class ParentChildChunker implements ChunkingService {
     // Fixed chunking: 400 tokens, 50 overlap, no parentContent
     const chunks = this.splitByTokens(text, 400, 50);
     return chunks
-      .map((t, i) => ({
-        id: crypto.randomUUID(),
-        text: t.trim(),
-        metadata: {
-          ...metadata,
-          chunkIndex: i,
-          tokenCount: this.countTokens(t.trim()),
-        },
-        index: i,
-      }))
+      .map((raw, i) => {
+        const t = raw.trim();
+        return {
+          id: deterministicChunkId(metadata.documentId, i, t),
+          text: t,
+          metadata: {
+            ...metadata,
+            chunkIndex: i,
+            tokenCount: this.countTokens(t),
+          },
+          index: i,
+        };
+      })
       .filter((c) => c.text.length > 0);
   }
 

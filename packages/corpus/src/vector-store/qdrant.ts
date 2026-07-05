@@ -140,6 +140,11 @@ export class QdrantVectorStore implements VectorStoreService {
   /**
    * Hybrid search combining dense and sparse vectors with RRF fusion.
    * Automatically filters by tenant (aiId) using the is_tenant index.
+   *
+   * IMPORTANT (scale caveat) : `options.scoreThreshold` s'applique au prefetch DENSE
+   * (échelle cosinus 0-1, où un seuil est significatif), PAS au score de fusion RRF
+   * final (échelle ~0-0.4). Appliquer le seuil sur le RRF viderait les résultats à tort.
+   * `options.filter` est fusionné dans le `must[]` du filtre tenant (les deux prefetch).
    */
   async hybridSearch(
     denseVector: number[],
@@ -147,9 +152,8 @@ export class QdrantVectorStore implements VectorStoreService {
     aiId: string,
     options: SearchOptions
   ): Promise<SearchResult[]> {
-    const tenantFilter = {
-      must: [{ key: 'ai_id', match: { value: aiId } }],
-    };
+    // Filtre tenant + filtres additionnels optionnels convertis au format Qdrant.
+    const tenantFilter = this.buildSearchFilter(aiId, options.filter);
 
     const results = await this.client.query(this.collectionName, {
       prefetch: [
@@ -158,6 +162,10 @@ export class QdrantVectorStore implements VectorStoreService {
           using: 'dense',
           limit: 20,
           filter: tenantFilter,
+          // Seuil appliqué ici (échelle cosinus dense) et non sur la fusion RRF.
+          ...(options.scoreThreshold !== undefined && {
+            score_threshold: options.scoreThreshold,
+          }),
         },
         {
           query: {
@@ -217,20 +225,29 @@ export class QdrantVectorStore implements VectorStoreService {
   }
 
   /**
-   * Converts our filter format to Qdrant filter format.
+   * Builds the Qdrant search filter: the mandatory tenant clause (ai_id) plus any
+   * additional user-provided filter, merged into a single filter object.
+   *
+   * The tenant clause is always in `must[]` (multi-tenancy is non-negotiable). The
+   * user filter's `must` clauses are appended to that same `must[]`; its `should` /
+   * `must_not` clauses are carried over as-is.
    */
-  private convertFilter(filter: FilterCondition): Record<string, unknown> {
-    const qdrantFilter: Record<string, unknown> = {};
+  private buildSearchFilter(aiId: string, filter?: FilterCondition): Record<string, unknown> {
+    const must: Record<string, unknown>[] = [{ key: 'ai_id', match: { value: aiId } }];
 
-    if (filter.must) {
-      qdrantFilter.must = filter.must.map((clause) => this.convertClause(clause));
+    if (filter?.must) {
+      for (const clause of filter.must) {
+        must.push(this.convertClause(clause));
+      }
     }
 
-    if (filter.should) {
+    const qdrantFilter: Record<string, unknown> = { must };
+
+    if (filter?.should) {
       qdrantFilter.should = filter.should.map((clause) => this.convertClause(clause));
     }
 
-    if (filter.must_not) {
+    if (filter?.must_not) {
       qdrantFilter.must_not = filter.must_not.map((clause) => this.convertClause(clause));
     }
 

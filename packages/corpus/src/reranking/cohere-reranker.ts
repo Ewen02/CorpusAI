@@ -51,6 +51,8 @@ export class CohereReranker implements AsyncReranker {
           top_n: Math.min(this.topN, results.length),
           return_documents: false,
         }),
+        // Cap latency: rerank is best-effort, fall back to Qdrant order past 2s.
+        signal: AbortSignal.timeout(2000),
       });
 
       if (!response.ok) {
@@ -73,7 +75,9 @@ export class CohereReranker implements AsyncReranker {
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      // Fallback: semantic order from Qdrant scores (error logged by caller via metrics)
+      // Log before falling back so silent degradation is observable (timeout, 5xx, etc.).
+      console.warn('[Cohere Rerank] fallback:', message);
+      // Fallback: semantic order from Qdrant scores.
       return results.map((r) => ({
         ...r,
         semanticScore: r.score,
