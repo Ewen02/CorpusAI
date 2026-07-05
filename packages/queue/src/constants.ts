@@ -53,3 +53,15 @@ export function buildRetryJobId(documentId: string, versionId?: string, attempt?
   const key = versionId ?? (attempt !== undefined ? `attempt${attempt}` : 'retry');
   return `${base}__retry__${key}`;
 }
+
+/**
+ * Redis key of the semantic answer cache version for an AI.
+ *
+ * Shared between the API (lookup/store, invalidation on vector deletes) and
+ * the ai-worker (invalidation after a successful re-index) : bumping the
+ * version orphans every cached answer of the AI — the entry lists are
+ * namespaced by version and expire by TTL.
+ */
+export function answerCacheVersionKey(aiId: string): string {
+  return `anscache:ver:${aiId}`;
+}

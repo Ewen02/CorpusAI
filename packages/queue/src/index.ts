@@ -6,6 +6,7 @@ export {
   REDIS_CHANNELS,
   buildDocumentJobId,
   buildRetryJobId,
+  answerCacheVersionKey,
 } from './constants';
 export type {
   DocumentProcessingJobData,
