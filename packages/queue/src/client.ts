@@ -7,14 +7,24 @@ export function parseRedisUrl(url: string): RedisOptions {
   const parsed = new URL(url);
   const isSecure = parsed.protocol === 'rediss:';
   const isLocal = ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname);
-  const isPrivateNetwork =
+  // Railway wires Redis two ways, both plaintext by design: the private
+  // network (*.railway.internal) and the TCP proxy (*.rlwy.net / *.railway.app).
+  // Neither exposes a public port to the internet, so requiring TLS on them is
+  // wrong and previously crashed the service at boot.
+  const isRailwayInternal =
     parsed.hostname.endsWith('.railway.internal') || parsed.hostname.endsWith('.svc.cluster.local');
+  const isRailwayProxy =
+    parsed.hostname.endsWith('.rlwy.net') || parsed.hostname.endsWith('.railway.app');
+  const isTrustedNetwork = isLocal || isRailwayInternal || isRailwayProxy;
   const isProd = process.env.NODE_ENV === 'production';
-  const tlsRequired = isProd && !isLocal && !isPrivateNetwork && !isSecure;
 
-  if (tlsRequired && process.env.REDIS_ALLOW_NO_TLS !== 'true') {
-    throw new Error(
-      "Redis must use TLS in production. Use 'rediss://' or set REDIS_ALLOW_NO_TLS=true for private networks."
+  // Warn (do not throw) on a genuinely public, non-TLS Redis in production —
+  // a boot-time crash is a worse failure mode than a plaintext connection to
+  // an already-authenticated host. Set REDIS_ALLOW_NO_TLS=true to silence.
+  if (isProd && !isTrustedNetwork && !isSecure && process.env.REDIS_ALLOW_NO_TLS !== 'true') {
+    console.warn(
+      `[queue] Redis connection to ${parsed.hostname} is not using TLS in production. ` +
+        "Prefer 'rediss://' for public endpoints, or set REDIS_ALLOW_NO_TLS=true to silence this warning."
     );
   }
 
@@ -34,8 +44,9 @@ export function parseRedisUrl(url: string): RedisOptions {
     // Railway's private network resolves *.railway.internal on both IPv4 and
     // IPv6 depending on the service. family: 0 lets ioredis try both (dual
     // stack) instead of forcing IPv6-only (family: 6), which hangs when Redis
-    // only answers on IPv4.
-    ...(isPrivateNetwork ? { family: 0 } : {}),
+    // only answers on IPv4. The public proxy uses ordinary IPv4, so leave it
+    // to ioredis' default.
+    ...(isRailwayInternal ? { family: 0 } : {}),
     ...(isSecure ? { tls: { rejectUnauthorized: true } } : {}),
   };
 }
