@@ -1,10 +1,12 @@
 import type { AnalyticsPeriod } from '@/lib/queries';
 
-export const PERIOD_OPTIONS: { value: AnalyticsPeriod; label: string }[] = [
-  { value: '24h', label: '24h' },
-  { value: '7d', label: '7 jours' },
-  { value: '30d', label: '30 jours' },
-  { value: '90d', label: '90 jours' },
+/**
+ * `labelKey` maps to the `analytics.periods.*` i18n namespace — translate at the
+ * call site with `useTranslations('analytics.periods')`.
+ */
+export const PERIOD_OPTIONS: { value: AnalyticsPeriod; labelKey: AnalyticsPeriod }[] = [
+  { value: '24h', labelKey: '24h' },
+  { value: '7d', labelKey: '7d' },
+  { value: '30d', labelKey: '30d' },
+  { value: '90d', labelKey: '90d' },
 ];
-
-export const CHART_AXIS_STYLE = { fill: 'hsl(var(--muted-foreground))' };

@@ -22,6 +22,7 @@ import {
   useTestWebhook,
   type NewWebhook,
 } from '@/lib/queries';
+import { useCopyToClipboard } from '@/lib/hooks';
 import {
   WebhookIcon,
   PlusIcon,
@@ -62,7 +63,7 @@ export default function SettingsWebhooksPage() {
   const [url, setUrl] = React.useState('');
   const [selectedEvents, setSelectedEvents] = React.useState<string[]>([]);
   const [createdWebhook, setCreatedWebhook] = React.useState<NewWebhook | null>(null);
-  const [copiedSecret, setCopiedSecret] = React.useState(false);
+  const { copied: copiedSecret, copy: copySecret } = useCopyToClipboard();
   const [testingId, setTestingId] = React.useState<string | null>(null);
 
   const toggleEvent = (event: string) => {
@@ -80,9 +81,7 @@ export default function SettingsWebhooksPage() {
   };
 
   const handleCopySecret = (secret: string) => {
-    navigator.clipboard.writeText(secret);
-    setCopiedSecret(true);
-    setTimeout(() => setCopiedSecret(false), 2000);
+    copySecret(secret);
   };
 
   const handleTest = async (id: string) => {

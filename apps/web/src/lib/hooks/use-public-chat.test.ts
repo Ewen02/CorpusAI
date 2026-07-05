@@ -24,6 +24,22 @@ vi.mock('@/lib/utils/chat-session', () => ({
   mapSourcesToChat: vi.fn().mockReturnValue([]),
 }));
 
+// Mock next-intl so the hook can resolve chatPublic messages without a provider.
+vi.mock('next-intl', () => {
+  const messages: Record<string, string> = {
+    notFound: 'Assistant introuvable.',
+    invalidLink: 'Lien invalide ou expiré.',
+    inviteOnly: 'Cet assistant est réservé aux membres invités.',
+    accessDenied: 'Accès refusé.',
+    startError: 'Impossible de démarrer la conversation.',
+    streamError: "Désolé, une erreur s'est produite.",
+    rateLimitReached: 'Vous avez atteint la limite de questions quotidienne. Revenez demain !',
+  };
+  return {
+    useTranslations: () => (key: string) => messages[key] ?? key,
+  };
+});
+
 import { apiClient, ApiError } from '@/lib/api-client';
 import { usePublicChat } from './use-public-chat';
 

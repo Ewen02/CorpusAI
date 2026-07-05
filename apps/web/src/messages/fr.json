@@ -173,7 +173,10 @@
       "notFound": "Assistant introuvable",
       "backToList": "Retour à la liste",
       "assistantReady": "Votre assistant est prêt !",
-      "history": "Historique"
+      "history": "Historique",
+      "welcomeIntro": "Salut ! Je suis documenté sur ces sujets :",
+      "welcomeMore": "• ...et {count} autres",
+      "welcomeOutro": "Pose-moi une question, même en dehors de ces sujets !"
     },
     "team": {
       "title": "Équipe",
@@ -227,6 +230,49 @@
         "errorWrongEmail": "Cette invitation a été envoyée à une autre adresse email.",
         "errorNotFound": "Invitation introuvable."
       }
+    },
+    "analyticsTab": {
+      "statConversations": "Conversations",
+      "statQuestions": "Questions",
+      "statDocuments": "Documents",
+      "responseQuality": "Qualité des réponses",
+      "relevantAnswers": "réponses pertinentes",
+      "relevantCount": "{count, plural, one {# pertinente} other {# pertinentes}}",
+      "partialCount": "{count, plural, one {# partielle} other {# partielles}}",
+      "insufficientCount": "{count, plural, one {# insuffisante} other {# insuffisantes}}",
+      "engagement": "Engagement",
+      "uniqueVisitors": "{count, plural, one {visiteur unique} other {visiteurs uniques}}",
+      "sessions": "{count, plural, one {session} other {sessions}}",
+      "noConversation": "aucune conversation",
+      "messagesPerConv": "{count} msg/conv",
+      "toImprove": "À améliorer",
+      "unansweredQuestions": "{count, plural, one {question sans réponse} other {questions sans réponse}}",
+      "percentOfTotal": "{percent}% du total",
+      "userSatisfaction": "Satisfaction utilisateurs",
+      "noReviews": "aucun avis",
+      "positiveReviews": "{positive, plural, one {# positif} other {# positifs}} / {total} avis",
+      "positiveTooltip": "{count, plural, one {# positif} other {# positifs}}",
+      "negativeTooltip": "{count, plural, one {# négatif} other {# négatifs}}",
+      "knowledgeBase": "Base de connaissances",
+      "kbDocuments": "{count, plural, one {# document} other {# documents}}",
+      "kbPages": "{count} pages",
+      "kbWords": "{count} mots",
+      "kbChunks": "{count} fragments",
+      "documentUsage": "Utilisation des documents",
+      "mostCited": "Documents les plus cités par l'assistant",
+      "sectionsUsed": "{used}/{total} sections utilisées",
+      "loadingSections": "Chargement...",
+      "noSection": "Aucune section",
+      "topQuestions": "Top questions",
+      "retention": "Rétention",
+      "newUsers": "Nouveaux",
+      "returningUsers": "Récurrents",
+      "newUsersTooltip": "{count} nouveaux",
+      "returningUsersTooltip": "{count} récurrents",
+      "engagementFunnel": "Funnel d'engagement",
+      "funnelDocumentsIndexed": "Documents indexés",
+      "funnelFirstQuestion": "1ère question posée",
+      "funnelEngagedConversations": "Conversations engagées (5+ msg)"
     }
   },
   "documents": {
@@ -559,7 +605,30 @@
   "analytics": {
     "title": "Analytics",
     "subtitle": "Suivez l'évolution de votre activité.",
-    "errorLoading": "Erreur lors du chargement des analytics."
+    "errorLoading": "Erreur lors du chargement des analytics.",
+    "charts": {
+      "questionsTitle": "Questions par jour",
+      "questionsSubtitleGlobal": "Évolution du nombre de questions posées à vos AIs",
+      "questionsSubtitleAi": "Questions posées à cet assistant",
+      "conversationsTitle": "Conversations",
+      "conversationsSubtitleGlobal": "Nouvelles conversations par jour",
+      "conversationsSubtitleAi": "Nouvelles conversations",
+      "documentsTitle": "Documents",
+      "documentsSubtitleGlobal": "Documents ajoutés par jour",
+      "documentsSubtitleAi": "Documents ajoutés",
+      "emptyQuestions": "Aucune question pour l'instant",
+      "emptyQuestionsHint": "Posez une question à votre assistant pour voir les statistiques",
+      "emptyConversations": "Aucune conversation",
+      "emptyConversationsHint": "Les conversations apparaîtront ici",
+      "emptyDocuments": "Aucun document",
+      "emptyDocumentsHint": "Ajoutez des documents pour voir l'évolution"
+    },
+    "periods": {
+      "24h": "24h",
+      "7d": "7 jours",
+      "30d": "30 jours",
+      "90d": "90 jours"
+    }
   },
   "landing": {
     "badge": "Maintenant en bêta publique",
@@ -641,7 +710,11 @@
     "thisAssistant": "Cet assistant",
     "notFound": "Assistant introuvable.",
     "startError": "Impossible de démarrer la conversation.",
-    "streamError": "Désolé, une erreur s'est produite."
+    "streamError": "Désolé, une erreur s'est produite.",
+    "invalidLink": "Lien invalide ou expiré.",
+    "accessDenied": "Accès refusé.",
+    "rateLimitReached": "Vous avez atteint la limite de questions quotidienne. Revenez demain !",
+    "dismiss": "Fermer"
   },
   "metadata": {
     "title": "CorpusAI — Créez votre IA depuis vos documents",
@@ -920,11 +993,11 @@
   },
   "integration": {
     "aiPublicAccessible": "Ton AI est public et accessible",
-    "viewPage": "Voir la page \u2192",
+    "viewPage": "Voir la page →",
     "sharingLocked": "Options de partage verrouillées",
     "mustBeActive": "Ton AI doit être en statut Actif pour être partageable.",
     "makePublicToUnlock": "Rends ton AI public dans les paramètres pour débloquer le partage et l'intégration.",
-    "goToSettings": "Aller aux paramètres \u2192",
+    "goToSettings": "Aller aux paramètres →",
     "directLink": "Lien direct",
     "directLinkDescription": "Partager un lien direct vers l'assistant",
     "copy": "Copier",
@@ -975,8 +1048,8 @@
     "noResultsDescription": "Aucun assistant ne correspond à ces critères.",
     "resetFilters": "Réinitialiser les filtres",
     "resultCount": "{count, plural, =1 {# assistant} other {# assistants}}",
-    "previous": "\u2190 Précédent",
-    "next": "Suivant \u2192"
+    "previous": "← Précédent",
+    "next": "Suivant →"
   },
   "error": {
     "title": "Une erreur est survenue",
@@ -989,7 +1062,7 @@
     "explore": "Explorer",
     "createMine": "Créer le mien",
     "notFound": "Profil introuvable.",
-    "backToExplore": "\u2190 Retour à l'exploration",
+    "backToExplore": "← Retour à l'exploration",
     "publicAIs": "{count, plural, =1 {# AI public} other {# AIs publics}}",
     "memberSince": "Membre depuis {date}",
     "noPublicAIs": "Ce créateur n'a pas encore partagé d'AI public."

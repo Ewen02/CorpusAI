@@ -15,6 +15,7 @@ import {
   Separator,
 } from '@corpusai/ui';
 import { useApiKeys, useCreateApiKey, useDeleteApiKey, type NewApiKey } from '@/lib/queries';
+import { useCopyToClipboard } from '@/lib/hooks';
 import { KeyIcon, PlusIcon, XIcon } from '@/lib/icons';
 import { PageWrapper } from '@/components/page-wrapper';
 
@@ -29,7 +30,7 @@ export default function SettingsApiKeysPage() {
 
   const [newKeyName, setNewKeyName] = React.useState('');
   const [createdKey, setCreatedKey] = React.useState<NewApiKey | null>(null);
-  const [copied, setCopied] = React.useState(false);
+  const { copied, copy } = useCopyToClipboard();
 
   const handleCreate = async () => {
     const result = await createKey.mutateAsync(newKeyName || 'Default');
@@ -38,11 +39,7 @@ export default function SettingsApiKeysPage() {
   };
 
   const handleCopy = () => {
-    if (createdKey) {
-      navigator.clipboard.writeText(createdKey.key);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+    if (createdKey) copy(createdKey.key);
   };
 
   return (

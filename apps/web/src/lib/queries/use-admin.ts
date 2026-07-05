@@ -1,6 +1,52 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../api-client';
 
+// Response shapes for the admin monitoring endpoints.
+export interface ServiceStatus {
+  status: string;
+  latencyMs: number;
+  error?: string;
+  collections?: number;
+  totalPoints?: number;
+}
+
+export interface HealthData {
+  status: 'healthy' | 'degraded';
+  uptime: number;
+  timestamp: string;
+  responseMs: number;
+  services: {
+    postgres: ServiceStatus;
+    qdrant: ServiceStatus;
+    redis: ServiceStatus;
+    openai: ServiceStatus;
+  };
+  documentQueue: {
+    failed: number;
+    pending: number;
+    processing: number;
+  };
+}
+
+export interface TestSuite {
+  name: string;
+  status: 'passed' | 'failed' | 'error';
+  tests: number;
+  passed: number;
+  failed: number;
+  files: number;
+  error?: string;
+}
+
+export interface TestStatus {
+  status: 'all_passed' | 'some_failed';
+  totalTests: number;
+  totalPassed: number;
+  totalFailed: number;
+  suites: TestSuite[];
+  timestamp: string;
+}
+
 // Types
 export interface AdminTopAI {
   id: string;
@@ -90,6 +136,7 @@ export const adminKeys = {
   users: (page: number, search?: string) => [...adminKeys.all, 'users', page, search] as const,
   ais: (page: number, search?: string) => [...adminKeys.all, 'ais', page, search] as const,
   health: () => [...adminKeys.all, 'health'] as const,
+  tests: () => [...adminKeys.all, 'tests'] as const,
   failedJobs: () => [...adminKeys.all, 'failed-jobs'] as const,
 };
 
@@ -142,6 +189,29 @@ export function useUpdateUserPlan() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminKeys.all });
     },
+  });
+}
+
+/** System health, auto-refreshed on an interval while the tab is visible. */
+export function useAdminHealth() {
+  return useQuery({
+    queryKey: adminKeys.health(),
+    queryFn: () => apiClient.get<HealthData>('/admin/health'),
+    refetchInterval: 30_000,
+  });
+}
+
+/**
+ * On-demand test-suite run — disabled by default because it is expensive.
+ * Trigger it explicitly via the returned `refetch`.
+ */
+export function useAdminTests() {
+  return useQuery({
+    queryKey: adminKeys.tests(),
+    queryFn: () => apiClient.get<TestStatus>('/admin/tests'),
+    enabled: false,
+    staleTime: Infinity,
+    gcTime: Infinity,
   });
 }
 

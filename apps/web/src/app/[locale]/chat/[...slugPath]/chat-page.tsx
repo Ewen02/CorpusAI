@@ -210,9 +210,10 @@ function SaveBanner({ onDismiss, t }: { onDismiss: () => void; t: (key: string) 
       </p>
       <button
         onClick={onDismiss}
+        aria-label={t('dismiss')}
         className="ml-4 text-xs text-muted-foreground hover:text-foreground"
       >
-        ✕
+        <span aria-hidden="true">✕</span>
       </button>
     </div>
   );

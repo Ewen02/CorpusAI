@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useTranslations } from 'next-intl';
 import { apiClient, ApiError, type StreamDoneData } from '@/lib/api-client';
 import type { ChatMessage } from '@corpusai/ui';
 import type { AIPublicInfo, StartConversationResponse } from '@corpusai/types';
@@ -60,6 +61,7 @@ export function usePublicChat({
   slug,
   accessToken,
 }: UsePublicChatOptions): UsePublicChatReturn {
+  const t = useTranslations('chatPublic');
   const [ai, setAI] = React.useState<AIPublicInfo | null>(null);
   const [conversationId, setConversationId] = React.useState<string | null>(null);
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
@@ -91,14 +93,14 @@ export function usePublicChat({
         const data = await apiClient.get<AIPublicInfo>(`/chat/${username}/${slug}/info`);
         setAI(data);
       } catch {
-        setError('Assistant introuvable.');
+        setError(t('notFound'));
       } finally {
         setIsLoading(false);
       }
     }
 
     if (username && slug) fetchAI();
-  }, [username, slug]);
+  }, [username, slug, t]);
 
   // Start conversation
   React.useEffect(() => {
@@ -125,21 +127,21 @@ export function usePublicChat({
             // Don't set error — caller shows modal
             setIsLoading(false);
           } else if (reason === 'access_token') {
-            setError('Lien invalide ou expiré.');
+            setError(t('invalidLink'));
           } else if (reason === 'invite_only') {
-            setError('Accès sur invitation uniquement.');
+            setError(t('inviteOnly'));
           } else {
-            setError('Accès refusé.');
+            setError(t('accessDenied'));
           }
         } else {
-          setError('Impossible de démarrer la conversation.');
+          setError(t('startError'));
         }
         setIsLoading(false);
       }
     }
 
     if (ai) startConversation();
-  }, [ai, username, slug, accessToken]);
+  }, [ai, username, slug, accessToken, t]);
 
   const unlockWithCode = React.useCallback(
     async (code: string): Promise<boolean> => {
@@ -248,9 +250,7 @@ export function usePublicChat({
         onError: (error) => {
           const msg = error instanceof Error ? error.message : '';
           const isRateLimit = msg.includes('limit');
-          const errorContent = isRateLimit
-            ? 'Vous avez atteint la limite de questions quotidienne. Revenez demain !'
-            : "Désolé, une erreur s'est produite.";
+          const errorContent = isRateLimit ? t('rateLimitReached') : t('streamError');
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantId ? { ...m, content: errorContent, isStreaming: false } : m
@@ -260,7 +260,7 @@ export function usePublicChat({
         },
       });
     },
-    [conversationId, isStreaming]
+    [conversationId, isStreaming, t]
   );
 
   const submitFeedback = React.useCallback(

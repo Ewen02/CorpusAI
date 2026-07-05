@@ -173,7 +173,10 @@
       "notFound": "Assistant not found",
       "backToList": "Back to list",
       "assistantReady": "Your assistant is ready!",
-      "history": "History"
+      "history": "History",
+      "welcomeIntro": "Hi! I'm documented on these topics:",
+      "welcomeMore": "• ...and {count} more",
+      "welcomeOutro": "Ask me a question, even outside these topics!"
     },
     "team": {
       "title": "Team",
@@ -227,6 +230,49 @@
         "errorWrongEmail": "This invitation was sent to a different email address.",
         "errorNotFound": "Invitation not found."
       }
+    },
+    "analyticsTab": {
+      "statConversations": "Conversations",
+      "statQuestions": "Questions",
+      "statDocuments": "Documents",
+      "responseQuality": "Response quality",
+      "relevantAnswers": "relevant answers",
+      "relevantCount": "{count, plural, one {# relevant} other {# relevant}}",
+      "partialCount": "{count, plural, one {# partial} other {# partial}}",
+      "insufficientCount": "{count, plural, one {# insufficient} other {# insufficient}}",
+      "engagement": "Engagement",
+      "uniqueVisitors": "{count, plural, one {unique visitor} other {unique visitors}}",
+      "sessions": "{count, plural, one {session} other {sessions}}",
+      "noConversation": "no conversation",
+      "messagesPerConv": "{count} msg/conv",
+      "toImprove": "To improve",
+      "unansweredQuestions": "{count, plural, one {unanswered question} other {unanswered questions}}",
+      "percentOfTotal": "{percent}% of total",
+      "userSatisfaction": "User satisfaction",
+      "noReviews": "no reviews",
+      "positiveReviews": "{positive, plural, one {# positive} other {# positive}} / {total} reviews",
+      "positiveTooltip": "{count, plural, one {# positive} other {# positive}}",
+      "negativeTooltip": "{count, plural, one {# negative} other {# negative}}",
+      "knowledgeBase": "Knowledge base",
+      "kbDocuments": "{count, plural, one {# document} other {# documents}}",
+      "kbPages": "{count} pages",
+      "kbWords": "{count} words",
+      "kbChunks": "{count} chunks",
+      "documentUsage": "Document usage",
+      "mostCited": "Documents most cited by the assistant",
+      "sectionsUsed": "{used}/{total} sections used",
+      "loadingSections": "Loading...",
+      "noSection": "No section",
+      "topQuestions": "Top questions",
+      "retention": "Retention",
+      "newUsers": "New",
+      "returningUsers": "Returning",
+      "newUsersTooltip": "{count} new",
+      "returningUsersTooltip": "{count} returning",
+      "engagementFunnel": "Engagement funnel",
+      "funnelDocumentsIndexed": "Indexed documents",
+      "funnelFirstQuestion": "First question asked",
+      "funnelEngagedConversations": "Engaged conversations (5+ msgs)"
     }
   },
   "documents": {
@@ -245,8 +291,8 @@
     "wordsExtracted": "{count} words extracted",
     "retryAnalysis": "Retry analysis",
     "deleteDocument": "Delete document",
-    "processingFallback": "Processing\u2026",
-    "waiting": "Waiting\u2026",
+    "processingFallback": "Processing…",
+    "waiting": "Waiting…",
     "stepShort": {
       "parsing": "Reading",
       "chunking": "Analysis",
@@ -254,10 +300,10 @@
       "storing": "Saving"
     },
     "stepLabels": {
-      "parsing": "Reading document\u2026",
-      "chunking": "Splitting into sections\u2026",
-      "embedding": "Understanding content\u2026",
-      "storing": "Saving\u2026"
+      "parsing": "Reading document…",
+      "chunking": "Splitting into sections…",
+      "embedding": "Understanding content…",
+      "storing": "Saving…"
     },
     "status": {
       "pending": "Pending",
@@ -559,7 +605,30 @@
   "analytics": {
     "title": "Analytics",
     "subtitle": "Track your activity over time.",
-    "errorLoading": "Failed to load analytics."
+    "errorLoading": "Failed to load analytics.",
+    "charts": {
+      "questionsTitle": "Questions per day",
+      "questionsSubtitleGlobal": "Trend of questions asked to your AIs",
+      "questionsSubtitleAi": "Questions asked to this assistant",
+      "conversationsTitle": "Conversations",
+      "conversationsSubtitleGlobal": "New conversations per day",
+      "conversationsSubtitleAi": "New conversations",
+      "documentsTitle": "Documents",
+      "documentsSubtitleGlobal": "Documents added per day",
+      "documentsSubtitleAi": "Documents added",
+      "emptyQuestions": "No questions yet",
+      "emptyQuestionsHint": "Ask your assistant a question to see the statistics",
+      "emptyConversations": "No conversations",
+      "emptyConversationsHint": "Conversations will appear here",
+      "emptyDocuments": "No documents",
+      "emptyDocumentsHint": "Add documents to see the trend"
+    },
+    "periods": {
+      "24h": "24h",
+      "7d": "7 days",
+      "30d": "30 days",
+      "90d": "90 days"
+    }
   },
   "landing": {
     "badge": "Now in public beta",
@@ -641,7 +710,11 @@
     "thisAssistant": "This assistant",
     "notFound": "Assistant not found.",
     "startError": "Failed to start the conversation.",
-    "streamError": "Sorry, an error occurred."
+    "streamError": "Sorry, an error occurred.",
+    "invalidLink": "Invalid or expired link.",
+    "accessDenied": "Access denied.",
+    "rateLimitReached": "You've reached the daily question limit. Come back tomorrow!",
+    "dismiss": "Dismiss"
   },
   "metadata": {
     "title": "CorpusAI — Build your AI from your documents",
@@ -920,11 +993,11 @@
   },
   "integration": {
     "aiPublicAccessible": "Your AI is public and accessible",
-    "viewPage": "View page \u2192",
+    "viewPage": "View page →",
     "sharingLocked": "Sharing options locked",
     "mustBeActive": "Your AI must be Active to be shareable.",
     "makePublicToUnlock": "Make your AI public in settings to unlock sharing and integration.",
-    "goToSettings": "Go to settings \u2192",
+    "goToSettings": "Go to settings →",
     "directLink": "Direct link",
     "directLinkDescription": "Share a direct link to your assistant",
     "copy": "Copy",
@@ -941,7 +1014,7 @@
     "header": "Header",
     "branding": "CorpusAI branding",
     "codeToPaste": "Code to paste",
-    "inviteOnlyNote": "This assistant requires sign-in. Share the link directly with your invited members \u2014 the iframe alone won't work for unauthenticated users.",
+    "inviteOnlyNote": "This assistant requires sign-in. Share the link directly with your invited members — the iframe alone won't work for unauthenticated users.",
     "accessCodeNote": "For access code or secret link modes, add",
     "or": "or",
     "toIframeUrl": "to the iframe URL.",
@@ -975,8 +1048,8 @@
     "noResultsDescription": "No assistant matches these criteria.",
     "resetFilters": "Reset filters",
     "resultCount": "{count, plural, =1 {# assistant} other {# assistants}}",
-    "previous": "\u2190 Previous",
-    "next": "Next \u2192"
+    "previous": "← Previous",
+    "next": "Next →"
   },
   "error": {
     "title": "An error occurred",
@@ -989,7 +1062,7 @@
     "explore": "Explore",
     "createMine": "Create mine",
     "notFound": "Profile not found.",
-    "backToExplore": "\u2190 Back to explore",
+    "backToExplore": "← Back to explore",
     "publicAIs": "{count, plural, =1 {# public AI} other {# public AIs}}",
     "memberSince": "Member since {date}",
     "noPublicAIs": "This creator hasn't shared any public AI yet."

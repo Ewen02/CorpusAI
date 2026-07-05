@@ -17,18 +17,17 @@ import {
   AvatarImage,
   AvatarFallback,
 } from '@corpusai/ui';
-import { authClient } from '@/lib/auth-client';
+import { useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
 import type { User } from '@corpusai/types';
+import { useUserProfile, userKeys } from '@/lib/queries';
 import { PageWrapper } from '@/components/page-wrapper';
-import { reportError } from '@/lib/log';
 
 export default function SettingsProfilePage() {
   const t = useTranslations('settings');
   const locale = useLocale();
-  const { data: session } = authClient.useSession();
-  const [profile, setProfile] = React.useState<User | null>(null);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const queryClient = useQueryClient();
+  const { data: profile, isLoading } = useUserProfile();
   const [isSaving, setIsSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
@@ -38,26 +37,14 @@ export default function SettingsProfilePage() {
   const [bio, setBio] = React.useState('');
   const [imageUrl, setImageUrl] = React.useState('');
 
+  // Seed the editable form fields once the profile has loaded.
   React.useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const data = await apiClient.get<User>('/users/me');
-        setProfile(data);
-        setName(data.name || '');
-        setUsername(data.username || '');
-        setBio(data.bio || '');
-        setImageUrl(data.image || '');
-      } catch (err) {
-        reportError('Error fetching profile', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (session) {
-      fetchProfile();
-    }
-  }, [session]);
+    if (!profile) return;
+    setName(profile.name || '');
+    setUsername(profile.username || '');
+    setBio(profile.bio || '');
+    setImageUrl(profile.image || '');
+  }, [profile]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,13 +53,13 @@ export default function SettingsProfilePage() {
     setIsSaving(true);
 
     try {
-      const updated = await apiClient.patch<User>('/users/me', {
+      await apiClient.patch<User>('/users/me', {
         name: name || undefined,
         username: username || undefined,
         bio: bio || undefined,
         image: imageUrl || undefined,
       });
-      setProfile((prev) => (prev ? { ...prev, ...updated } : prev));
+      await queryClient.invalidateQueries({ queryKey: userKeys.profile() });
       setSuccess(t('saved'));
     } catch (err) {
       setError(err instanceof Error ? err.message : t('errorGeneric'));

@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useTranslations } from 'next-intl';
 import { useQueryClient } from '@tanstack/react-query';
+import { useCopyToClipboard } from '@/lib/hooks';
 import {
   aiKeys,
   useAIMembers,
@@ -99,7 +100,14 @@ export function useAccessControl({
   const [codeSaved, setCodeSaved] = React.useState(false);
   const [inviteEmail, setInviteEmail] = React.useState('');
   const [inviteError, setInviteError] = React.useState('');
-  const [copied, setCopied] = React.useState(false);
+  const { copied, copy } = useCopyToClipboard();
+  const codeSavedTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  React.useEffect(
+    () => () => {
+      if (codeSavedTimerRef.current) clearTimeout(codeSavedTimerRef.current);
+    },
+    []
+  );
 
   const handleModeChange = async (mode: AccessMode) => {
     if (mode === accessMode || setModeMutation.isPending) return;
@@ -125,9 +133,7 @@ export function useAccessControl({
   };
 
   const handleCopyUrl = (url: string) => {
-    navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    copy(url);
   };
 
   const handleSaveCode = async () => {
@@ -136,7 +142,8 @@ export function useAccessControl({
     setSavedCodeValue(accessCode);
     setCodeSaved(true);
     setAccessCode('');
-    setTimeout(() => setCodeSaved(false), 2000);
+    if (codeSavedTimerRef.current) clearTimeout(codeSavedTimerRef.current);
+    codeSavedTimerRef.current = setTimeout(() => setCodeSaved(false), 2000);
   };
 
   const handleDeleteCode = async () => {

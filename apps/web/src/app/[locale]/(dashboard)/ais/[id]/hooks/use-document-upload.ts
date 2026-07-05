@@ -434,7 +434,7 @@ export function useDocumentUpload({ aiId, documents }: UseDocumentUploadOptions)
                   ? {
                       ...f,
                       status: 'error' as const,
-                      error: fileError?.reason || apiErr?.message || "Echec de l'upload",
+                      error: fileError?.reason || apiErr?.message || t('uploadFailed'),
                     }
                   : f
               )

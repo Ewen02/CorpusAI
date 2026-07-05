@@ -3,7 +3,6 @@
 import * as React from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { Card, CardHeader, CardTitle, CardContent, Skeleton, Badge, Button } from '@corpusai/ui';
-import { apiClient } from '@/lib/api-client';
 import {
   Activity,
   Database,
@@ -18,60 +17,34 @@ import {
   Trash2,
 } from 'lucide-react';
 import {
+  useAdminHealth,
+  useAdminTests,
   useFailedJobs,
   useRetryFailedJob,
   useDiscardFailedJob,
   type FailedJob,
 } from '@/lib/queries/use-admin';
-import type { HealthData, TestStatus } from '../types';
-import { AUTO_REFRESH_INTERVAL } from '../constants';
 import { formatUptime } from '../utils';
 import { ServiceCard, StatusBadge, RefreshOverlay } from './service-card';
 
 export function MonitoringTab() {
   const t = useTranslations('admin.monitoring');
   const locale = useLocale();
-  const [data, setData] = React.useState<HealthData | null>(null);
-  const [testData, setTestData] = React.useState<TestStatus | null>(null);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [isRefreshing, setIsRefreshing] = React.useState(false);
-  const [isRunningTests, setIsRunningTests] = React.useState(false);
-  const [lastRefresh, setLastRefresh] = React.useState<Date | null>(null);
 
-  const fetchHealth = React.useCallback(async (showRefresh = false) => {
-    if (showRefresh) setIsRefreshing(true);
-    try {
-      const result = await apiClient.get<HealthData>('/admin/health');
-      setData(result);
-      setLastRefresh(new Date());
-    } catch {
-      // Errors handled by parent admin guard
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, []);
+  const {
+    data,
+    isLoading,
+    isFetching: isHealthFetching,
+    dataUpdatedAt,
+    refetch: refetchHealth,
+  } = useAdminHealth();
+  // Background refetch (auto-interval or manual) while data is already on screen.
+  const isRefreshing = isHealthFetching && !isLoading;
+  const lastRefresh = dataUpdatedAt ? new Date(dataUpdatedAt) : null;
 
-  const fetchTests = React.useCallback(async () => {
-    setIsRunningTests(true);
-    try {
-      const result = await apiClient.get<TestStatus>('/admin/tests');
-      setTestData(result);
-    } catch {
-      // Tests section is optional
-    } finally {
-      setIsRunningTests(false);
-    }
-  }, []);
-
-  React.useEffect(() => {
-    fetchHealth();
-  }, [fetchHealth]);
-
-  React.useEffect(() => {
-    const interval = setInterval(() => fetchHealth(), AUTO_REFRESH_INTERVAL);
-    return () => clearInterval(interval);
-  }, [fetchHealth]);
+  // Tests run on demand only — the suite is expensive, so the query stays disabled
+  // until the user explicitly triggers `refetch()`.
+  const { data: testData, isFetching: isRunningTests, refetch: runTests } = useAdminTests();
 
   if (isLoading) {
     return (
@@ -99,7 +72,7 @@ export function MonitoringTab() {
           )}
         </p>
         <button
-          onClick={() => fetchHealth(true)}
+          onClick={() => refetchHealth()}
           disabled={isRefreshing}
           className="flex items-center gap-1.5 rounded-lg border border-[hsl(var(--border-default))] px-3 py-1.5 text-[13px] text-tx-muted transition-colors hover:bg-[hsl(var(--surface-2))] disabled:opacity-50"
         >
@@ -202,7 +175,7 @@ export function MonitoringTab() {
               {t('unitTests')}
             </CardTitle>
             <button
-              onClick={fetchTests}
+              onClick={() => runTests()}
               disabled={isRunningTests}
               className="flex items-center gap-1.5 rounded-lg border border-[hsl(var(--border-default))] px-3 py-1.5 text-[12px] text-tx-muted transition-colors hover:bg-[hsl(var(--surface-2))] disabled:opacity-50"
             >
@@ -397,10 +370,27 @@ function FailedJobRow({
   );
 }
 
-function QueueStat({ value, label, color }: { value: number; label: string; color: string }) {
+// Literal classes so Tailwind's scanner can see them (dynamic `text-[hsl(var(--${x}))]` isn't reliably picked up).
+const COLOR_CLASS = {
+  warning: 'text-[hsl(var(--warning))]',
+  danger: 'text-[hsl(var(--danger))]',
+  'accent-500': 'text-[hsl(var(--accent-500))]',
+} as const;
+
+type QueueStatColor = keyof typeof COLOR_CLASS;
+
+function QueueStat({
+  value,
+  label,
+  color,
+}: {
+  value: number;
+  label: string;
+  color: QueueStatColor;
+}) {
   return (
     <div className="rounded-lg bg-[hsl(var(--surface-2))] p-4 text-center">
-      <p className={`text-2xl font-bold text-[hsl(var(--${color}))]`}>{value}</p>
+      <p className={`text-2xl font-bold ${COLOR_CLASS[color]}`}>{value}</p>
       <p className="mt-1 text-[12px] text-tx-muted">{label}</p>
     </div>
   );

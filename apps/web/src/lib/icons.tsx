@@ -34,10 +34,6 @@ export {
 
   // Analytics
   TrendingUp as TrendingUpIcon,
-  TrendingDown as TrendingDownIcon,
-  Calendar as CalendarIcon,
-  ArrowUpRight as ArrowUpRightIcon,
-  ArrowDownRight as ArrowDownRightIcon,
 
   // Settings
   User as UserIcon,

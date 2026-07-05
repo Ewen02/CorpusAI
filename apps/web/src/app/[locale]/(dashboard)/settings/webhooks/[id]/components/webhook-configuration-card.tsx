@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@corpusai/ui';
+import { useCopyToClipboard } from '@/lib/hooks';
 import { CheckIcon, CopyIcon, WebhookIcon } from '@/lib/icons';
 import type { WebhookDetail } from '@/lib/queries';
 
@@ -21,12 +22,10 @@ interface WebhookConfigurationCardProps {
 
 export function WebhookConfigurationCard({ webhook, maskedSecret }: WebhookConfigurationCardProps) {
   const t = useTranslations('settings.webhooks.debugger');
-  const [copied, setCopied] = React.useState(false);
+  const { copied, copy } = useCopyToClipboard(1800);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(maskedSecret);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
+    copy(maskedSecret);
   };
 
   return (

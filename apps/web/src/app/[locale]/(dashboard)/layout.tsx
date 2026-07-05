@@ -111,14 +111,20 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
     }));
   }, [aisData]);
 
-  const user: UserData = React.useMemo(
-    () => ({
-      name: session?.user?.name || 'User',
-      email: session?.user?.email || '',
-      plan: 'FREE' as const,
-    }),
-    [session?.user?.name, session?.user?.email]
-  );
+  const sessionUser = session?.user as Record<string, unknown> | undefined;
+  const user: UserData = React.useMemo(() => {
+    const rawPlan = (sessionUser?.subscriptionPlan as string) ?? 'FREE';
+    const plan: UserData['plan'] = (['FREE', 'CREATOR', 'PRO', 'ENTERPRISE'] as const).includes(
+      rawPlan as UserData['plan']
+    )
+      ? (rawPlan as UserData['plan'])
+      : 'FREE';
+    return {
+      name: (sessionUser?.name as string) || 'User',
+      email: (sessionUser?.email as string) || '',
+      plan,
+    };
+  }, [sessionUser]);
 
   const handleNavigate = React.useCallback(
     (href: string) => {

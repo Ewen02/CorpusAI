@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import dynamic from 'next/dynamic';
+import { useTranslations } from 'next-intl';
 import { StatCard, AnalyticsCard, cn } from '@corpusai/ui';
 
 import { useAIAnalytics, useDocumentChunkUsage, type AnalyticsPeriod } from '@/lib/queries';
@@ -30,6 +31,8 @@ interface AnalyticsTabProps {
 }
 
 export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: AnalyticsTabProps) {
+  const t = useTranslations('ai.analyticsTab');
+  const tPeriods = useTranslations('analytics.periods');
   const [period, setPeriod] = React.useState<AnalyticsPeriod>('30d');
   const { data, isLoading } = useAIAnalytics(aiId, period);
   const [expandedDocId, setExpandedDocId] = React.useState<string | null>(null);
@@ -64,7 +67,7 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
                 : 'text-tx-muted hover:text-tx-secondary'
             )}
           >
-            {option.label}
+            {tPeriods(option.labelKey)}
           </button>
         ))}
       </div>
@@ -72,19 +75,19 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
       {/* Row 1: Activity stats */}
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard
-          title="Conversations"
+          title={t('statConversations')}
           value={data.totals.conversations}
           trend={data.trends.conversations ?? undefined}
           icon={MessageIcon}
         />
         <StatCard
-          title="Questions"
+          title={t('statQuestions')}
           value={data.totals.questions}
           trend={data.trends.questions ?? undefined}
           icon={MessageIcon}
         />
         <StatCard
-          title="Documents"
+          title={t('statDocuments')}
           value={data.totals.documents}
           trend={data.trends.documents ?? undefined}
           icon={FileIcon}
@@ -93,19 +96,19 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
 
       {/* Row 2: Quality & Engagement stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <AnalyticsCard title="Qualité des réponses" icon={SparklesIcon}>
+        <AnalyticsCard title={t('responseQuality')} icon={SparklesIcon}>
           <div className="mt-3">
             <span className="text-[28px] font-bold leading-none tracking-tight text-tx-primary">
               {satisfactionRate != null ? `${satisfactionRate}%` : '—'}
             </span>
           </div>
-          <p className="mt-2 text-[13px] font-medium text-tx-secondary">réponses pertinentes</p>
+          <p className="mt-2 text-[13px] font-medium text-tx-secondary">{t('relevantAnswers')}</p>
           {data.satisfaction && data.satisfaction.total > 0 && (
             <div className="mt-2 flex h-1.5 overflow-hidden rounded-full bg-[hsl(var(--surface-2))]">
               {data.satisfaction.high > 0 && (
                 <div
                   className="bg-green-500"
-                  title={`${data.satisfaction.high} pertinente${data.satisfaction.high > 1 ? 's' : ''}`}
+                  title={t('relevantCount', { count: data.satisfaction.high })}
                   style={{
                     width: `${(data.satisfaction.high / data.satisfaction.total) * 100}%`,
                   }}
@@ -114,7 +117,7 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
               {data.satisfaction.medium > 0 && (
                 <div
                   className="bg-yellow-500"
-                  title={`${data.satisfaction.medium} partielle${data.satisfaction.medium > 1 ? 's' : ''}`}
+                  title={t('partialCount', { count: data.satisfaction.medium })}
                   style={{
                     width: `${(data.satisfaction.medium / data.satisfaction.total) * 100}%`,
                   }}
@@ -123,7 +126,7 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
               {data.satisfaction.low > 0 && (
                 <div
                   className="bg-red-500"
-                  title={`${data.satisfaction.low} insuffisante${data.satisfaction.low > 1 ? 's' : ''}`}
+                  title={t('insufficientCount', { count: data.satisfaction.low })}
                   style={{
                     width: `${(data.satisfaction.low / data.satisfaction.total) * 100}%`,
                   }}
@@ -133,7 +136,7 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
           )}
         </AnalyticsCard>
 
-        <AnalyticsCard title="Engagement" icon={UsersIcon}>
+        <AnalyticsCard title={t('engagement')} icon={UsersIcon}>
           {(() => {
             const users = engagement?.uniqueUsers ?? 0;
             const convs = data.totals.conversations;
@@ -142,10 +145,10 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
             const hasConvs = convs > 0;
             const mainValue = hasVisitors ? users : hasConvs ? convs : '—';
             const mainLabel = hasVisitors
-              ? `visiteur${users > 1 ? 's' : ''} unique${users > 1 ? 's' : ''}`
+              ? t('uniqueVisitors', { count: users })
               : hasConvs
-                ? `session${convs > 1 ? 's' : ''}`
-                : 'aucune conversation';
+                ? t('sessions', { count: convs })
+                : t('noConversation');
             return (
               <>
                 <div className="mt-3">
@@ -154,13 +157,17 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
                   </span>
                 </div>
                 <p className="mt-2 text-[13px] font-medium text-tx-secondary">{mainLabel}</p>
-                {avg > 0 && <p className="mt-1 text-[11px] text-tx-muted">{avg} msg/conv</p>}
+                {avg > 0 && (
+                  <p className="mt-1 text-[11px] text-tx-muted">
+                    {t('messagesPerConv', { count: avg })}
+                  </p>
+                )}
               </>
             );
           })()}
         </AnalyticsCard>
 
-        <AnalyticsCard title="À améliorer" icon={AlertIcon}>
+        <AnalyticsCard title={t('toImprove')} icon={AlertIcon}>
           <div className="mt-3">
             <span
               className={cn(
@@ -176,7 +183,7 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
             </span>
           </div>
           <p className="mt-2 text-[13px] font-medium text-tx-secondary">
-            question{(data.unanswered?.count ?? 0) > 1 ? 's' : ''} sans réponse
+            {t('unansweredQuestions', { count: data.unanswered?.count ?? 0 })}
           </p>
           {unansweredRate != null && unansweredRate > 0 && (
             <p
@@ -185,13 +192,13 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
                 unansweredRate > 30 ? 'text-red-400' : 'text-yellow-400'
               )}
             >
-              {unansweredRate}% du total
+              {t('percentOfTotal', { percent: unansweredRate })}
             </p>
           )}
         </AnalyticsCard>
 
         {/* User feedback satisfaction */}
-        <AnalyticsCard title="Satisfaction utilisateurs" icon={ThumbsUpIcon}>
+        <AnalyticsCard title={t('userSatisfaction')} icon={ThumbsUpIcon}>
           {(() => {
             const fb = data.feedbackSatisfaction;
             if (!fb || fb.total === 0) {
@@ -202,7 +209,7 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
                       —
                     </span>
                   </div>
-                  <p className="mt-2 text-[13px] font-medium text-tx-secondary">aucun avis</p>
+                  <p className="mt-2 text-[13px] font-medium text-tx-secondary">{t('noReviews')}</p>
                 </>
               );
             }
@@ -223,18 +230,18 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
                   </span>
                 </div>
                 <p className="mt-2 text-[13px] font-medium text-tx-secondary">
-                  {fb.positive} positif{fb.positive > 1 ? 's' : ''} / {fb.total} avis
+                  {t('positiveReviews', { positive: fb.positive, total: fb.total })}
                 </p>
                 <div className="mt-2 flex h-1.5 overflow-hidden rounded-full bg-[hsl(var(--surface-2))]">
                   <div
                     className="bg-green-500"
                     style={{ width: `${(fb.positive / fb.total) * 100}%` }}
-                    title={`${fb.positive} positif${fb.positive > 1 ? 's' : ''}`}
+                    title={t('positiveTooltip', { count: fb.positive })}
                   />
                   <div
                     className="bg-red-500"
                     style={{ width: `${(fb.negative / fb.total) * 100}%` }}
-                    title={`${fb.negative} négatif${fb.negative > 1 ? 's' : ''}`}
+                    title={t('negativeTooltip', { count: fb.negative })}
                   />
                 </div>
               </>
@@ -245,20 +252,20 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
 
       {/* Knowledge base summary */}
       {kb && kb.documentCount > 0 && (
-        <AnalyticsCard title="Base de connaissances" icon={BookIcon}>
+        <AnalyticsCard title={t('knowledgeBase')} icon={BookIcon}>
           <p className="mt-3 text-[12px] text-tx-muted">
-            {kb.documentCount} document{kb.documentCount > 1 ? 's' : ''}
-            {kb.totalPages > 0 && ` · ${kb.totalPages} pages`}
-            {kb.totalWords > 0 && ` · ${kb.totalWords.toLocaleString()} mots`}
-            {kb.totalChunks > 0 && ` · ${kb.totalChunks} fragments`}
+            {t('kbDocuments', { count: kb.documentCount })}
+            {kb.totalPages > 0 && ` · ${t('kbPages', { count: kb.totalPages })}`}
+            {kb.totalWords > 0 && ` · ${t('kbWords', { count: kb.totalWords.toLocaleString() })}`}
+            {kb.totalChunks > 0 && ` · ${t('kbChunks', { count: kb.totalChunks })}`}
           </p>
         </AnalyticsCard>
       )}
 
       {/* Document Usage */}
       {data.documentUsage && data.documentUsage.length > 0 && (
-        <AnalyticsCard title="Utilisation des documents" icon={FileIcon}>
-          <p className="mt-1 text-[12px] text-tx-muted">Documents les plus cités par l'assistant</p>
+        <AnalyticsCard title={t('documentUsage')} icon={FileIcon}>
+          <p className="mt-1 text-[12px] text-tx-muted">{t('mostCited')}</p>
           <div className="mt-3 space-y-2">
             {data.documentUsage.map((doc) => {
               const isExpanded = expandedDocId === doc.id;
@@ -285,14 +292,16 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
                         />
                       </div>
                       <span className="shrink-0 text-[10px] text-tx-muted">
-                        {doc.uniqueChunks}/{doc.totalChunks} sections utilisées
+                        {t('sectionsUsed', { used: doc.uniqueChunks, total: doc.totalChunks })}
                       </span>
                     </div>
                   </button>
                   {isExpanded && (
                     <div className="mt-1 space-y-0.5 pl-2">
                       {isLoadingChunks ? (
-                        <p className="px-2 py-3 text-[11px] text-tx-muted">Chargement...</p>
+                        <p className="px-2 py-3 text-[11px] text-tx-muted">
+                          {t('loadingSections')}
+                        </p>
                       ) : chunkUsage && chunkUsage.length > 0 ? (
                         chunkUsage.map((chunk) => (
                           <div
@@ -319,7 +328,7 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
                           </div>
                         ))
                       ) : (
-                        <p className="px-2 py-3 text-[11px] text-tx-muted">Aucune section</p>
+                        <p className="px-2 py-3 text-[11px] text-tx-muted">{t('noSection')}</p>
                       )}
                     </div>
                   )}
@@ -335,7 +344,7 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
 
       {/* Top Questions */}
       {data.topQuestions && data.topQuestions.length > 0 && (
-        <AnalyticsCard title="Top questions" icon={MessageIcon}>
+        <AnalyticsCard title={t('topQuestions')} icon={MessageIcon}>
           <div className="mt-3 space-y-2">
             {data.topQuestions.map((q, i) => (
               <div
@@ -354,7 +363,7 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
 
       {/* Retention — new vs returning users */}
       {data.retention && data.retention.length > 0 && (
-        <AnalyticsCard title="Rétention" icon={UsersIcon}>
+        <AnalyticsCard title={t('retention')} icon={UsersIcon}>
           <div className="mt-3 space-y-1.5">
             {data.retention.map((r) => {
               const total = r.newUsers + r.returningUsers;
@@ -366,12 +375,12 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
                     <div
                       className="bg-blue-500"
                       style={{ width: `${(r.newUsers / total) * 100}%` }}
-                      title={`${r.newUsers} nouveaux`}
+                      title={t('newUsersTooltip', { count: r.newUsers })}
                     />
                     <div
                       className="bg-green-500"
                       style={{ width: `${(r.returningUsers / total) * 100}%` }}
-                      title={`${r.returningUsers} récurrents`}
+                      title={t('returningUsersTooltip', { count: r.returningUsers })}
                     />
                   </div>
                   <span className="w-8 shrink-0 text-right text-tx-muted">{total}</span>
@@ -380,10 +389,11 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
             })}
             <div className="flex gap-4 pt-1 text-[10px] text-tx-muted">
               <span className="flex items-center gap-1">
-                <span className="inline-block h-2 w-2 rounded-full bg-blue-500" /> Nouveaux
+                <span className="inline-block h-2 w-2 rounded-full bg-blue-500" /> {t('newUsers')}
               </span>
               <span className="flex items-center gap-1">
-                <span className="inline-block h-2 w-2 rounded-full bg-green-500" /> Récurrents
+                <span className="inline-block h-2 w-2 rounded-full bg-green-500" />{' '}
+                {t('returningUsers')}
               </span>
             </div>
           </div>
@@ -392,12 +402,12 @@ export const AnalyticsTab = React.memo(function AnalyticsTab({ aiId }: Analytics
 
       {/* Funnel */}
       {data.funnel && data.funnel.documentsUploaded > 0 && (
-        <AnalyticsCard title="Funnel d'engagement" icon={SparklesIcon}>
+        <AnalyticsCard title={t('engagementFunnel')} icon={SparklesIcon}>
           <div className="mt-3 space-y-3">
             {[
-              { label: 'Documents indexés', value: data.funnel.documentsUploaded },
-              { label: '1ère question posée', value: data.funnel.firstQuestion },
-              { label: 'Conversations engagées (5+ msg)', value: data.funnel.engagedConversations },
+              { label: t('funnelDocumentsIndexed'), value: data.funnel.documentsUploaded },
+              { label: t('funnelFirstQuestion'), value: data.funnel.firstQuestion },
+              { label: t('funnelEngagedConversations'), value: data.funnel.engagedConversations },
             ].map((step, i) => {
               const pct =
                 data.funnel.documentsUploaded > 0

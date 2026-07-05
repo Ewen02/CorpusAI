@@ -17,6 +17,7 @@ const AnalyticsCharts = dynamic(() => import('./charts'), {
 
 export default function AnalyticsPage() {
   const t = useTranslations('analytics');
+  const tPeriods = useTranslations('analytics.periods');
   const [period, setPeriod] = useState<AnalyticsPeriod>('30d');
   const { data, isLoading, error } = useAnalytics(period);
 
@@ -61,7 +62,7 @@ export default function AnalyticsPage() {
                   : 'text-tx-muted hover:text-tx-secondary'
               )}
             >
-              {option.label}
+              {tPeriods(option.labelKey)}
             </button>
           ))}
         </div>

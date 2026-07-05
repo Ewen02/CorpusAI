@@ -40,6 +40,9 @@ const IntegrationTab = dynamic(() =>
 import type { AI } from '@corpusai/types';
 import { PageWrapper } from '@/components/page-wrapper';
 
+/** Stable no-op so memoized tabs keep their identity while streaming. */
+const NOOP = () => {};
+
 export default function AIDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -114,8 +117,10 @@ export default function AIDetailPage() {
       )
       .join('\n');
 
-    return `Salut ! Je suis documenté sur ces sujets :\n${docList}${indexedDocs.length > 5 ? `\n• ...et ${indexedDocs.length - 5} autres` : ''}\n\nPose-moi une question, même en dehors de ces sujets !`;
-  }, [aiData?.welcomeMessage, documents]);
+    const more =
+      indexedDocs.length > 5 ? `\n${t('welcomeMore', { count: indexedDocs.length - 5 })}` : '';
+    return `${t('welcomeIntro')}\n${docList}${more}\n\n${t('welcomeOutro')}`;
+  }, [aiData?.welcomeMessage, documents, t]);
 
   // Share modal state
   const [shareOpen, setShareOpen] = React.useState(false);
@@ -132,8 +137,8 @@ export default function AIDetailPage() {
     goToAISettings(aiId);
   }, [aiId, goToAISettings]);
 
+  const documentCount = (aiData as AI | undefined)?.documentCount ?? 0;
   const checklistItems = React.useMemo((): NotificationBarItem[] => {
-    const documentCount = (aiData as AI | undefined)?.documentCount ?? 0;
     return [
       { icon: 'check', label: t('aiCreated') },
       documentCount > 0
@@ -156,7 +161,7 @@ export default function AIDetailPage() {
         },
       },
     ];
-  }, [(aiData as AI | undefined)?.documentCount, aiId, goToAISettings, t]);
+  }, [documentCount, aiId, goToAISettings, t]);
 
   const handleShare = React.useCallback(() => {
     setShareOpen(true);
@@ -236,7 +241,7 @@ export default function AIDetailPage() {
               welcomeMessage={welcomeMessage}
               onSendMessage={sendMessage}
               onSelectConversation={handleConversationSelect}
-              onNewConversation={currentConversationId !== null ? startNewConversation : () => {}}
+              onNewConversation={currentConversationId !== null ? startNewConversation : NOOP}
             />
           </TabsContent>
 
@@ -260,7 +265,7 @@ export default function AIDetailPage() {
               currentConversationId={currentConversationId}
               isLoading={isLoadingConversations}
               onSelectConversation={handleConversationSelect}
-              onNewConversation={currentConversationId !== null ? startNewConversation : () => {}}
+              onNewConversation={currentConversationId !== null ? startNewConversation : NOOP}
             />
           </TabsContent>
 
