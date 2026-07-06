@@ -304,7 +304,7 @@ export class DocumentsController {
     return new Observable((subscriber) => {
       this.documentsService
         .getProgress(user.id, id)
-        .then((doc) => {
+        .then(async (doc) => {
           subscriber.next({
             data: { documentId: id, status: doc.status, progress: doc.progress, step: doc.step },
           } as MessageEvent);
@@ -314,6 +314,14 @@ export class DocumentsController {
             return;
           }
 
+          let done = false;
+          const finish = () => {
+            if (done) return;
+            done = true;
+            this.progressEmitter.removeListener('progress', onProgress);
+            subscriber.complete();
+          };
+
           // Listen to shared progress emitter (single Redis connection for all SSE clients)
           const onProgress = (event: DocumentProgressEvent) => {
             if (event.documentId !== id) return;
@@ -321,19 +329,46 @@ export class DocumentsController {
             subscriber.next({ data: event } as MessageEvent);
 
             if (event.status === 'INDEXED' || event.status === 'FAILED') {
-              this.progressEmitter.removeListener('progress', onProgress);
-              subscriber.complete();
+              finish();
             }
           };
 
           this.progressEmitter.on('progress', onProgress);
 
-          const timeout = setTimeout(() => {
-            this.progressEmitter.removeListener('progress', onProgress);
-            subscriber.complete();
-          }, this.sseTimeoutMs);
+          // Race guard: the document may have reached a terminal state in the
+          // gap between the initial DB read and subscribing to the emitter —
+          // in which case that final event was emitted with no listener and is
+          // lost, leaving the stream hanging until the client reconnects.
+          // Re-read once after subscribing to close that window.
+          try {
+            const latest = await this.documentsService.getProgress(user.id, id);
+            if (!done && (latest.status === 'INDEXED' || latest.status === 'FAILED')) {
+              subscriber.next({
+                data: {
+                  documentId: id,
+                  status: latest.status,
+                  progress: latest.progress,
+                  step: latest.step,
+                },
+              } as MessageEvent);
+              finish();
+              return;
+            }
+          } catch {
+            // non-fatal: fall back to the emitter + timeout below
+          }
+
+          // Heartbeat comment keeps the connection active so Railway's proxy
+          // doesn't reap the idle SSE socket (which surfaced as the client
+          // reopening a fresh stream every few seconds).
+          const heartbeat = setInterval(() => {
+            if (!done) subscriber.next({ type: 'heartbeat', data: '' } as MessageEvent);
+          }, 15_000);
+
+          const timeout = setTimeout(finish, this.sseTimeoutMs);
 
           subscriber.add(() => {
+            clearInterval(heartbeat);
             clearTimeout(timeout);
             this.progressEmitter.removeListener('progress', onProgress);
           });
