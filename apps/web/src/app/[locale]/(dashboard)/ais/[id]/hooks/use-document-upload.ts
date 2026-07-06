@@ -4,6 +4,13 @@ import * as React from 'react';
 import { type QueryClient, useQueryClient } from '@tanstack/react-query';
 import type { UploadedFile } from '@corpusai/ui';
 import { apiClient, ApiError, API_URL } from '@/lib/api-client';
+
+/**
+ * Reconnexions max sur un stream de progression avant d'abandonner.
+ * Garde-fou contre une boucle infinie si le stream et le REST fallback
+ * échouent tous deux en continu.
+ */
+const MAX_PROGRESS_RECONNECTS = 5;
 import { track } from '@/lib/analytics';
 import { documentKeys, useDeleteDocument, useRetryDocument } from '@/lib/queries';
 import { reportError } from '@/lib/log';
@@ -32,14 +39,19 @@ function subscribeToProgress(
 ) {
   const url = `${API_URL}/ais/${aiId}/documents/${documentId}/progress/stream`;
   let closed = false;
+  let reconnects = 0;
   let es: EventSource;
 
   function connect() {
     es = new EventSource(url, { withCredentials: true });
 
     es.onmessage = (e) => {
+      // Heartbeats keep the connection alive but carry no payload — skip them.
+      if (!e.data) return;
       try {
         const data = JSON.parse(e.data);
+        // Ignore any event without a real progress payload (e.g. heartbeats).
+        if (typeof data.status !== 'string') return;
         onProgress(data);
         if (data.status === 'INDEXED') {
           closed = true;
@@ -71,12 +83,29 @@ function subscribeToProgress(
           } else if (data.status === 'FAILED') {
             closed = true;
             onError();
-          } else {
+          } else if (reconnects < MAX_PROGRESS_RECONNECTS) {
+            reconnects += 1;
             setTimeout(connect, 3000);
+          } else {
+            // Reconnexions épuisées : on arrête de poller plutôt que boucler
+            closed = true;
           }
         })
-        .catch(() => {
-          if (!closed) setTimeout(connect, 5000);
+        .catch((error) => {
+          if (closed) return;
+          // Un 404 = le document a été supprimé → il n'existe plus, inutile de
+          // reconnecter en boucle (c'était la cause du spam de 404 /progress).
+          // Tout autre échec (réseau) = transitoire → on retente, avec plafond.
+          if (error instanceof ApiError && error.status === 404) {
+            closed = true;
+            return;
+          }
+          if (reconnects < MAX_PROGRESS_RECONNECTS) {
+            reconnects += 1;
+            setTimeout(connect, 5000);
+          } else {
+            closed = true;
+          }
         });
     };
   }
